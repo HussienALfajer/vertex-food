@@ -1,6 +1,6 @@
 # 0023 — Printing confirmed by Spike B: images rendered in the main process, raw ESC/POS, a durable print queue
 
-Status: Proposed · Date: 2026-10-18 · Amends the printing part of [0008](0008-offline-first-restaurant-and-lan-hub.md); builds on [0022](0022-branch-hub-confirmed-by-spike-a.md) (the hub prints kitchen tickets)
+Status: Accepted (owner, 2026-10-18) · Date: 2026-10-18 · Amends the printing part of [0008](0008-offline-first-restaurant-and-lan-hub.md); builds on [0022](0022-branch-hub-confirmed-by-spike-a.md) (the hub prints kitchen tickets)
 
 ## Context
 ADR 0008 makes printing local. `packages/print` renders receipts and kitchen tickets, and the restaurant app sends them to USB or network ESC/POS printers without internet. It left Spike B to choose between two ways of printing Arabic: rendering to an image, or using the printer's code page.

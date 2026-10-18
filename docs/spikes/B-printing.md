@@ -1,6 +1,6 @@
 # Spike B — Printing (Arabic receipts and kitchen tickets on ESC/POS printers)
 
-Date: 2026-10-18 · Branch: `spike/printing` · Code: `spikes/printing/` (throwaway) · Decision: [ADR 0023](../decisions/0023-printing-confirmed-by-spike-b.md) (proposed), which confirms and amends the printing part of [ADR 0008](../decisions/0008-offline-first-restaurant-and-lan-hub.md)
+Date: 2026-10-18 · Branch: `spike/printing` · Code: `spikes/printing/` (throwaway) · Decision: [ADR 0023](../decisions/0023-printing-confirmed-by-spike-b.md) (accepted), which confirms and amends the printing part of [ADR 0008](../decisions/0008-offline-first-restaurant-and-lan-hub.md)
 
 ## Verdict
 
