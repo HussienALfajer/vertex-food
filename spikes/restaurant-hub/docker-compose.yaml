@@ -1,0 +1,39 @@
+# Spike A — restaurant hub. Throwaway; see README.md. Ports differ from Vertex Shifa's spike so both can run.
+# Published on loopback only: the passwords and the admin token below are public.
+services:
+  pg:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: spike-only-password
+      POSTGRES_DB: food
+    command: ["postgres", "-c", "wal_level=logical"]
+    ports:
+      - "127.0.0.1:54327:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d food"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  powersync:
+    image: journeyapps/powersync-service:1.26.1
+    command: ["start", "-r", "unified"]
+    depends_on:
+      pg:
+        condition: service_healthy
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      NODE_OPTIONS: --max-old-space-size=1000
+      PS_DATA_SOURCE_URI: postgres://powersync_role:spike-only-password@pg:5432/food
+      PS_STORAGE_SOURCE_URI: postgres://postgres:spike-only-password@pg:5432/powersync_storage
+      PS_JWKS_URL: http://host.docker.internal:6070/api/auth/keys
+      PS_PORT: "8095"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./powersync:/config:ro
+    ports:
+      - "127.0.0.1:8095:8095"

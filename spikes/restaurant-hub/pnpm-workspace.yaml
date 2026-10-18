@@ -1,0 +1,6 @@
+# Standalone workspace for the throwaway spike; not part of the product monorepo.
+packages: []
+allowBuilds:
+  "@powersync/node": true
+  better-sqlite3-multiple-ciphers: true
+  electron: true
