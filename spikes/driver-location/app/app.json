@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Vertex Food Driver (spike)",
+    "slug": "vertex-food-driver-spike",
+    "scheme": "vfdriverspike",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "extra": { "supportsRTL": true },
+    "android": {
+      "package": "dev.vertexfood.driverspike",
+      "permissions": ["android.permission.POST_NOTIFICATIONS", "android.permission.RECEIVE_BOOT_COMPLETED"],
+      "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
+    ]
+  }
+}
