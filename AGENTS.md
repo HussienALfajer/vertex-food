@@ -25,17 +25,22 @@ Read these on demand. For a feature, read its spec, the ADRs it lists, and its s
 
 ## Stack (ADR 0002, 0003)
 
-pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. Nothing is scaffolded yet: apps and packages arrive with their Phase 0 roadmap items.
+pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, `packages/config` and CI are scaffolded; other apps and packages arrive with their Phase 0 roadmap items.
 
 - `apps/api`, `apps/worker`, `apps/whatsapp-gateway` NestJS · `apps/restaurant` React + Vite in Electron, offline-first branch hub serving the kitchen display and waiter app · `apps/console` React + Vite · `apps/web` Next.js · `apps/customer`, `apps/driver` React Native + Expo
 - `packages/contracts` · `db` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
 
 ## Commands
 
-None yet. The PR that adds a command adds it to this table and keeps it true. Run from the repository root.
+The PR that adds a command adds it to this table and keeps it true. Run from the repository root (Node 24, pnpm from `packageManager`).
 
 | Task | Command |
 |---|---|
+| Install | `pnpm install` |
+| Lint (Biome) | `pnpm lint` · fix: `pnpm lint:fix` |
+| Typecheck | `pnpm typecheck` |
+| Test | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
+| Build | `pnpm build` |
 
 ## Non-negotiable conventions
 
