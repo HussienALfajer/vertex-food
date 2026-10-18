@@ -1,0 +1,14 @@
+# spikes/ hold throwaway code with their own workspaces and lockfiles; they are not part of this one.
+packages:
+  - apps/*
+  - packages/*
+
+# Supply-chain guard: only install versions published at least 24 hours ago.
+minimumReleaseAge: 1440
+
+# Dependencies allowed to run install scripts. Everything else is blocked; a package that needs one
+# is added here with a reason, and one that works without its script is listed as false.
+allowBuilds:
+  # Its install script only checks the platform binary, which the optional @esbuild/* package
+  # already provides (used by Vitest through Vite).
+  esbuild: false

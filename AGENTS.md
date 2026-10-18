@@ -25,17 +25,22 @@ Read these on demand. For a feature, read its spec, the ADRs it lists, and its s
 
 ## Stack (ADR 0002, 0003)
 
-pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. Nothing is scaffolded yet: apps and packages arrive with their Phase 0 roadmap items.
+pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, `packages/config` and CI are scaffolded; other apps and packages arrive with their Phase 0 roadmap items.
 
 - `apps/api`, `apps/worker`, `apps/whatsapp-gateway` NestJS · `apps/restaurant` React + Vite in Electron, offline-first branch hub serving the kitchen display and waiter app · `apps/console` React + Vite · `apps/web` Next.js · `apps/customer`, `apps/driver` React Native + Expo
 - `packages/contracts` · `db` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
 
 ## Commands
 
-None yet. The PR that adds a command adds it to this table and keeps it true. Run from the repository root.
+The PR that adds a command adds it to this table and keeps it true. Run from the repository root (Node 24, pnpm from `packageManager`).
 
 | Task | Command |
 |---|---|
+| Install | `pnpm install` |
+| Lint (Biome) | `pnpm lint` · fix: `pnpm lint:fix` |
+| Typecheck | `pnpm typecheck` |
+| Test | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
+| Build | `pnpm build` |
 
 ## Non-negotiable conventions
 
@@ -57,7 +62,7 @@ None yet. The PR that adds a command adds it to this table and keeps it true. Ru
 ## How to work
 
 - Continue without asking when the next step needs no input from the owner. Put brief status notes in the same message as the next action.
-- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or outward-facing action (deleting data, dropping tables, force-push, touching a server, sending real WhatsApp messages, publishing an app).
+- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or outward-facing action (deleting data, dropping tables, restoring a database snapshot, force-push, sending real WhatsApp messages, publishing an app). Deploying `main` to production and changing production through the server or an admin panel need no approval (owner, 2026-10-18): do them when the task calls for them and report what changed.
 - A task is done only when its checks pass and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence instead of asserting success.
 - Fix root causes. Never silence a failing test, type error or lint rule.
 - For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes.
@@ -107,4 +112,4 @@ Talk to the owner in Arabic, including the report and its headings. Write everyt
 
 ## Servers
 
-No server exists yet; hosting is open (`docs/open-questions.md` Q1, ADR 0017). Never run commands on a server without explicit approval in the current conversation.
+No server exists yet; hosting is open (`docs/open-questions.md` Q1, ADR 0017). Once a server exists, server commands, deploys and rollbacks need no approval in the conversation (owner, 2026-10-18); the destructive actions listed under "How to work" still do.
