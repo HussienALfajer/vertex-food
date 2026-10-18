@@ -6,13 +6,13 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 |---|---|---|
 | [0001](0001-platform-architecture.md) | Modular monolith: platform core, food domain, products (restaurant, marketplace, dispatch); versioned events through an outbox | Accepted |
 | [0002](0002-stack-and-repository.md) | TypeScript in one pnpm + Turborepo monorepo: NestJS, Drizzle, PostgreSQL 17, Zod, Electron for Windows, Next.js, Expo | Accepted |
-| [0003](0003-mobile-apps-react-native-expo.md) | Customer and driver apps in React Native with Expo; store publishing path open (Q3) | Accepted (driver-app tracking amended by 0024, proposed) |
+| [0003](0003-mobile-apps-react-native-expo.md) | Customer and driver apps in React Native with Expo; store publishing path open (Q3) | Accepted (driver-app tracking amended by 0024) |
 | [0004](0004-tenancy-and-data-isolation.md) | Tenant → branch; forced RLS; customers, Vertex fleet and agreements as platform data with explicit crossing points | Accepted |
 | [0005](0005-identity-and-access.md) | One account per person with many roles; devices, PIN and hub pairing; no email or SMS | Accepted |
 | [0006](0006-customers-and-data-ownership.md) | Platform customers, attribution on every order, consent fields; the written policy is open (Q5) | Accepted |
 | [0007](0007-orders-and-order-lifecycle.md) | One order model for every channel, one state table, append-only events, snapshots, server-side totals | Accepted |
 | [0008](0008-offline-first-restaurant-and-lan-hub.md) | Offline-first restaurant app, commands validated by the server, a branch hub on the LAN, local printing | Accepted (hub amended by 0022; printing amended by 0023) |
-| [0009](0009-delivery-fleets-and-dispatch.md) | Restaurant and Vertex fleets in one driver app; manual dispatch; location only on duty; cash custody | Accepted (location and weak network amended by 0024, proposed) |
+| [0009](0009-delivery-fleets-and-dispatch.md) | Restaurant and Vertex fleets in one driver app; manual dispatch; location only on duty; cash custody | Accepted (location and weak network amended by 0024) |
 | [0010](0010-customization-branding-and-custom-fields.md) | Customization in three layers: identity, settings, protected logic; bounded custom fields | Accepted |
 | [0011](0011-marketplace-listing-and-discovery.md) | Listing by agreement and approval, discovery by area, one menu for POS and app, ratings per order | Accepted |
 | [0012](0012-messaging-whatsapp-and-push.md) | Push and WhatsApp only, platform numbers, the Vertex Shifa gateway copied and adapted | Accepted |
@@ -27,7 +27,7 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 | [0021](0021-maps-and-addresses.md) | OpenStreetMap served by us; descriptive addresses with a pin; zones; no geocoding in V1 | Accepted |
 | [0022](0022-branch-hub-confirmed-by-spike-a.md) | Branch hub after Spike A: one writer with a sequenced journal, a checked standby copy, epochs, a resumable rejoin, per-device number ranges, a branch CA, pairing on demand, client outboxes | Accepted |
 | [0023](0023-printing-confirmed-by-spike-b.md) | Printing after Spike B: documents rendered to 1-bit images with Skia and a bundled Arabic font, raw ESC/POS over TCP or the Windows spooler, status before and "printed" after, a durable at-least-once print queue with marked reprints, kitchen printers on the network | Accepted |
-| [0024](0024-driver-location-confirmed-by-spike-c.md) | Driver location after Spike C: a foreground service started on duty without background location permission, the location task as the clock, profiles of 60 s and 15 s, a durable ordered queue with idempotent points, a time base that survives a wrong clock, native timeouts, stale positions | Proposed |
+| [0024](0024-driver-location-confirmed-by-spike-c.md) | Driver location after Spike C: a foreground service started on duty without background location permission, the location task as the clock, profiles of 60 s and 15 s, a durable ordered queue with idempotent points, a time base that survives a wrong clock, native timeouts, stale positions | Accepted |
 
 Template:
 

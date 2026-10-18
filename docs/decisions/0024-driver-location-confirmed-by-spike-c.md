@@ -1,6 +1,6 @@
 # 0024 — Driver location after Spike C: a foreground service on duty, the location task as the clock, a durable ordered queue with a time base
 
-Status: Proposed · Date: 2026-10-18 · Amends the location and weak-network parts of [0009](0009-delivery-fleets-and-dispatch.md) and the driver-app line of [0003](0003-mobile-apps-react-native-expo.md)
+Status: Accepted (owner, 2026-10-19) · Date: 2026-10-18 · Amends the location and weak-network parts of [0009](0009-delivery-fleets-and-dispatch.md) and the driver-app line of [0003](0003-mobile-apps-react-native-expo.md)
 
 ## Context
 ADR 0009 shares a driver's location only while on duty, samples at an interval left to Spike C, sends locations in batches on weak networks, and has the driver app queue job events with their device time. ADR 0003 makes the driver app Expo, Android first, for cheap phones. Spike C asked three things before S18 and S19:

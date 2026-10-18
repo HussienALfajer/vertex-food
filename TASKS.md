@@ -11,6 +11,6 @@ The live checklist of the current spec or Phase 0 item, replaced when the next o
 - [x] Emulator run: on screen and in the background (screen on) shown; Doze, restricted bucket, battery saver, airplane mode, dead link, weak link, swiped away, crash, force-stop, reopen and off duty scripted but not run, because the emulator restarted Android (report finding 9; left to the owner on a real phone, Q19)
 - [x] Owner test written for real phones (README, Q19)
 - [x] Findings report `docs/spikes/C-driver-location.md`
-- [x] ADR 0024 (proposed) amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
+- [x] ADR 0024 amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
 - [x] Reviewer run and blocking findings fixed (two-fleet visibility, outcomes kept on a duplicate, sleep and the monotonic clock, stale from the profile, the phone test over its own network)
-- [ ] Owner approves ADR 0024 (the PR waits for it)
+- [x] Owner approved ADR 0024 (2026-10-19)

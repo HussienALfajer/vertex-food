@@ -1,6 +1,6 @@
 # Spike C — Driver location (background location, battery, a queue on a weak network)
 
-Date: 2026-10-18 · Branch: `spike/driver-location` · Code: `spikes/driver-location/` (throwaway) · Decision: [ADR 0024](../decisions/0024-driver-location-confirmed-by-spike-c.md) (proposed), which confirms and amends the location and weak-network parts of [ADR 0009](../decisions/0009-delivery-fleets-and-dispatch.md)
+Date: 2026-10-18 · Branch: `spike/driver-location` · Code: `spikes/driver-location/` (throwaway) · Decision: [ADR 0024](../decisions/0024-driver-location-confirmed-by-spike-c.md) (accepted), which confirms and amends the location and weak-network parts of [ADR 0009](../decisions/0009-delivery-fleets-and-dispatch.md)
 
 ## Verdict
 
