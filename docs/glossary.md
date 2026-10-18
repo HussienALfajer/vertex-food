@@ -31,6 +31,9 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | شاشة المطبخ | kitchen display (KDS) | The screen that shows a station's tickets |
 | تذكرة المطبخ | kitchen ticket | What a station receives for an order |
 | الفاتورة / الإيصال | receipt | The printed or shown bill for the customer |
+| الطابعة | printer | A thermal ESC/POS printer of a branch: network or USB, with a paper width and an optional cash drawer |
+| طابور الطباعة | print queue | The jobs waiting for one printer, kept until printed |
+| نسخة معادة | reprint | A receipt or ticket printed again because the first copy may have printed; marked on the paper |
 | الدفعة | payment | Money received, append-only |
 | الاسترجاع | refund | Money returned, a new row |
 | الإلغاء | void | Removing a line or order before payment, with a reason |
