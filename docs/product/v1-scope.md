@@ -1,6 +1,6 @@
 # Vertex Food — V1 Scope
 
-Status: **Draft, awaiting the owner's approval** (from the analysis of 2026-10-18). Changes to this file need the owner's approval.
+Status: Approved by the owner on 2026-10-18 (from the analysis of 2026-10-18). Changes to this file need the owner's approval.
 
 ## 1. Business context
 

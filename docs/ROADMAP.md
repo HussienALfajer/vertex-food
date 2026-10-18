@@ -3,7 +3,7 @@
 Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs refer to `docs/product/v1-scope.md`. Work is grouped into specs (S01–S24): one spec, one `/spec` session. Production is deployed once at the end of each phase (`docs/workflow.md`).
 
 ## Phase 0 — Foundation
-- [~] Product vision and V1 scope, decisions 0001–0021, glossary, working method, Claude Code setup (subagents `checker`, `reviewer`, `explorer`; skills `spec`, `feature-slice`, `db-migration`; hooks)
+- [x] Product vision and V1 scope, decisions 0001–0021, glossary, working method, Claude Code setup (subagents `checker`, `reviewer`, `explorer`; skills `spec`, `feature-slice`, `db-migration`; hooks)
 - [ ] Spike A — restaurant hub: the Windows restaurant app as the local hub (PowerSync per ADR 0008), a kitchen display and a waiter phone reaching it over the LAN without internet, an order taken offline on two devices and replayed to the server, power cut during a write → confirm or amend ADR 0008
 - [ ] Spike B — printing: Arabic receipts and kitchen tickets on common 58 and 80 mm ESC/POS printers (USB and network) from Electron, logo, shaping and RTL, cash drawer kick → confirm or amend ADR 0008 (printing)
 - [ ] Spike C — driver location: background location on cheap Android phones (Expo), battery, queued status updates on a weak network in Azaz → confirm or amend ADR 0009

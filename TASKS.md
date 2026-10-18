@@ -4,7 +4,7 @@ The live checklist of the current spec or Phase 0 item, replaced when the next o
 
 ## Phase 0 — Foundation docs (`docs/foundation`)
 
-- [x] Product vision and V1 scope (scope awaits the owner's approval)
+- [x] Product vision and V1 scope
 - [x] Decisions 0001–0021, open questions, glossary, architecture, spec template
 - [x] Working method and Claude Code setup (subagents, skills, hooks, settings)
-- [ ] Owner approves `v1-scope.md` and the ADRs; PR merged
+- [x] Owner approved `v1-scope.md` and the ADRs (2026-10-18)
