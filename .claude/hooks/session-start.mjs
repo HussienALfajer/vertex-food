@@ -15,7 +15,9 @@ function git(...args) {
 const lines = [];
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
 const changed = git('status', '--porcelain').split('\n').filter(Boolean);
-lines.push(`Repository state: branch \`${branch || 'unknown'}\`, ${changed.length} uncommitted file(s).`);
+lines.push(
+  `Repository state: branch \`${branch || 'unknown'}\`, ${changed.length} uncommitted file(s).`,
+);
 if (branch === 'main') lines.push('On main: create a branch before editing (AGENTS.md, Git).');
 
 const tasksPath = resolve(projectDir, 'TASKS.md');
