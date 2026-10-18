@@ -1,0 +1,20 @@
+{
+  "name": "spike-printing",
+  "private": true,
+  "type": "module",
+  "description": "Spike B: Arabic receipts and kitchen tickets on ESC/POS printers from Electron. Throwaway code.",
+  "dependencies": {
+    "@fontsource/noto-sans-arabic": "5.3.0",
+    "@napi-rs/canvas": "1.0.10",
+    "iconv-lite": "0.7.3",
+    "koffi": "3.3.2"
+  },
+  "devDependencies": {
+    "electron": "44.4.3"
+  },
+  "scripts": {
+    "scenarios": "node scenarios/run.mjs",
+    "scenarios:electron": "node scenarios/run.mjs --runtime electron",
+    "compare": "node scenarios/compare.mjs"
+  }
+}
