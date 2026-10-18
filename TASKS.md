@@ -2,12 +2,12 @@
 
 The live checklist of the current spec or Phase 0 item, replaced when the next one starts. Tick items as they finish; add work you discover.
 
-## Phase 0 — Spike A, restaurant hub (`spike/restaurant-hub`)
+## Phase 0 — Spike B, printing (`spike/printing`)
 
-- [x] Spike code in `spikes/restaurant-hub/`, adapted from Vertex Shifa's `spikes/offline-sync`
-- [x] Scenarios: offline pairing, LAN order on two devices, replay, cloud order, crash between mirror and commit, hub power cut and failover, LAN splits both ways, LAN blip, divergence, repeated power cuts
-- [x] Runs in Node and in Electron's main process (91 of 91 checks, six consecutive runs)
-- [x] Findings report `docs/spikes/A-restaurant-hub.md`
-- [x] ADR 0022 amending ADR 0008; roadmap, architecture, glossary and open questions (Q17) updated
-- [x] Reviewer run and blocking findings fixed
-- [x] Owner approved ADR 0022 (2026-10-18)
+- [x] Spike code in `spikes/printing/`: document model, Skia image path, IBM 864 code-page path, ESC/POS encoder, network and spooler transports, durable print queue, printer emulator
+- [x] Scenarios: shaping and direction, 58 and 80 mm rendering, dot-exact round trip, banded raster, "printed" answer, drawer kick, paper out, cover open, printer off, silent link, two PCs on one printer, queue with the printer off, paper out, a cut connection, the app killed while sending, spooler binding
+- [x] Runs in Node and in Electron's main process, with the Chromium comparison (40 of 40 checks in Node, 44 of 44 in Electron, six consecutive runs after the last change)
+- [x] Findings report `docs/spikes/B-printing.md` with previews
+- [x] ADR 0023 amending ADR 0008's printing; roadmap, architecture, glossary, decision index and open questions (Q8, Q18) updated
+- [x] Reviewer run and blocking findings fixed (hub print rules, amounts from the resolved order, "dropped" before the job, labels, asserted waits; font coverage check added)
+- [x] Owner approved ADR 0023 (2026-10-18)

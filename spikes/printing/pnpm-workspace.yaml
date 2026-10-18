@@ -1,0 +1,6 @@
+# Standalone workspace for the throwaway spike; not part of the product monorepo.
+packages: []
+allowBuilds:
+  "@napi-rs/canvas": true
+  electron: true
+  koffi: true

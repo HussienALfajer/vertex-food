@@ -48,7 +48,7 @@ packages/
   contracts/          Zod schemas, error codes, state tables, money, totals, agreement terms
   db/                 Drizzle schema, migrations, RLS policies, shared write paths
   sync/               command definitions, sync rules, hub protocol
-  print/              receipt and kitchen ticket rendering for ESC/POS
+  print/              receipt and ticket documents, Skia rendering to 1-bit pages, ESC/POS, network and spooler transports, print queue (ADR 0023)
   tokens/ ui/ ui-native/ i18n/ config/
 brand/                identity, Vertex Food logo files
 deploy/               server configuration and release scripts
