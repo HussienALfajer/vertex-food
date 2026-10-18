@@ -8,7 +8,7 @@ The live checklist of the current spec or Phase 0 item, replaced when the next o
 - [x] Spike server (job state machine, duty sessions per fleet, points on duty only, visibility reads) and the weak-network proxy
 - [x] Node scenarios: queue, a delivery, EDGE with lost answers and resets, a blackout, a dead link, the app killed mid-send, the phone's clock, late and impossible events, duty, visibility, payload, privacy, battery model
 - [x] Expo SDK 58 app: foreground-service tracking without background location, the location task as the clock, SQLite queue, native request timeouts, deep links for automation
-- [x] Emulator run: foreground, background, Doze, restricted bucket, battery saver, airplane mode, dead link, weak link, swiped away, crash, force-stop, reopen, off duty
+- [x] Emulator run: on screen and in the background (screen on) shown; Doze, restricted bucket, battery saver, airplane mode, dead link, weak link, swiped away, crash, force-stop, reopen and off duty scripted but not run, because the emulator restarted Android (report finding 9; left to the owner on a real phone, Q19)
 - [x] Owner test written for real phones (README, Q19)
 - [x] Findings report `docs/spikes/C-driver-location.md`
 - [x] ADR 0024 (proposed) amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
