@@ -1,0 +1,3 @@
+# Standalone workspace for the throwaway spike app; not part of the product monorepo.
+packages: []
+nodeLinker: hoisted

@@ -1,0 +1,10 @@
+{
+  "name": "spike-driver-location",
+  "private": true,
+  "type": "module",
+  "description": "Spike C: driver location, battery and a job-event queue on a weak network. Throwaway code.",
+  "scripts": {
+    "scenarios": "node scenarios/run.mjs",
+    "emulator": "node emulator/run.mjs"
+  }
+}

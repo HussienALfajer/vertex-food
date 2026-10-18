@@ -2,12 +2,15 @@
 
 The live checklist of the current spec or Phase 0 item, replaced when the next one starts. Tick items as they finish; add work you discover.
 
-## Phase 0 — Monorepo scaffold (`chore/monorepo-scaffold`)
+## Phase 0 — Spike C, driver location (`spike/driver-location`)
 
-- [x] Root: pnpm workspace (`apps/*`, `packages/*`; spikes stay out), Turborepo with `agentGuidance: false`, `.node-version`, exact versions
-- [x] Biome at the root extending `packages/config`; the existing `.claude/hooks/biome-format.mjs` runs it on every edit
-- [x] `packages/config`: strict `base` and `node` tsconfig presets, Biome rules, tests guarding them
-- [x] CI: lint, typecheck, build, audit, migration drift (no-op until `packages/db`), tests, gate job, gitleaks
-- [x] Folder `CLAUDE.md` files: `packages/config`, `.github`
-- [x] `AGENTS.md` commands table, roadmap, README
-- [x] Checker passes and CI is green on the PR (#5)
+- [x] Shared core in `spikes/driver-location/core/`: the driver app's durable queue, the time base (wall, monotonic, run), the compact point format, the sampling and upload policy, UUIDv7, the log scanner
+- [x] Spike server (job state machine, duty sessions per fleet, points on duty only, visibility reads) and the weak-network proxy
+- [x] Node scenarios: queue, a delivery, EDGE with lost answers and resets, a blackout, a dead link, the app killed mid-send, the phone's clock, late and impossible events, duty, visibility, payload, privacy, battery model
+- [x] Expo SDK 58 app: foreground-service tracking without background location, the location task as the clock, SQLite queue, native request timeouts, deep links for automation
+- [x] Emulator run: on screen and in the background (screen on) shown; Doze, restricted bucket, battery saver, airplane mode, dead link, weak link, swiped away, crash, force-stop, reopen and off duty scripted but not run, because the emulator restarted Android (report finding 9; left to the owner on a real phone, Q19)
+- [x] Owner test written for real phones (README, Q19)
+- [x] Findings report `docs/spikes/C-driver-location.md`
+- [x] ADR 0024 amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
+- [x] Reviewer run and blocking findings fixed (two-fleet visibility, outcomes kept on a duplicate, sleep and the monotonic clock, stale from the profile, the phone test over its own network)
+- [x] Owner approved ADR 0024 (2026-10-19)

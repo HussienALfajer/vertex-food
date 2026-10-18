@@ -1,6 +1,6 @@
 # 0003 — Customer and driver apps: React Native with Expo
 
-Status: Accepted (store publishing path open: Q3) · Date: 2026-10-18
+Status: Accepted (store publishing path open: Q3; driver-app tracking amended by [0024](0024-driver-location-confirmed-by-spike-c.md) after Spike C) · Date: 2026-10-18
 
 ## Context
 The customer app ships on Android and iOS, with a web version through `apps/web`; the driver app is Android-first because drivers use cheap Android phones. Vertex Shifa chose Expo and Spike B there confirmed Expo push over FCM and APNs to devices in Syria (Vertex Shifa ADR 0022). Google Play does not list Syria among the countries where a developer account can be registered (checked 2026-10-18); the App Store status for Syrian developers is unconfirmed.

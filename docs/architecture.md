@@ -86,7 +86,7 @@ Table names are indicative; each spec fixes them.
 
 **Marketplace order (ADR 0007, 0011):** the customer app sends a cart → the API recomputes totals from the menu, checks zone, minimum and opening → `order.placed.v1` → the branch hub alerts the cashier → accept with a time → push or WhatsApp to the customer → kitchen → delivery job.
 
-**Delivery and cash (ADR 0009, 0014):** a job is assigned to a restaurant or Vertex driver → the driver app queues job events → delivered with cash collected → the ledger posts the driver's cash on hand on behalf of the restaurant (and Vertex's fee) → a handover clears it → the monthly statement shows the net.
+**Delivery and cash (ADR 0009, 0014, 0024):** a job is assigned to a restaurant or Vertex driver → the driver app, on duty, tracks with a foreground service and queues job events and location batches in SQLite → its location task sends them, the server applies them once each in order and flags what it cannot apply → delivered with cash collected → the ledger posts the driver's cash on hand on behalf of the restaurant (and Vertex's fee) → a handover clears it → the monthly statement shows the net.
 
 ## Data conventions
 

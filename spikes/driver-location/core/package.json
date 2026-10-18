@@ -1,0 +1,6 @@
+{
+  "name": "spike-driver-location-core",
+  "private": true,
+  "type": "module",
+  "description": "Shared by the Node scenarios and the Expo app: queue, time base, wire format, sampling policy. Throwaway code."
+}
