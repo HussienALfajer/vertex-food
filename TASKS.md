@@ -2,12 +2,15 @@
 
 The live checklist of the current spec or Phase 0 item, replaced when the next one starts. Tick items as they finish; add work you discover.
 
-## Phase 0 — Spike B, printing (`spike/printing`)
+## Phase 0 — Spike C, driver location (`spike/driver-location`)
 
-- [x] Spike code in `spikes/printing/`: document model, Skia image path, IBM 864 code-page path, ESC/POS encoder, network and spooler transports, durable print queue, printer emulator
-- [x] Scenarios: shaping and direction, 58 and 80 mm rendering, dot-exact round trip, banded raster, "printed" answer, drawer kick, paper out, cover open, printer off, silent link, two PCs on one printer, queue with the printer off, paper out, a cut connection, the app killed while sending, spooler binding
-- [x] Runs in Node and in Electron's main process, with the Chromium comparison (40 of 40 checks in Node, 44 of 44 in Electron, six consecutive runs after the last change)
-- [x] Findings report `docs/spikes/B-printing.md` with previews
-- [x] ADR 0023 amending ADR 0008's printing; roadmap, architecture, glossary, decision index and open questions (Q8, Q18) updated
-- [x] Reviewer run and blocking findings fixed (hub print rules, amounts from the resolved order, "dropped" before the job, labels, asserted waits; font coverage check added)
-- [x] Owner approved ADR 0023 (2026-10-18)
+- [x] Shared core in `spikes/driver-location/core/`: the driver app's durable queue, the time base (wall, monotonic, run), the compact point format, the sampling and upload policy, UUIDv7, the log scanner
+- [x] Spike server (job state machine, duty sessions per fleet, points on duty only, visibility reads) and the weak-network proxy
+- [x] Node scenarios: queue, a delivery, EDGE with lost answers and resets, a blackout, a dead link, the app killed mid-send, the phone's clock, late and impossible events, duty, visibility, payload, privacy, battery model
+- [x] Expo SDK 58 app: foreground-service tracking without background location, the location task as the clock, SQLite queue, native request timeouts, deep links for automation
+- [x] Emulator run: foreground, background, Doze, restricted bucket, battery saver, airplane mode, dead link, weak link, swiped away, crash, force-stop, reopen, off duty
+- [x] Owner test written for real phones (README, Q19)
+- [x] Findings report `docs/spikes/C-driver-location.md`
+- [x] ADR 0024 (proposed) amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
+- [ ] Reviewer run and blocking findings fixed
+- [ ] Owner approves ADR 0024 (the PR waits for it)

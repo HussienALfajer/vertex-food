@@ -1,6 +1,6 @@
 # 0009 — Delivery: two fleets in one driver app, manual dispatch, location only on duty
 
-Status: Accepted (background location subject to Spike C) · Date: 2026-10-18
+Status: Accepted (location and weak network amended by [0024](0024-driver-location-confirmed-by-spike-c.md) after Spike C, proposed) · Date: 2026-10-18
 
 ## Context
 Some restaurants have their own drivers; others have none; some need help at peak times. The owner wants both restaurant drivers and Vertex drivers in one driver app (owner, 2026-10-18). Drivers carry cash; delays and losses need a clear owner.
