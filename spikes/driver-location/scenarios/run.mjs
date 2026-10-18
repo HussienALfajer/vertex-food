@@ -252,7 +252,6 @@ try {
     const b = resolveTime({ wall: truth, mono: 1_000, run }, { wall: serverNow + 7_200_000, mono: 601_000, run }, serverNow);
     check('clock', 'the clock changed by 2 h between the event and the send: the gaps disagree, so the time is marked estimated (a boot clock would make it exact)', b.basis === 'estimated', b);
     // The phone slept 20 minutes: the monotonic clock (performance.now) did not count them, the wall clock did.
-    const sl = resolveTime({ wall: truth, mono: 1_000, run }, { wall: serverNow, mono: 1_000 + 600_000 - 1_200_000 + 1_200_000 - 1_200_000 + 600_000, run }, serverNow);
     const slept = resolveTime({ wall: serverNow - 1_800_000, mono: 1_000, run }, { wall: serverNow, mono: 601_000, run }, serverNow);
     check('clock', 'the phone slept 20 min after the event (monotonic gap 10 min, wall gap 30 min): placed by the wall clock, marked estimated, not 20 min late', slept.basis === 'estimated' && slept.t === serverNow - 1_800_000, slept);
     const c = resolveTime({ wall: truth + wrongBy, mono: 1_000, run: 'old' }, { wall: serverNow + wrongBy, mono: 5, run: 'new' }, serverNow);
@@ -367,9 +366,10 @@ try {
     check('visibility', "the Vertex dispatcher sees the same driver's position", vx.find((x) => x.driver === 'd3')?.position != null, vx.map((x) => ({ ...x, position: x.position ? '…' : null })));
     check('visibility', "a restaurant's dispatcher sees its on-duty driver's position", r1.find((x) => x.driver === 'd1')?.position != null, r1.map((x) => ({ ...x, position: x.position ? '…' : null })));
     const last = q("SELECT MAX(t) t FROM points WHERE driver_id = 'd3'")[0].t;
-    const idleOk = server.dispatchDrivers('fleet-vx', last + 230_000).find((x) => x.driver === 'd3');
-    const stale = server.dispatchDrivers('fleet-vx', last + 250_000).find((x) => x.driver === 'd3');
-    check('visibility', 'stale follows the profile: an idle driver (fix 60 s, sent 120 s) is fresh at 230 s and stale at 250 s', idleOk.stale === false && stale.stale === true && stale.staleAfterMs === 240_000, { idleOk: idleOk.stale, stale: stale.stale, after: stale.staleAfterMs });
+    // An idle driver's newest point can be a late fix (145 s gap seen on the emulator) plus a 120 s upload old.
+    const idleOk = server.dispatchDrivers('fleet-vx', last + 265_000).find((x) => x.driver === 'd3');
+    const stale = server.dispatchDrivers('fleet-vx', last + 310_000).find((x) => x.driver === 'd3');
+    check('visibility', 'stale follows the profile: an idle driver (fix 60 s, sent 120 s) with a late fix is fresh at 265 s, stale at 310 s', idleOk.stale === false && stale.stale === true && stale.staleAfterMs === 300_000, { idleOk: idleOk.stale, stale: stale.stale, after: stale.staleAfterMs });
     // d3 now also on duty for restaurant R1, while carrying a Vertex job for restaurant R2's customer.
     const jv = job('d3', 'fleet-vx', 'tenant-r2');
     d3.outbox.record({ type: 'duty_on', fleet: 'fleet-r1' });
@@ -380,7 +380,14 @@ try {
     const r1Busy = server.dispatchDrivers('fleet-r1').find((x) => x.driver === 'd3');
     const vxBusy = server.dispatchDrivers('fleet-vx').find((x) => x.driver === 'd3');
     check('visibility', "on duty in two fleets with a Vertex job for another restaurant: R1's dispatcher sees the driver busy, not where; Vertex sees the position", r1Busy.onDuty && r1Busy.busyElsewhere && !('position' in r1Busy) && vxBusy.position != null, { r1: r1Busy, vx: vxBusy.position ? 'position' : null });
+    // The Vertex job ends at R2's customer's door; the last points are from there.
+    fixes(d3, r.slice(4, 6), 1_000);
     d3.outbox.record({ type: 'failed', jobId: jv, reason: 'test' });
+    d3.clock.syncTo(Date.now());
+    await d3.syncUntilEmpty();
+    const r1After = server.dispatchDrivers('fleet-r1').find((x) => x.driver === 'd3');
+    const doorPoints = q("SELECT t FROM points WHERE driver_id = 'd3' ORDER BY t DESC LIMIT 2").map((x) => x.t);
+    check('visibility', "after the Vertex job ends, R1's dispatcher still gets no point taken during it (not the customer's door)", r1After.onDuty && !r1After.busyElsewhere && (r1After.position == null || !doorPoints.includes(r1After.position.t)), { position: r1After.position ? r1After.position.t : null });
     d3.outbox.record({ type: 'duty_off', fleet: 'fleet-r1' });
     d1.outbox.record({ type: 'duty_off', fleet: 'fleet-r1' });
     await d1.syncUntilEmpty();

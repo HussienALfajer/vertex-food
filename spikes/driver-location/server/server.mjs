@@ -21,7 +21,7 @@ const NEXT = {
   picked_up: { delivered: 'delivered', failed: 'failed', returned: 'returned' },
 };
 // Without a declared profile, a position older than this is stale. With one, the driver's own upload interval
-// plus its fix interval plus a minute.
+// plus two fix intervals (one fix may come late: the emulator saw 145 s gaps at 60 s) plus a minute.
 export const STALE_MS = 180_000;
 export const STALE_MARGIN_MS = 60_000;
 
@@ -192,9 +192,16 @@ export function startServer({ port = 0, host = '127.0.0.1', log = () => {}, now 
       // restaurant and its customer, so this fleet sees that the driver is busy, not where.
       const elsewhere = q(`SELECT 1 FROM jobs WHERE driver_id = ? AND fleet_id <> ? AND state IN (${ON_ROUTE.map(() => '?').join(',')}) LIMIT 1`).get(driver_id, fleetId, ...ON_ROUTE);
       if (elsewhere) return { driver: driver_id, onDuty: true, busyElsewhere: true };
-      const p = q('SELECT t, lat, lng, acc FROM points WHERE driver_id = ? AND t >= ? ORDER BY t DESC LIMIT 1').get(driver_id, session.on_at);
+      // Never a point taken while the driver carried another fleet's job, from its acceptance to its end: after
+      // a delivery for another restaurant the last points sit at that restaurant's customer's door.
+      const windows = q(`SELECT MIN(CASE WHEN e.type = 'accepted' THEN e.t END) AS start,
+                                MAX(CASE WHEN e.type IN ('delivered', 'failed', 'returned') THEN e.t END) AS end
+                         FROM events e JOIN jobs j ON j.id = e.job_id
+                         WHERE e.driver_id = ? AND e.status = 'accepted' AND j.fleet_id <> ? GROUP BY e.job_id`).all(driver_id, fleetId);
+      const hidden = (t) => windows.some((w) => w.start != null && t >= w.start && (w.end == null || t <= w.end));
+      const p = q('SELECT t, lat, lng, acc FROM points WHERE driver_id = ? AND t >= ? ORDER BY t DESC LIMIT 200').all(driver_id, session.on_at).find((x) => !hidden(x.t));
       const prof = q('SELECT upload_ms, fix_ms FROM profiles WHERE driver_id = ?').get(driver_id);
-      const staleAfterMs = prof ? prof.upload_ms + prof.fix_ms + STALE_MARGIN_MS : STALE_MS;
+      const staleAfterMs = prof ? prof.upload_ms + 2 * prof.fix_ms + STALE_MARGIN_MS : STALE_MS;
       return { driver: driver_id, onDuty: true, position: p ?? null, stale: !p || at - p.t > staleAfterMs, staleAfterMs };
     });
   }
