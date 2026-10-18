@@ -1,0 +1,29 @@
+# PowerSync Open Edition, self-hosted. Only PS_* environment variables can be substituted.
+telemetry:
+  disable_telemetry_sharing: true
+
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
+      sslmode: disable
+
+# Bucket storage in PostgreSQL (no MongoDB), as confirmed by Vertex Shifa's Spike A.
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_SOURCE_URI
+  sslmode: disable
+
+port: !env PS_PORT
+
+sync_config:
+  path: sync-config.yaml
+
+client_auth:
+  jwks_uri: !env PS_JWKS_URL
+  audience: ["vertex-food-sync"]
+  block_local_jwks: false
+
+api:
+  tokens:
+    - spike-only-admin-token

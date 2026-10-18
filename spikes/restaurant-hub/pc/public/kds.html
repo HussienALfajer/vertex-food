@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- Spike-only kitchen display: pairs with the hub, then shows live tickets. Not product UI (no i18n, no design system). -->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شاشة المطبخ (تجربة)</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding-inline: 16px; background: #111; color: #eee; }
+  header { display: flex; gap: 12px; align-items: center; padding-block: 12px; }
+  #tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .t { background: #222; border-radius: 8px; padding: 12px; border-inline-start: 6px solid #888; }
+  .new { border-color: #e33; } .preparing { border-color: #fa0; } .ready { border-color: #3c3; }
+  button, input { font-size: 18px; padding: 8px 12px; }
+  .muted { color: #999; font-size: 14px; }
+</style>
+</head>
+<body>
+<header><strong>شاشة المطبخ</strong><span id="status" class="muted"></span></header>
+<form id="pair" hidden><input id="code" inputmode="numeric" placeholder="رمز الربط"><button>ربط</button></form>
+<div id="tickets"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const next = { new: 'preparing', preparing: 'ready', ready: 'served' };
+const label = { new: 'جديد', preparing: 'قيد التحضير', ready: 'جاهز' };
+function connect() {
+  const es = new EventSource('/hub/events');
+  es.onmessage = (m) => render(JSON.parse(m.data));
+  es.onerror = () => { $('status').textContent = 'غير متصل بالمركز'; es.close(); setTimeout(probe, 1000); };
+}
+async function probe() {
+  const r = await fetch('/hub/me').catch(() => null);
+  if (!r) return setTimeout(probe, 1000);
+  if (r.status === 401) { $('pair').hidden = false; return; }
+  connect();
+}
+function render(s) {
+  $('status').textContent = `${s.hub_name} · ${new Date(s.at).toLocaleTimeString('en-GB')}`;
+  const tickets = s.orders.flatMap((o) => o.tickets.filter((t) => t.status !== 'served').map((t) => ({ t, lines: o.lines.filter((l) => l.ticket_id === t.id) })));
+  $('tickets').innerHTML = '';
+  for (const { t, lines } of tickets) {
+    const el = document.createElement('div');
+    el.className = `t ${t.status}`;
+    el.innerHTML = `<div><strong>#${t.order_number ?? '?'}</strong> · ${t.station} · ${label[t.status]}</div><ul>${lines.map((l) => `<li>${l.quantity} × ${l.name}</li>`).join('')}</ul>`;
+    const b = document.createElement('button');
+    b.textContent = 'التالي';
+    b.onclick = () => fetch('/hub/commands', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ commands: [{ id: crypto.randomUUID(), type: 'SetTicketStatus', payload: { ticket_id: t.id, status: next[t.status] }, user_id: '00000000-0000-7000-8000-000000000022', device_time: new Date().toISOString() }] }) });
+    el.append(b);
+    $('tickets').append(el);
+  }
+}
+$('pair').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch('/hub/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: $('code').value, kind: 'kitchen', name: 'kds-browser' }) });
+  if (r.ok) { $('pair').hidden = true; connect(); } else { $('status').textContent = 'رمز خاطئ'; }
+};
+probe();
+</script>
+</body>
+</html>

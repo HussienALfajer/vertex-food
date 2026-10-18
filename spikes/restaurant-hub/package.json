@@ -1,0 +1,24 @@
+{
+  "name": "spike-restaurant-hub",
+  "private": true,
+  "type": "module",
+  "description": "Spike A: the restaurant app as the branch hub (PowerSync, encrypted SQLite, LAN server, standby). Throwaway code.",
+  "scripts": {
+    "server": "node server/server.mjs",
+    "scenarios": "node scenarios/run.mjs",
+    "scenarios:electron": "node scenarios/run.mjs --runtime electron",
+    "demo": "node scenarios/demo.mjs"
+  },
+  "dependencies": {
+    "@powersync/node": "1.1.1",
+    "better-sqlite3-multiple-ciphers": "13.0.3",
+    "jose": "6.2.12",
+    "node-forge": "1.3.1",
+    "pg": "8.23.1",
+    "uuid": "14.0.2",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "electron": "44.4.3"
+  }
+}

@@ -1,0 +1,19 @@
+# Replication scope (ADR 0008): a restaurant PC holds its own tenant and branch only, from the signed device token.
+# Every query filters on tenant_id from the token (Vertex Shifa ADR 0021).
+config:
+  edition: 3
+
+streams:
+  branch:
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM menu_items WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM prices WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM dining_tables WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM orders WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM order_lines WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM kitchen_tickets WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM payments WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT * FROM number_ranges WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      # Outcomes of every command of the branch: any PC of the branch may have uploaded it (hub or standby).
+      - SELECT id, type, origin_device_id, outcome, outcome_detail, received_at FROM command_log WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')

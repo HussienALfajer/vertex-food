@@ -4,7 +4,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 
 ## Phase 0 — Foundation
 - [x] Product vision and V1 scope, decisions 0001–0021, glossary, working method, Claude Code setup (subagents `checker`, `reviewer`, `explorer`; skills `spec`, `feature-slice`, `db-migration`; hooks)
-- [ ] Spike A — restaurant hub: the Windows restaurant app as the local hub (PowerSync per ADR 0008), a kitchen display and a waiter phone reaching it over the LAN without internet, an order taken offline on two devices and replayed to the server, power cut during a write → confirm or amend ADR 0008
+- [x] Spike A — restaurant hub: the Windows restaurant app as the local hub (PowerSync per ADR 0008), a kitchen display and a waiter phone reaching it over the LAN without internet, an order taken offline on two devices and replayed to the server, power cut during a write → confirm or amend ADR 0008. Done: `docs/spikes/A-restaurant-hub.md` (91 checks, Node and Electron), ADR 0022 (accepted by the owner, 2026-10-18); real phones (Q17) and a real power cut on pilot hardware stay open for S04
 - [ ] Spike B — printing: Arabic receipts and kitchen tickets on common 58 and 80 mm ESC/POS printers (USB and network) from Electron, logo, shaping and RTL, cash drawer kick → confirm or amend ADR 0008 (printing)
 - [ ] Spike C — driver location: background location on cheap Android phones (Expo), battery, queued status updates on a weak network in Azaz → confirm or amend ADR 0009
 - [ ] Monorepo scaffold: pnpm, Turborepo (`agentGuidance: false`), TypeScript, Biome and its hook, `packages/config`, CI (typecheck, lint, test, build, gitleaks, migration drift), folder `CLAUDE.md` files
@@ -18,7 +18,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [ ] S01 Tenancy and restaurant setup: F01
 - [ ] S02 Identity, access and devices: F02 · F03
 - [ ] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012)
-- [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub, sync status (ADR 0008)
+- [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub with journal, standby and failover, client outbox, sync status (ADR 0008, 0022)
 - [ ] S05 Entitlements and agreements core: F04 · F05 (resolver, enforcement, effective-dated terms; console screens in S22)
 - [ ] S06 Audit and export: F09
 - [ ] Production deploy of Phase 1 (internal test tenants only)

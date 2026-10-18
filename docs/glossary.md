@@ -12,6 +12,9 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | الصلاحية | permission | A right granted through a role |
 | الجهاز | device | A registered restaurant PC or tablet |
 | المركز المحلي | hub | The restaurant app that serves the branch's kitchen display and waiter app over the LAN |
+| المركز الاحتياطي | standby | A second restaurant PC that holds a live copy of the hub's journal and takes over when the hub stops (ADR 0022) |
+| سجل المركز | hub journal | The hub's ordered list of the branch's commands, copied to the standby (ADR 0022) |
+| الدورة | epoch | The hub's term number; the higher epoch is the hub after a takeover or a split (ADR 0022) |
 | رمز PIN | PIN | A staff member's short code on a registered device |
 | المنيو | menu | A branch's categories and items |
 | الصنف | menu item | Something sold, with sizes and modifiers |

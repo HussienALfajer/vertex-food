@@ -1,0 +1,72 @@
+<!doctype html>
+<!-- Spike-only waiter page: pairs with the hub, opens a table order, adds items, sends to the kitchen. Not product UI. -->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>النادل (تجربة)</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding-inline: 16px; }
+  header { padding-block: 12px; }
+  button, input, select { font-size: 18px; padding: 10px 12px; margin-block: 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .muted { color: #666; font-size: 14px; }
+  li.ready { color: #080; font-weight: bold; }
+</style>
+</head>
+<body>
+<header><strong>النادل</strong> <span id="status" class="muted"></span></header>
+<form id="pair" hidden><input id="code" inputmode="numeric" placeholder="رمز الربط"><button>ربط</button></form>
+<section id="app" hidden>
+  <div class="row"><button id="open">طلب جديد للطاولة 1</button><button id="send">إرسال إلى المطبخ</button></div>
+  <div class="row" id="items"></div>
+  <ul id="order"></ul>
+</section>
+<script>
+const $ = (id) => document.getElementById(id);
+const ITEMS = [['00000000-0000-7000-8000-000000000030', 'شاورما'], ['00000000-0000-7000-8000-000000000032', 'ليمون ونعناع'], ['00000000-0000-7000-8000-000000000033', 'بطاطا']];
+let orderId = null;
+let last = null;
+const command = (type, payload) => ({ id: crypto.randomUUID(), type, payload, user_id: '00000000-0000-7000-8000-000000000021', device_time: new Date().toISOString() });
+const send = (commands) => fetch('/hub/commands', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ commands }) }).then((r) => r.json());
+for (const [id, name] of ITEMS) {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.onclick = () => orderId && send([command('AddLines', { order_id: orderId, lines: [{ line_id: crypto.randomUUID(), item_id: id, quantity: 1 }] })]);
+  $('items').append(b);
+}
+$('open').onclick = async () => {
+  orderId = crypto.randomUUID();
+  await send([command('OpenOrder', { order_id: orderId, channel: 'waiter', table_id: '00000000-0000-7000-8000-000000000050' })]);
+};
+$('send').onclick = () => orderId && send([command('SendToKitchen', { order_id: orderId })]);
+function render(s) {
+  last = s;
+  $('status').textContent = `${s.hub_name} · ${new Date(s.at).toLocaleTimeString('en-GB')}`;
+  const o = s.orders.find((x) => x.id === orderId);
+  $('order').innerHTML = o ? `<li>#${o.number} · ${o.subtotal_minor / 100} ${o.currency}</li>` + o.lines.map((l) => {
+    const t = o.tickets.find((x) => x.id === l.ticket_id);
+    return `<li class="${t?.status ?? ''}">${l.quantity} × ${l.name} ${t ? `(${t.status})` : ''}</li>`;
+  }).join('') : '';
+}
+function connect() {
+  $('app').hidden = false;
+  const es = new EventSource('/hub/events');
+  es.onmessage = (m) => render(JSON.parse(m.data));
+  es.onerror = () => { $('status').textContent = 'غير متصل بالمركز'; es.close(); setTimeout(probe, 1000); };
+}
+async function probe() {
+  const r = await fetch('/hub/me').catch(() => null);
+  if (!r) return setTimeout(probe, 1000);
+  if (r.status === 401) { $('pair').hidden = false; return; }
+  connect();
+}
+$('pair').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch('/hub/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: $('code').value, kind: 'waiter', name: 'waiter-browser' }) });
+  if (r.ok) { $('pair').hidden = true; connect(); } else { $('status').textContent = 'رمز خاطئ'; }
+};
+probe();
+</script>
+</body>
+</html>

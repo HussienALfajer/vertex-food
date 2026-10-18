@@ -20,6 +20,7 @@ Decisions that belong to the owner. Agents must not guess answers to these. When
 | Q14 | Delivery fee: set by the restaurant per zone, by Vertex for Vertex-fleet jobs, or both | S18 | Restaurant per zone for its fleet; Vertex per zone for its fleet, shown before checkout |
 | Q15 | Package names, contents and list prices; first agreement templates | S22 (and before the first sale) | Spec interview |
 | Q16 | Brand: the FOOD logo layout and app icons | Brand phase | Shown to the owner before use (ADR 0018) |
+| Q17 | Waiter app and kitchen display on phones and screens: browser pages with the branch certificate installed on each device at onboarding, or a small Android app that trusts the branch by itself and follows the standby (ADR 0022, Spike A finding 9) | S11, S12 | Test both on the pilot's phones with `pnpm demo` in `spikes/restaurant-hub` on a private test network; a small Android app for the waiter and kitchen screens if installing the certificate proves hard |
 
 ## Resolved
 
