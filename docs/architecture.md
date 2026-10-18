@@ -82,7 +82,7 @@ Table names are indicative; each spec fixes them.
 
 ## Key flows
 
-**Offline order (ADR 0008):** a cashier or waiter adds lines → `OpenOrder` / `AddLines` / `SendToKitchen` commands in the hub's local database → kitchen tickets print or show at once → on reconnect, the API re-runs the commands → outcomes stream back → the ledger posts payments.
+**Offline order (ADR 0008, 0022):** a cashier or waiter adds lines → `OpenOrder` / `AddLines` / `SendToKitchen` commands go to the active hub, which numbers and prices them, journals them, copies them to the standby, then commits them to its local database → kitchen tickets print or show at once → on reconnect, both PCs upload and the API re-runs each command once → outcomes stream back → the ledger posts payments. If the hub stops, the standby takes over with a higher epoch and the clients follow it.
 
 **Marketplace order (ADR 0007, 0011):** the customer app sends a cart → the API recomputes totals from the menu, checks zone, minimum and opening → `order.placed.v1` → the branch hub alerts the cashier → accept with a time → push or WhatsApp to the customer → kitchen → delivery job.
 
