@@ -1,0 +1,68 @@
+# Roadmap
+
+Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs refer to `docs/product/v1-scope.md`. Work is grouped into specs (S01–S24): one spec, one `/spec` session. Production is deployed once at the end of each phase (`docs/workflow.md`).
+
+## Phase 0 — Foundation
+- [x] Product vision and V1 scope, decisions 0001–0021, glossary, working method, Claude Code setup (subagents `checker`, `reviewer`, `explorer`; skills `spec`, `feature-slice`, `db-migration`; hooks)
+- [ ] Spike A — restaurant hub: the Windows restaurant app as the local hub (PowerSync per ADR 0008), a kitchen display and a waiter phone reaching it over the LAN without internet, an order taken offline on two devices and replayed to the server, power cut during a write → confirm or amend ADR 0008
+- [ ] Spike B — printing: Arabic receipts and kitchen tickets on common 58 and 80 mm ESC/POS printers (USB and network) from Electron, logo, shaping and RTL, cash drawer kick → confirm or amend ADR 0008 (printing)
+- [ ] Spike C — driver location: background location on cheap Android phones (Expo), battery, queued status updates on a weak network in Azaz → confirm or amend ADR 0009
+- [ ] Monorepo scaffold: pnpm, Turborepo (`agentGuidance: false`), TypeScript, Biome and its hook, `packages/config`, CI (typecheck, lint, test, build, gitleaks, migration drift), folder `CLAUDE.md` files
+- [ ] GitHub settings with the owner's approval: auto-merge allowed, merge commits only, `main` protected with required CI checks
+- [ ] `packages/db` (roles, tenant context, RLS convention test, audit and outbox tables) and `packages/contracts` (money with USD, TRY, SYP, error codes), from the Vertex Shifa patterns
+- [ ] App skeletons: api, worker, whatsapp-gateway, restaurant (Vite + Electron shell, RTL), console, web, customer (Expo), driver (Expo)
+- [ ] Brand and design system: `brand/` from Vertex Hub with the FOOD logo, `packages/tokens`, `packages/ui`, `packages/ui-native` (ADR 0018)
+- [ ] Deploy skeleton (needs Q1)
+
+## Phase 1 — Platform core
+- [ ] S01 Tenancy and restaurant setup: F01
+- [ ] S02 Identity, access and devices: F02 · F03
+- [ ] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012)
+- [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub, sync status (ADR 0008)
+- [ ] S05 Entitlements and agreements core: F04 · F05 (resolver, enforcement, effective-dated terms; console screens in S22)
+- [ ] S06 Audit and export: F09
+- [ ] Production deploy of Phase 1 (internal test tenants only)
+
+## Phase 2 — Restaurant operations
+- [ ] S07 Menu, prices and exchange rates: F10 · F11
+- [ ] S08 Branding and custom fields: F06 · F07
+- [ ] S09 POS orders and tables: F12
+- [ ] S10 Payments, cash sessions and end of day: F13
+- [ ] S11 Kitchen routing, display and printing: F14 · F15
+- [ ] S12 Waiter app: F16
+- [ ] S13 Reports: F21
+- [ ] Production deploy of Phase 2
+
+## Phase 3 — Online ordering
+- [ ] S14 Online order intake and the order lifecycle across channels: F17 · F18
+- [ ] S15 QR menu, restaurant pages and custom domains: F22 · F23
+- [ ] S16 Customer app: account, addresses, discovery: F24 · F25
+- [ ] S17 Customer app: restaurant page, cart, checkout, tracking, history, rating: F26 · F27 · F28 · F29
+- [ ] Production deploy of Phase 3
+
+## Phase 4 — Delivery
+- [ ] S18 Delivery zones and restaurant drivers: F19 · F20
+- [ ] S19 Driver app: F30 · F31 · F32 · F33
+- [ ] S20 Vertex fleet and dispatch: F36 · F37
+- [ ] Production deploy of Phase 4
+
+## Phase 5 — Money and console
+- [ ] S21 Platform money: commission ledger, statements, driver settlements: F38
+- [ ] S22 Console: restaurants, agreements, entitlements, support access: F34 · F35 · F39
+- [ ] S23 Cities, areas and platform reports: F40
+- [ ] S24 Monitoring and alerts
+- [ ] Production deploy of Phase 5; customer and driver apps published (Q3)
+
+## Pilot
+- [ ] Launch checklist done (below)
+- [ ] Three to five restaurants in Azaz, on-site onboarding, daily follow-up (Q7)
+- [ ] Fixes from the pilot, then open sales
+
+## Launch checklist
+- [ ] Hosting, platform domain and TLS (Q1)
+- [ ] Off-server encrypted backups configured and a restore tested
+- [ ] Company, terms, privacy policy, restaurant and driver contracts reviewed (Q2, Q5, Q9)
+- [ ] Platform WhatsApp numbers active with failover (Q4)
+- [ ] Store accounts and listings, or the APK distribution path (Q3)
+- [ ] Console accounts with TOTP; monitoring and alerts active
+- [ ] Field team trained: onboarding checklist, support rota
