@@ -1,6 +1,6 @@
 # Spike A — Restaurant hub (PowerSync, Electron, LAN hub, standby)
 
-Date: 2026-10-18 · Branch: `spike/restaurant-hub` · Code: `spikes/restaurant-hub/` (throwaway, adapted from Vertex Shifa's `spikes/offline-sync`) · Decision: [ADR 0022](../decisions/0022-branch-hub-confirmed-by-spike-a.md) (proposed), which confirms and amends [ADR 0008](../decisions/0008-offline-first-restaurant-and-lan-hub.md)
+Date: 2026-10-18 · Branch: `spike/restaurant-hub` · Code: `spikes/restaurant-hub/` (throwaway, adapted from Vertex Shifa's `spikes/offline-sync`) · Decision: [ADR 0022](../decisions/0022-branch-hub-confirmed-by-spike-a.md) (accepted), which confirms and amends [ADR 0008](../decisions/0008-offline-first-restaurant-and-lan-hub.md)
 
 ## Verdict
 

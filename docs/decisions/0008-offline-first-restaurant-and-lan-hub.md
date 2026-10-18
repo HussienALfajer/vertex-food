@@ -1,6 +1,6 @@
 # 0008 — Offline-first restaurant: local database, commands, a LAN hub, local printing
 
-Status: Accepted (hub: amendments from Spike A proposed in [0022](0022-branch-hub-confirmed-by-spike-a.md); printing subject to Spike B) · Date: 2026-10-18
+Status: Accepted (hub amended by [0022](0022-branch-hub-confirmed-by-spike-a.md) after Spike A; printing subject to Spike B) · Date: 2026-10-18
 
 ## Context
 Power and internet cut often in Azaz. A restaurant must take orders, cook, print and take money for a full day without internet, and its cashier, kitchen and waiters must keep talking to each other during the cut. Vertex Shifa confirmed PowerSync self-hosted with a command pattern (Vertex Shifa ADR 0008, 0021, and `docs/spikes/A-offline-sync.md` there) but left a clinic LAN hub out of its V1; a restaurant cannot work without one.

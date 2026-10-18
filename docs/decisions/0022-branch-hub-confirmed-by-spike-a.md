@@ -1,6 +1,6 @@
 # 0022 — Branch hub confirmed by Spike A: a sequenced journal, a checked standby copy, epochs, a branch CA
 
-Status: Proposed · Date: 2026-10-18 · Amends [0008](0008-offline-first-restaurant-and-lan-hub.md); touches [0005](0005-identity-and-access.md) (hub pairing)
+Status: Accepted (owner, 2026-10-18) · Date: 2026-10-18 · Amends [0008](0008-offline-first-restaurant-and-lan-hub.md); touches [0005](0005-identity-and-access.md) (hub pairing)
 
 ## Context
 ADR 0008 made one restaurant PC per branch the hub for the kitchen display and the waiter app. It left Spike A to prove the hub and to decide how a standby takes over. The spike ran every scenario in Node and in Electron's main process, and all 91 checks passed in six consecutive runs:
