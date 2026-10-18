@@ -70,13 +70,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
       # Migrations are generated from the Drizzle schema and never edited (ADR 0020): generating
-      # again must change nothing. Until packages/db exists there is nothing to compare.
+      # again must change nothing. Generating reads only the schema and needs no database.
       - name: Migrations match the schema
         run: |
-          if [ ! -d packages/db ]; then
-            echo "packages/db does not exist yet: no migrations to compare."
-            exit 0
-          fi
           pnpm db:generate
           git diff --exit-code -- packages/db/migrations
           test -z "$(git status --porcelain -- packages/db/migrations)"
@@ -92,6 +88,27 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # A throwaway PostgreSQL 17 for the database tests; the passwords are fake and exist only for
+    # this job.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-only-admin-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      DATABASE_ADMIN_URL: postgres://postgres:ci-only-admin-password@localhost:5432/postgres
+      DATABASE_OWNER_URL: postgres://food_owner:ci-only-owner-password@localhost:5432/vertex_food
+      DATABASE_APP_URL: postgres://food_app:ci-only-app-password@localhost:5432/vertex_food
+      DATABASE_JOBS_URL: postgres://food_jobs:ci-only-jobs-password@localhost:5432/vertex_food
+      DATABASE_QUEUE_URL: postgres://food_queue:ci-only-queue-password@localhost:5432/vertex_food
+      DATABASE_SYNC_URL: postgres://food_sync:ci-only-sync-password@localhost:5432/vertex_food
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -107,6 +124,10 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ github.job }}-${{ github.sha }}
           restore-keys: turbo-${{ github.job }}-
+      - name: Database roles and development database
+        run: pnpm db:setup-local
+      - name: Migrations apply to the development database
+        run: pnpm db:migrate
       - run: pnpm test
       # The cache only grows (each run adds its new task results): start over past 1.5 GB.
       - name: Keep the Turborepo cache small

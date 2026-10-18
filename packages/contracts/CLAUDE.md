@@ -1,0 +1,21 @@
+# packages/contracts
+
+Zod schemas and pure rules shared by every app and client (ADR 0002, ADR 0020). No I/O, no Node APIs (`tsconfig.json` loads no Node types), fully unit-tested. Copied from Vertex Shifa's `packages/contracts` and adapted.
+
+## Layout
+- `src/<module>.ts` with `src/<module>.test.ts` next to it; `src/index.ts` re-exports every file.
+- `errors.ts`: stable error codes with their HTTP status, `errorResponseSchema`, `DomainError`. The pattern to copy for a schema: `errorResponseSchema`; for a module with rules: `money.ts`.
+- `money.ts`: currencies (USD, TRY, SYP with their exponents, published as `x-exponents` on `CurrencyCode`), `moneySchema`, `exchangeRateSchema`, arithmetic, conversion, parsing and formatting (ADR 0014).
+- `primitives.ts`: `idSchema` (UUIDv7), `instantSchema` (ISO 8601 UTC), `coordinatesSchema` (degrees × 10⁷), `listQuerySchema(sortKeys)` and `pageSchema(item)` for every list endpoint.
+- `json-schema.ts`: `contractJsonSchemas()`, every schema with an id as JSON Schema (draft 2020-12), for clients that do not run TypeScript (a Flutter or native app) and for the API's OpenAPI document.
+
+## Rules
+- Schemas `<thing>Schema`, types `Thing = z.infer<…>`, inputs `create<Thing>Schema`; every schema the API exposes has a stable `.meta({ id })` and is added to the list in `json-schema.test.ts`.
+- Every schema converts to JSON Schema: no `transform`, `custom` or other shape JSON Schema cannot hold in a schema with an id (the test fails on one). Rules beyond the shape (`refine`) run in TypeScript clients only, so the server validates them again.
+- Error codes are upper snake case and never renamed or removed: offline restaurant devices and installed apps on older versions still read them. A new code gets its HTTP status in `errorStatus`, a line in the list in `errors.test.ts` and its Arabic text in `packages/i18n`. Each spec adds the codes of its rules (`ITEM_SOLD_OUT`, `BRANCH_CLOSED`, `OUTSIDE_DELIVERY_ZONE`, `BELOW_MINIMUM`…).
+- Money is whole minor units in a JavaScript safe integer with a currency (stored as `bigint`). Never floats, never `Number` division on amounts: use the functions in `money.ts`, which refuse what they cannot represent instead of rounding. Conversion rounds half away from zero; the caller stores the rate it used. The SYP exponent follows open question Q11; changing it once amounts are stored also needs a data migration of every stored SYP amount.
+- Ids on the wire are UUIDv7 (`idSchema`); instants are UTC with `Z` (`instantSchema`); coordinates are integers × 10⁷, never floats.
+- A refusal by a business rule throws `DomainError` with a code; input that fails a schema throws Zod's error.
+- Messages and payloads never carry a customer's phone or address or a driver's location into logs (ADR 0016).
+
+Run: `pnpm --filter @vertex-food/contracts test`.
