@@ -22,7 +22,8 @@ const KIND = { new: 'طلب جديد', addition: 'إضافة على الطلب',
 export function receiptDoc(restaurant, order, paper, { reprint = false } = {}) {
   const p = PAPER[paper];
   const subtotal = order.lines.reduce((s, l) => s + l.qty * l.unit, 0);
-  // Integer basis-point arithmetic, rounded half up to a whole pound (spike rule only).
+  // Fixture totals for the pictures only: the product prints the amounts the hub resolved and computes none
+  // (ADR 0023). Integer basis-point arithmetic, rounded half up to a whole pound.
   const service = Math.floor((subtotal * order.service.rateBp + 5_000 * 100) / (10_000 * 100)) * 100;
   const total = subtotal + service;
   const usdCents = Math.floor((total * 100 + order.usdRate.perUsdMinor / 2) / order.usdRate.perUsdMinor);

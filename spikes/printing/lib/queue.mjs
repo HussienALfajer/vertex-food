@@ -72,11 +72,20 @@ export class PrintQueue extends EventEmitter {
       const reprint = job.maybePrinted;
       // A reprint never opens the drawer again.
       const bytes = await this.render(job, { reprint, kick: job.kick && !reprint });
-      this.#log({ op: 'sending', id: job.id, reprint });
-      this.emit('sending', job, bytes.length);
+      // "sending" is logged only once the printer is ready, just before the first job byte: a crash or a cut
+      // before that point leaves the job unsent, so it prints as new, not as a reprint.
+      const sending = () => {
+        this.#log({ op: 'sending', id: job.id, reprint });
+        this.emit('sending', job, bytes.length);
+      };
       try {
         const p = this.printers[name];
-        const result = p.type === 'network' ? await sendNetwork(p, bytes, p.options) : sendSpooler(p.name, bytes);
+        let result;
+        if (p.type === 'network') result = await sendNetwork(p, bytes, { ...p.options, beforeJob: sending });
+        else {
+          sending();
+          result = sendSpooler(p.name, bytes);
+        }
         this.#log({ op: 'printed', id: job.id, at: Date.now() });
         this.emit('printed', job, { reprint, ...result });
         failures = 0;

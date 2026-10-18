@@ -7,12 +7,15 @@ import * as P from './escpos.mjs';
 export class PrintError extends Error {
   constructor(code, detail) {
     super(`${code}${detail ? `: ${JSON.stringify(detail)}` : ''}`);
-    this.code = code; // unreachable | no_answer | not_ready | cut_off | not_confirmed
+    // Before the job: unreachable | no_answer | not_ready | dropped (nothing printed).
+    // After the job started: cut_off | not_confirmed (it may have printed).
+    this.code = code;
     this.detail = detail;
   }
 }
 
-export async function sendNetwork({ host, port }, job, { connectMs = 2000, answerMs = 1500, printMsMax = 20_000 } = {}) {
+// `beforeJob` runs once the printer is ready and just before the first job byte is written.
+export async function sendNetwork({ host, port }, job, { connectMs = 2000, answerMs = 1500, printMsMax = 20_000, beforeJob } = {}) {
   const t0 = performance.now();
   const socket = new net.Socket();
   const inbox = [];
@@ -28,6 +31,7 @@ export async function sendNetwork({ host, port }, job, { connectMs = 2000, answe
     closed ??= new Error('closed');
     wake?.();
   });
+  let jobStarted = false;
   const read = (n, ms, code) =>
     new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new PrintError(code, { waitedMs: ms })), ms);
@@ -37,7 +41,7 @@ export async function sendNetwork({ host, port }, job, { connectMs = 2000, answe
           resolve(inbox.splice(0, n));
         } else if (closed) {
           clearTimeout(timer);
-          reject(new PrintError('cut_off', { message: closed.message }));
+          reject(new PrintError(jobStarted ? 'cut_off' : 'dropped', { message: closed.message }));
         }
       };
       wake();
@@ -61,6 +65,8 @@ export async function sendNetwork({ host, port }, job, { connectMs = 2000, answe
     const status = { ...P.parseStatus(1, s1), ...P.parseStatus(2, s2), ...P.parseStatus(4, s4) };
     if (status.offline || status.coverOpen || status.paperEnd) throw new PrintError('not_ready', status);
     const tStatus = performance.now();
+    await beforeJob?.();
+    jobStarted = true;
     await new Promise((resolve, reject) => socket.write(Buffer.concat([job, P.transmitStatus()]), (e) => (e ? reject(new PrintError('cut_off', { message: e.message })) : resolve())));
     const tSent = performance.now();
     await read(1, printMsMax, 'not_confirmed');

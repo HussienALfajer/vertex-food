@@ -16,7 +16,7 @@ export class PrinterEmulator {
     Object.assign(this, { name, widthDots, mmPerSec, codePages, bufferMs });
     this.pages = [];
     this.kicks = [];
-    this.fault = null; // 'paperOut' | 'coverOpen' | { dropAfter: n } | 'silent'
+    this.fault = null; // 'paperOut' | 'coverOpen' | { dropAfter: n } | 'silent' | 'dropOnConnect'
     this.received = 0;
     this.droppedWhileNotReady = 0;
     this.unknown = [];
@@ -55,6 +55,17 @@ export class PrinterEmulator {
   #serve(socket) {
     this.active = socket;
     const st = { buf: Buffer.alloc(0), page: [], line: [], align: 0, bold: false, sw: 1, sh: 1, invert: false, table: 0, jobBytes: 0 };
+    if (this.fault === 'dropOnConnect') {
+      // Accepts, then loses the connection before answering anything (a flaky Wi-Fi link).
+      this.fault = null;
+      socket.on('close', () => {
+        this.active = null;
+        const next = this.waiting.shift();
+        if (next) this.#serve(next);
+      });
+      socket.destroy();
+      return;
+    }
     if (this.fault === 'silent') {
       socket.on('data', () => {}); // reads and drops everything, never answers
     } else {

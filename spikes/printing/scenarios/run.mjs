@@ -11,10 +11,11 @@ import { PrinterEmulator, monoToPng } from '../emulator/printer.mjs';
 import { codePageJob, shape, visual } from '../lib/codepage.mjs';
 import { PAPER } from '../lib/documents.mjs';
 import * as P from '../lib/escpos.mjs';
-import { FAMILY, registerCanvasFonts } from '../lib/fonts.mjs';
+import { FAMILY, fontFiles, registerCanvasFonts } from '../lib/fonts.mjs';
 import { kitchenTicket } from '../lib/fixtures.mjs';
 import { PC864_TABLE, docFor, logoFor, renderJob } from '../lib/jobs.mjs';
 import { blackRatio, diffDots } from '../lib/mono.mjs';
+import { woff2Chars } from '../lib/cmap.mjs';
 import { PrintError, sendNetwork } from '../lib/network.mjs';
 import { PrintQueue } from '../lib/queue.mjs';
 import { renderCanvas } from '../lib/render-canvas.mjs';
@@ -84,6 +85,21 @@ async function main() {
   check('shaping', 'code-page path: the JavaScript shaper picks contextual forms and the lam-alef ligature', shape('بيت لا') === 'ﺑﻴﺖ ﻻ', [...shape('بيت لا')].map((c) => c.codePointAt(0).toString(16)));
   const v = visual(shape('فاتورة رقم 1042'));
   check('shaping', 'code-page path: a line is reordered for a left-to-right printer, numbers kept in reading order', v.startsWith('1042 ') && v.endsWith([...shape('فاتورة')].reverse().join('')), v);
+
+  // Skia falls back to Windows fonts for a glyph the bundled fonts lack, so check coverage directly.
+  {
+    const covered = new Set(fontFiles.flatMap((f) => [...woff2Chars(f.path)]));
+    const used = new Set();
+    for (const paper of [58, 80]) {
+      for (const kind of ['receipt', 'kitchen']) {
+        for (const reprint of [false, true]) {
+          for (const b of docFor({ kind, paper }, { reprint }).blocks) for (const s of [b.text, b.start, b.end]) for (const ch of s ?? '') used.add(ch.codePointAt(0));
+        }
+      }
+    }
+    const missing = [...used].filter((c) => !covered.has(c)).map((c) => `U+${c.toString(16).toUpperCase()} ${String.fromCodePoint(c)}`);
+    check('render', `every one of the ${used.size} characters the documents print is in the bundled fonts (no Windows font fallback)`, covered.size > 300 && missing.length === 0, { covered: covered.size, missing });
+  }
 
   // ---------------------------------------------------------------- rendering, both paths
   const docs = {};
@@ -198,22 +214,22 @@ async function main() {
     q.start();
     for (const t of tickets) q.enqueue(t);
     q.enqueue(tickets[0]); // the same ticket twice: kept once
-    await until(() => alerts.length >= 2);
+    const sawAlerts = await until(() => alerts.length >= 2);
     const tOn = Date.now();
     await kitchen.start(port);
-    await until(() => printed.length === 3);
+    const allPrinted = await until(() => printed.length === 3);
     const exp = await Promise.all(tickets.map((t) => expected(t)));
     const order = kitchen.pages.map((p) => which(p, exp));
-    check('queue', 'printer off: tickets wait, every failed attempt raises an alert ("unreachable"), nothing is dropped', alerts.every((a) => a.code === 'unreachable') && q.pending('kitchen').length === 0, { alerts: alerts.length });
-    check('queue', `printer back: the three tickets print once each, in order, without a reprint mark (${Date.now() - tOn} ms after power on)`, JSON.stringify(order) === '[0,1,2]' && printed.every((p) => !p.reprint), { order, printed });
+    check('queue', 'printer off: tickets wait, every failed attempt raises an alert ("unreachable"), nothing is dropped', sawAlerts && alerts.length >= 2 && alerts.every((a) => a.code === 'unreachable') && q.pending('kitchen').length === 0, { alerts: alerts.length });
+    check('queue', `printer back: the three tickets print once each, in order, without a reprint mark (${Date.now() - tOn} ms after power on)`, allPrinted && JSON.stringify(order) === '[0,1,2]' && printed.every((p) => !p.reprint), { order, printed });
     alerts.length = 0;
     kitchen.fault = 'paperOut';
     const t4 = { id: 't-2004', printer: 'kitchen', kind: 'kitchen', paper: 80, data: { ...kitchenTicket, orderNumber: 2004 } };
     q.enqueue(t4);
-    await until(() => alerts.length >= 1);
+    const sawPaperOut = await until(() => alerts.length >= 1);
     kitchen.fault = null;
-    await until(() => printed.length === 4);
-    check('queue', 'paper out: the ticket waits with a "not_ready / paperEnd" alert and prints as new once paper is loaded', alerts[0]?.code === 'not_ready' && alerts[0]?.detail?.paperEnd && printed[3]?.reprint === false && which(kitchen.pages.at(-1), [await expected(t4)]) === 0, alerts[0]);
+    const fourth = await until(() => printed.length === 4);
+    check('queue', 'paper out: the ticket waits with a "not_ready / paperEnd" alert and prints as new once paper is loaded', sawPaperOut && fourth && alerts[0]?.code === 'not_ready' && alerts[0]?.detail?.paperEnd && printed[3]?.reprint === false && which(kitchen.pages.at(-1), [await expected(t4)]) === 0, alerts[0]);
     await q.stop();
     await kitchen.stop();
   }
@@ -233,12 +249,35 @@ async function main() {
     const job = { id: 'pay-1', printer: 'cashier', kind: 'receipt', paper: 80, kick: true };
     q.start();
     q.enqueue(job);
-    await until(() => printed.length === 1);
+    const reprinted = await until(() => printed.length === 1);
     await q.stop();
     const [torn, again] = cashier.pages;
-    check('queue', 'connection cut in the middle of a receipt: the half page stays, the receipt prints again whole, marked "نسخة معادة"', alerts[0] === 'cut_off' && torn?.torn && again && !again.torn && which(again, [await expected(job, true)]) === 0 && printed[0] === true, { alerts, pages: cashier.pages.map((p) => p.torn) });
+    check('queue', 'connection cut in the middle of a receipt: the half page stays, the receipt prints again whole, marked "نسخة معادة"', reprinted && alerts[0] === 'cut_off' && torn?.torn && again && !again.torn && which(again, [await expected(job, true)]) === 0 && printed[0] === true, { alerts, pages: cashier.pages.map((p) => p.torn) });
     check('drawer', 'the reprint does not open the cash drawer a second time', cashier.kicks.length === 1, cashier.kicks);
     await cashier.stop();
+  }
+  {
+    // The printer drops the connection before answering the status: nothing was sent, so no reprint mark.
+    const flaky = new PrinterEmulator({ name: 'flaky', widthDots: 576, mmPerSec: 150 });
+    const port = await flaky.start();
+    flaky.fault = 'dropOnConnect';
+    const q = new PrintQueue(path.join(outDir, 'queue-dropped.jsonl'), {
+      printers: { cashier: { type: 'network', host: '127.0.0.1', port, options: { answerMs: 800 } } },
+      render: renderJob,
+      backoffMs: [100],
+    });
+    const printed = [];
+    const alerts = [];
+    q.on('printed', (j, r) => printed.push(r.reprint));
+    q.on('alert', (a) => alerts.push(a.code));
+    const job = { id: 'pay-3', printer: 'cashier', kind: 'receipt', paper: 80, kick: true };
+    q.start();
+    q.enqueue(job);
+    const done = await until(() => printed.length === 1);
+    await q.stop();
+    check('queue', 'connection dropped before the job started: the receipt prints once, as new, not as a reprint', done && alerts[0] === 'dropped' && printed[0] === false && flaky.pages.length === 1 && which(flaky.pages[0], [await expected(job)]) === 0, { alerts, printed, pages: flaky.pages.length });
+    check('drawer', 'and the drawer still opens with it', flaky.kicks.length === 1, flaky.kicks.length);
+    await flaky.stop();
   }
   {
     // The app dies while sending: TerminateProcess on the queue process, then a restart.
@@ -251,7 +290,10 @@ async function main() {
       const args = process.versions.electron ? [path.join(root, 'electron', 'main.mjs')] : [path.join(root, 'scenarios', 'queue-child.mjs')];
       const child = spawn(process.execPath, args, { env: { ...process.env, QUEUE_CONFIG: JSON.stringify(cfg) }, stdio: ['ignore', 'pipe', 'inherit'] });
       child.events = [];
-      child.stdout.on('data', (d) => child.events.push(...d.toString().split('\n').filter(Boolean).map((l) => JSON.parse(l))));
+      const t0 = Date.now();
+      // Electron writes a blank line to stdout at start; keep only the queue's JSON lines.
+      const lines = (d) => d.toString().split('\n').map((l) => l.trim()).filter((l) => l.startsWith('{'));
+      child.stdout.on('data', (d) => child.events.push(...lines(d).map((l) => ({ ...JSON.parse(l), afterMs: Date.now() - t0 }))));
       child.exited = new Promise((r) => child.on('exit', r));
       return child;
     };
@@ -259,14 +301,14 @@ async function main() {
     await until(() => printer.received > 8_000, 20_000);
     const killedAt = printer.received;
     c1.kill('SIGKILL');
-    await c1.exited;
+    const killed = await Promise.race([c1.exited.then(() => true), sleep(5000).then(() => false)]);
     await until(() => printer.pages.length === 1, 3000);
     const c2 = runChild(base);
     const tStart = Date.now();
-    await c2.exited;
+    const restarted = await Promise.race([c2.exited.then(() => true), sleep(30_000).then(() => false)]);
     const ready = c2.events.find((e) => e.ev === 'ready');
     const done = c2.events.find((e) => e.ev === 'printed');
-    check('queue', 'power cut of the app while sending: after restart the receipt is pending as "maybe printed"', ready?.pending?.[0]?.maybePrinted === true, ready);
+    check('queue', 'power cut of the app while sending: after restart the receipt is pending as "maybe printed"', killed && restarted && ready?.pending?.[0]?.maybePrinted === true, { ready, killed, restarted });
     check('queue', `it prints again whole with the reprint mark (killed after ${killedAt} bytes; restart to confirmed print ${Date.now() - tStart} ms on a 40 mm/s printer)`, done?.reprint === true && printer.pages[0]?.torn && which(printer.pages.at(-1), [await expected(job, true)]) === 0, { pages: printer.pages.map((p) => p.torn), killedAt });
     check('drawer', 'the drawer opened once across the cut and the restart', printer.kicks.length === 1, printer.kicks.length);
     await printer.stop();

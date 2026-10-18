@@ -37,7 +37,8 @@ To try a real USB printer installed as a Windows print queue (its maker's driver
 | `lib/network.mjs` | Raw TCP transport: status first, the job, then `GS r` as the "printed" answer; typed errors and timeouts |
 | `lib/spooler.mjs` | USB transport: a RAW job through `winspool.drv` with `koffi` |
 | `lib/queue.mjs` | Durable per-printer FIFO, at-least-once, reprints marked "نسخة معادة", no second drawer kick |
+| `lib/cmap.mjs` | Reads the character map of a WOFF2 font, for the font coverage check |
 | `lib/render-html.mjs`, `electron/render-electron.mjs` | Chromium comparison: the same document as HTML in an offscreen window |
 | `emulator/printer.mjs` | The ESC/POS printer emulator |
-| `scenarios/run.mjs` | All checks (37 in Node, 41 in Electron) and timings; `scenarios/queue-child.mjs` the queue process killed in the power-cut check; `scenarios/compare.mjs` the previews |
+| `scenarios/run.mjs` | All checks (40 in Node, 44 in Electron) and timings; `scenarios/queue-child.mjs` the queue process killed in the power-cut check; `scenarios/compare.mjs` the previews |
 | `electron/main.mjs` | Runs the checks or the queue process in Electron's main process |
