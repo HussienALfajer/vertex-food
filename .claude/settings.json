@@ -76,10 +76,7 @@
       "Bash(*eas submit*)",
       "Bash(*eas update*)",
       "Bash(gh repo *)",
-      "Bash(gh api *)",
-      "Bash(ssh *)",
-      "Bash(scp *)",
-      "Bash(rsync *)"
+      "Bash(gh api *)"
     ],
     "deny": [
       "Read(**/.env)",
