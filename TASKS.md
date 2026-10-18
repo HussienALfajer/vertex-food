@@ -10,4 +10,4 @@ The live checklist of the current spec or Phase 0 item, replaced when the next o
 - [x] CI: lint, typecheck, build, audit, migration drift (no-op until `packages/db`), tests, gate job, gitleaks
 - [x] Folder `CLAUDE.md` files: `packages/config`, `.github`
 - [x] `AGENTS.md` commands table, roadmap, README
-- [ ] Checker passes and CI is green on the PR
+- [x] Checker passes and CI is green on the PR (#5)
