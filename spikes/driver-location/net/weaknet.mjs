@@ -18,7 +18,7 @@ export const PROFILES = {
   poor3g: { latencyMs: 120, jitterMs: 80, upBps: 25_000, downBps: 60_000 },
 };
 
-export async function weakNet({ targetPort, targetHost = '127.0.0.1', profile = PROFILES.lan, port = 0, random = Math.random }) {
+export async function weakNet({ targetPort, targetHost = '127.0.0.1', profile = PROFILES.lan, port = 0, host = '127.0.0.1', random = Math.random }) {
   let cfg = { ...profile };
   const stats = { connections: 0, refused: 0, resets: 0, answersLost: 0, upBytes: 0, downBytes: 0, requestLines: [] };
   const sockets = new Set();
@@ -82,7 +82,7 @@ export async function weakNet({ targetPort, targetHost = '127.0.0.1', profile = 
     pipe(upstream, client, 'down');
   });
 
-  await new Promise((r) => server.listen(port, '127.0.0.1', r));
+  await new Promise((r) => server.listen(port, host, r));
   return {
     port: server.address().port,
     stats,

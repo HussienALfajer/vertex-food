@@ -59,7 +59,7 @@ export async function maybeSync(reason) {
   const d = await diag(reason);
   const send = async (json) => {
     bump('requests');
-    const body = JSON.stringify({ ...JSON.parse(json), diag: d });
+    const body = JSON.stringify({ ...JSON.parse(json), profile, diag: d });
     return post(`${server}/driver/sync`, token, body);
   };
   try {

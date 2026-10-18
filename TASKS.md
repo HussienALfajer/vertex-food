@@ -12,5 +12,5 @@ The live checklist of the current spec or Phase 0 item, replaced when the next o
 - [x] Owner test written for real phones (README, Q19)
 - [x] Findings report `docs/spikes/C-driver-location.md`
 - [x] ADR 0024 (proposed) amending ADR 0009 and ADR 0003; roadmap, decision index, glossary and open questions (Q19) updated
-- [ ] Reviewer run and blocking findings fixed
+- [x] Reviewer run and blocking findings fixed (two-fleet visibility, outcomes kept on a duplicate, sleep and the monotonic clock, stale from the profile, the phone test over its own network)
 - [ ] Owner approves ADR 0024 (the PR waits for it)

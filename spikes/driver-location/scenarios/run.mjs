@@ -231,7 +231,8 @@ try {
     const ev = q("SELECT type, status FROM events WHERE driver_id = 'd2' ORDER BY arrival");
     const pts = q("SELECT COUNT(*) n FROM points WHERE driver_id = 'd2'")[0].n;
     check('killed app', 'restarted, it resends the same batch: events once, points once, queue empty', again.ok && again.after.events === 0 && again.after.points === 0 && ev.length === 3 && ev.every((e) => e.status === 'accepted') && pts === 30, { again, ev, pts });
-    check('killed app', 'the server answered the resent events as duplicates', q('SELECT COUNT(*) n FROM events')[0].n > 0 && again.before.events === 3, again);
+    const dupLines = logs.filter((l) => l.includes('driver=d2') && /duplicate=3\b/.test(l));
+    check('killed app', 'the server answered the 3 resent events as duplicates', again.before.events === 3 && dupLines.length === 1, { dupLines: dupLines.length });
     const rows = q("SELECT basis FROM events WHERE driver_id = 'd2'");
     check('killed app', 'times recorded before the restart use the wall clock (the monotonic clock died with the process)', rows.every((r) => r.basis === 'wall'), rows);
     const d = makeDriver({ file, token: 'tok-d2', url: viaNet, clock: testClock(), log });
@@ -249,7 +250,11 @@ try {
     const a = resolveTime({ wall: truth + wrongBy, mono: 1_000, run }, { wall: serverNow + wrongBy, mono: 601_000, run }, serverNow);
     check('clock', 'a phone 3 h behind, same run: the monotonic clock gives the true time', a.basis === 'monotonic' && a.t === truth, a);
     const b = resolveTime({ wall: truth, mono: 1_000, run }, { wall: serverNow + 7_200_000, mono: 601_000, run }, serverNow);
-    check('clock', 'the clock changed by 2 h between the event and the send: still the true time', b.basis === 'monotonic' && b.t === truth, b);
+    check('clock', 'the clock changed by 2 h between the event and the send: the gaps disagree, so the time is marked estimated (a boot clock would make it exact)', b.basis === 'estimated', b);
+    // The phone slept 20 minutes: the monotonic clock (performance.now) did not count them, the wall clock did.
+    const sl = resolveTime({ wall: truth, mono: 1_000, run }, { wall: serverNow, mono: 1_000 + 600_000 - 1_200_000 + 1_200_000 - 1_200_000 + 600_000, run }, serverNow);
+    const slept = resolveTime({ wall: serverNow - 1_800_000, mono: 1_000, run }, { wall: serverNow, mono: 601_000, run }, serverNow);
+    check('clock', 'the phone slept 20 min after the event (monotonic gap 10 min, wall gap 30 min): placed by the wall clock, marked estimated, not 20 min late', slept.basis === 'estimated' && slept.t === serverNow - 1_800_000, slept);
     const c = resolveTime({ wall: truth + wrongBy, mono: 1_000, run: 'old' }, { wall: serverNow + wrongBy, mono: 5, run: 'new' }, serverNow);
     check('clock', 'app restarted with the clock 3 h behind: time corrected by the measured offset and marked estimated', c.basis === 'estimated' && c.t === truth, c);
     const e = resolveTime({ wall: truth, mono: 1_000, run: 'old' }, { wall: serverNow + 7_200_000, mono: 5, run: 'new' }, serverNow);
@@ -280,6 +285,13 @@ try {
     const lateRow = q('SELECT status, reason FROM events WHERE id = ?', late)[0];
     check('sequence', 'an event on a job reassigned meanwhile is kept, flagged "reassigned" and not applied', lateRow.status === 'flagged' && lateRow.reason === 'reassigned' && q('SELECT state, driver_id FROM jobs WHERE id = ?', ja)[0].driver_id === 'd3', lateRow);
     check('sequence', "the flagged event is kept on the driver's phone to show, not dropped", d1.outbox.outcomes().some((o) => o.id === late && o.reason === 'reassigned'), d1.outbox.outcomes());
+    const jr = job('d1');
+    const lost = d1.outbox.record({ type: 'accepted', jobId: jr });
+    server.reassign(jr, 'd3');
+    net.patch({ onAnswer: () => { net.patch({ onAnswer: undefined }); return 'drop'; } });
+    await d1.syncUntilEmpty();
+    const lostOutcome = d1.outbox.outcomes().find((o) => o.id === lost);
+    check('sequence', 'a flagged event whose answer was lost: the resend gets "duplicate" with the first outcome, and the phone keeps it', lostOutcome?.status === 'flagged' && lostOutcome.reason === 'reassigned' && q('SELECT COUNT(*) n FROM events WHERE id = ?', lost)[0].n === 1, lostOutcome);
     const jb = job('d1');
     const imp = d1.outbox.record({ type: 'delivered', jobId: jb });
     await d1.syncUntilEmpty();
@@ -321,7 +333,7 @@ try {
   {
     net.set(PROFILES.lan);
     const d1 = makeDriver({ file: dbFile(), token: 'tok-d1', url: viaNet, clock: testClock(), log });
-    const d3 = makeDriver({ file: dbFile(), token: 'tok-d3', url: viaNet, clock: testClock(), log });
+    const d3 = makeDriver({ file: dbFile(), token: 'tok-d3', url: viaNet, clock: testClock(), log, profile: POLICY.idle });
     const j = job('d1');
     const r = route(6);
     d1.outbox.record({ type: 'duty_on', fleet: 'fleet-r1' });
@@ -354,8 +366,22 @@ try {
     check('visibility', "a driver on duty for Vertex only is off duty, without position, for the restaurant's dispatcher", r1.find((x) => x.driver === 'd3')?.onDuty === false && !('position' in r1.find((x) => x.driver === 'd3')), r1);
     check('visibility', "the Vertex dispatcher sees the same driver's position", vx.find((x) => x.driver === 'd3')?.position != null, vx.map((x) => ({ ...x, position: x.position ? '…' : null })));
     check('visibility', "a restaurant's dispatcher sees its on-duty driver's position", r1.find((x) => x.driver === 'd1')?.position != null, r1.map((x) => ({ ...x, position: x.position ? '…' : null })));
-    const stale = server.dispatchDrivers('fleet-vx', Date.now() + 200_000).find((x) => x.driver === 'd3');
-    check('visibility', 'on duty with no point for 3 minutes shows "stale" (an app the OS killed)', stale.stale === true, stale);
+    const last = q("SELECT MAX(t) t FROM points WHERE driver_id = 'd3'")[0].t;
+    const idleOk = server.dispatchDrivers('fleet-vx', last + 230_000).find((x) => x.driver === 'd3');
+    const stale = server.dispatchDrivers('fleet-vx', last + 250_000).find((x) => x.driver === 'd3');
+    check('visibility', 'stale follows the profile: an idle driver (fix 60 s, sent 120 s) is fresh at 230 s and stale at 250 s', idleOk.stale === false && stale.stale === true && stale.staleAfterMs === 240_000, { idleOk: idleOk.stale, stale: stale.stale, after: stale.staleAfterMs });
+    // d3 now also on duty for restaurant R1, while carrying a Vertex job for restaurant R2's customer.
+    const jv = job('d3', 'fleet-vx', 'tenant-r2');
+    d3.outbox.record({ type: 'duty_on', fleet: 'fleet-r1' });
+    d3.outbox.record({ type: 'accepted', jobId: jv });
+    fixes(d3, r.slice(2, 4), 1_000);
+    d3.clock.syncTo(Date.now());
+    await d3.syncUntilEmpty();
+    const r1Busy = server.dispatchDrivers('fleet-r1').find((x) => x.driver === 'd3');
+    const vxBusy = server.dispatchDrivers('fleet-vx').find((x) => x.driver === 'd3');
+    check('visibility', "on duty in two fleets with a Vertex job for another restaurant: R1's dispatcher sees the driver busy, not where; Vertex sees the position", r1Busy.onDuty && r1Busy.busyElsewhere && !('position' in r1Busy) && vxBusy.position != null, { r1: r1Busy, vx: vxBusy.position ? 'position' : null });
+    d3.outbox.record({ type: 'failed', jobId: jv, reason: 'test' });
+    d3.outbox.record({ type: 'duty_off', fleet: 'fleet-r1' });
     d1.outbox.record({ type: 'duty_off', fleet: 'fleet-r1' });
     await d1.syncUntilEmpty();
     check('visibility', 'off duty, the dispatcher sees no position', !('position' in server.dispatchDrivers('fleet-r1').find((x) => x.driver === 'd1')), null);

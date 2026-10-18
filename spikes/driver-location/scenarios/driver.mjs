@@ -48,7 +48,7 @@ export function testClock({ run = uuidv7(Date.now(), randomBytes), startWall = D
   return c;
 }
 
-export function makeDriver({ file, token, url, clock, timeoutMs = 15_000, log = () => {} }) {
+export function makeDriver({ file, token, url, clock, timeoutMs = 15_000, log = () => {}, profile = null }) {
   const db = nodeDb(file);
   const outbox = new Outbox(db, { clock, newId: (ms) => uuidv7(ms, randomBytes) });
   let requests = 0;
@@ -57,7 +57,7 @@ export function makeDriver({ file, token, url, clock, timeoutMs = 15_000, log = 
     const r = await fetch(`${url}/driver/sync`, {
       method: 'POST',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: json,
+      body: profile ? JSON.stringify({ ...JSON.parse(json), profile }) : json,
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!r.ok) throw new Error(`http_${r.status}`);

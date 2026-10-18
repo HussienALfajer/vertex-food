@@ -13,13 +13,17 @@ import { resolveTime } from '../core/timebase.js';
 import { decodePoints } from '../core/wire.js';
 
 export const ACTIVE = ['offered', 'accepted', 'at_restaurant', 'picked_up'];
+export const ON_ROUTE = ['accepted', 'at_restaurant', 'picked_up'];
 const NEXT = {
   offered: { accepted: 'accepted', declined: 'unassigned' },
   accepted: { at_restaurant: 'at_restaurant', failed: 'failed' },
   at_restaurant: { picked_up: 'picked_up', failed: 'failed' },
   picked_up: { delivered: 'delivered', failed: 'failed', returned: 'returned' },
 };
+// Without a declared profile, a position older than this is stale. With one, the driver's own upload interval
+// plus its fix interval plus a minute.
 export const STALE_MS = 180_000;
+export const STALE_MARGIN_MS = 60_000;
 
 const SCHEMA = `
 CREATE TABLE fleets (id TEXT PRIMARY KEY, kind TEXT NOT NULL, tenant_id TEXT);
@@ -43,6 +47,7 @@ CREATE TABLE points (
   UNIQUE (driver_id, device_t)
 );
 CREATE TABLE diag (driver_id TEXT NOT NULL, at INTEGER NOT NULL, body TEXT NOT NULL);
+CREATE TABLE profiles (driver_id TEXT PRIMARY KEY, upload_ms INTEGER NOT NULL, fix_ms INTEGER NOT NULL);
 CREATE TABLE refused_points (driver_id TEXT NOT NULL, reason TEXT NOT NULL, n INTEGER NOT NULL, at INTEGER NOT NULL);
 `;
 
@@ -78,7 +83,8 @@ export function startServer({ port = 0, host = '127.0.0.1', log = () => {}, now 
   let arrival = 0;
   function applyEvent(driverId, ev, device, serverNow) {
     const seen = q('SELECT status, reason FROM events WHERE id = ?').get(ev.id);
-    if (seen) return { id: ev.id, status: 'duplicate', original: seen.status };
+    // A resent event gets its first answer back, so a flagged or rejected outcome survives a lost answer.
+    if (seen) return { id: ev.id, status: 'duplicate', original: seen.status, ...(seen.reason ? { reason: seen.reason } : {}) };
     const time = resolveTime(ev, device, serverNow);
     let status = 'accepted';
     let reason = null;
@@ -153,6 +159,8 @@ export function startServer({ port = 0, host = '127.0.0.1', log = () => {}, now 
     try {
       const events = body.events.map((ev) => applyEvent(driverId, ev, body.device, serverNow));
       const points = applyPoints(driverId, body.points, body.device, serverNow);
+      // The sampling profile the app is on, so dispatch knows when its silence means trouble.
+      if (body.profile) q('INSERT OR REPLACE INTO profiles VALUES (?,?,?)').run(driverId, body.profile.uploadEveryMs, body.profile.timeIntervalMs);
       // The spike app's own counters (battery, app state, queue length): no locations.
       if (body.diag) q('INSERT INTO diag VALUES (?,?,?)').run(driverId, serverNow, JSON.stringify(body.diag));
       db.exec('COMMIT');
@@ -180,8 +188,14 @@ export function startServer({ port = 0, host = '127.0.0.1', log = () => {}, now 
     return q('SELECT driver_id FROM memberships WHERE fleet_id = ?').all(fleetId).map(({ driver_id }) => {
       const session = q('SELECT on_at FROM duty WHERE driver_id = ? AND fleet_id = ? AND off_at IS NULL').get(driver_id, fleetId);
       if (!session) return { driver: driver_id, onDuty: false };
+      // On duty here, but carrying another fleet's job (a person in two fleets): the route leads to another
+      // restaurant and its customer, so this fleet sees that the driver is busy, not where.
+      const elsewhere = q(`SELECT 1 FROM jobs WHERE driver_id = ? AND fleet_id <> ? AND state IN (${ON_ROUTE.map(() => '?').join(',')}) LIMIT 1`).get(driver_id, fleetId, ...ON_ROUTE);
+      if (elsewhere) return { driver: driver_id, onDuty: true, busyElsewhere: true };
       const p = q('SELECT t, lat, lng, acc FROM points WHERE driver_id = ? AND t >= ? ORDER BY t DESC LIMIT 1').get(driver_id, session.on_at);
-      return { driver: driver_id, onDuty: true, position: p ?? null, stale: !p || at - p.t > STALE_MS };
+      const prof = q('SELECT upload_ms, fix_ms FROM profiles WHERE driver_id = ?').get(driver_id);
+      const staleAfterMs = prof ? prof.upload_ms + prof.fix_ms + STALE_MARGIN_MS : STALE_MS;
+      return { driver: driver_id, onDuty: true, position: p ?? null, stale: !p || at - p.t > staleAfterMs, staleAfterMs };
     });
   }
 

@@ -5,7 +5,11 @@
 // on adb. Options:
 //   --phase-min <n>   minutes per phase (default 3)
 //   --apk <path>      the APK (default app/android/app/build/outputs/apk/release/app-release.apk)
-//   --phone           a real phone over USB: adb reverse instead of 10.0.2.2, no geo fix, no emulator network
+//   --phone           a real phone over USB: no geo fix, no emulator network shaping
+//   --server <url>    the address the app uses, reached over the phone's own network (Wi-Fi to this PC's LAN
+//                     address, e.g. http://192.168.1.20:8788). Without it a phone talks over the USB cable
+//                     (adb reverse), which no network fault and no radio affects: the network phases are then
+//                     skipped and battery figures leave out the radio.
 //   --only <a,b>      run only these phase ids (setup always runs); checks of skipped phases are skipped
 import { execFile, execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -55,8 +59,11 @@ const check = (phase, name, ok, detail) => {
 };
 
 const server = await startServer({ port: 0, log: (l) => logs.push(l) });
-const net = await weakNet({ targetPort: server.port, port: PROXY_PORT });
-const SERVER_URL = PHONE ? `http://127.0.0.1:${PROXY_PORT}` : `http://10.0.2.2:${PROXY_PORT}`;
+const SERVER_ARG = opt('--server');
+const OVER_USB = PHONE && !SERVER_ARG;
+const net = await weakNet({ targetPort: server.port, port: PROXY_PORT, host: SERVER_ARG ? '0.0.0.0' : '127.0.0.1' });
+const SERVER_URL = SERVER_ARG ?? (PHONE ? `http://127.0.0.1:${PROXY_PORT}` : `http://10.0.2.2:${PROXY_PORT}`);
+const NETWORK_PHASES = ['airplane', 'deadlink', 'edge'];
 const q = (sql, ...p) => server.db.prepare(sql).all(...p);
 const deep = (params) => {
   const qs = new URLSearchParams(params).toString();
@@ -135,6 +142,10 @@ async function recover() {
 }
 async function phase(id, name, setup, opts = {}, retries = 2) {
   if (ONLY && !ONLY.includes(id)) return null;
+  if (OVER_USB && NETWORK_PHASES.includes(id)) {
+    note(`\n== ${id}: skipped over USB (pass --server to use the phone's own network)`);
+    return null;
+  }
   const { ms = PHASE_MS, teardown } = opts;
   note(`
 == ${id}: ${name} (${Math.round(ms / 1000)} s)`);
@@ -161,7 +172,7 @@ try {
   // Setup: a clean install, permissions as a driver would grant them (location while in use, notifications),
   // never background location (the manifest does not even ask for it).
   note(`device: ${adb('shell', 'getprop ro.product.model')} Android ${adb('shell', 'getprop ro.build.version.release')} (SDK ${adb('shell', 'getprop ro.build.version.sdk')})`);
-  if (PHONE) adb('reverse', `tcp:${PROXY_PORT}`, `tcp:${PROXY_PORT}`);
+  if (OVER_USB) adb('reverse', `tcp:${PROXY_PORT}`, `tcp:${PROXY_PORT}`);
   sh(`pm uninstall ${PKG}`);
   for (let k = 1; ; k++) {
     try {

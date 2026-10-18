@@ -38,8 +38,8 @@ The emulator cannot show what a cheap phone's maker adds: battery managers that 
 
 1. On the phone: Settings → About → tap "Build number" seven times; then Developer options → USB debugging on. Connect it by USB and accept the prompt.
 2. Build for phones: `gradlew.bat assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a` (many cheap phones are 32-bit).
-3. Run `pnpm emulator --phone --phase-min 10` and carry the phone outside, or drive with it. `--phone` uses `adb reverse`, so the phone talks to this PC over the USB cable; it does not feed fake GPS.
-4. For battery: charge to 100 %, unplug, go on duty with a job, put the phone in a pocket with the screen off for two hours, and note the battery level before and after. Do it once with the maker's battery settings untouched and once with the app set to "no restrictions" and "autostart".
+3. Connect the phone to the same Wi-Fi as this PC, allow the port through Windows Firewall, and run `pnpm emulator --phone --server http://<this PC's LAN address>:8788 --phase-min 10`. The phone then reaches the spike server over its own Wi-Fi radio, so airplane mode, the dead link and the weak link mean something; the USB cable only drives adb. Without `--server` the app talks over the cable (`adb reverse`), which no network fault touches, so those three phases are skipped. `--phone` feeds no fake GPS: carry the phone outside, or drive with it.
+4. Real cells and battery need a server the phone reaches over its mobile data: a test host with synthetic data only, which needs the owner's approval (Q1). On Wi-Fi alone, or over the cable, the battery test leaves out the radio's cost. For battery: charge to 100 %, unplug, go on duty with a job, put the phone in a pocket with the screen off for two hours, and note the battery level before and after. Do it once with the maker's battery settings untouched and once with the app set to "no restrictions" and "autostart".
 
 Send back `out/phone/report.json`, `batterystats.txt` and the two battery levels.
 

@@ -50,7 +50,7 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | أسطول فيرتكس | Vertex fleet | Drivers managed by Vertex |
 | مهمة التوصيل | delivery job | The delivery of one order by one driver |
 | في الدوام | on duty | A driver available for jobs and sharing location |
-| موقع متأخر | stale position | An on-duty driver with no new location for 3 minutes: the app was killed or the phone has no signal (ADR 0024) |
+| موقع متأخر | stale position | An on-duty driver whose next location is overdue for its sampling profile (4 minutes without a job, under 2 with one): the app was killed or the phone has no signal (ADR 0024) |
 | العهدة النقدية | cash on hand | Cash a driver holds and on whose behalf |
 | التسليم | handover | A driver giving collected cash to the restaurant or Vertex |
 | الإسناد اليدوي | dispatch | Assigning a delivery job to a driver |

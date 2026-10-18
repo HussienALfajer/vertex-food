@@ -106,8 +106,10 @@ export class Outbox {
       for (const ev of batch.body.events) {
         const r = byId.get(ev.id);
         if (!r) throw new Error('answer is missing an event'); // the whole batch stays queued
-        if (r.status === 'rejected' || r.status === 'flagged') {
-          this.db.run('INSERT OR REPLACE INTO outcomes (id, status, reason, body) VALUES (?,?,?,?)', [ev.id, r.status, r.reason ?? null, JSON.stringify(ev)]);
+        // A duplicate carries the first answer: an outcome whose answer was lost is recorded on the resend.
+        const status = r.status === 'duplicate' ? r.original : r.status;
+        if (status === 'rejected' || status === 'flagged') {
+          this.db.run('INSERT OR REPLACE INTO outcomes (id, status, reason, body) VALUES (?,?,?,?)', [ev.id, status, r.reason ?? null, JSON.stringify(ev)]);
         }
       }
       for (const seq of batch.eventSeqs) this.db.run('DELETE FROM outbox WHERE seq = ?', [seq]);
