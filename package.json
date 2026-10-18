@@ -11,7 +11,10 @@
     "typecheck": "turbo run typecheck",
     "lint": "biome check --error-on-warnings .",
     "lint:fix": "biome check --write .",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "db:generate": "pnpm --filter @vertex-food/db db:generate",
+    "db:migrate": "pnpm --filter @vertex-food/db db:migrate",
+    "db:setup-local": "pnpm --filter @vertex-food/db db:setup-local"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

@@ -45,7 +45,7 @@ apps/
   customer/           React Native + Expo
   driver/             React Native + Expo
 packages/
-  contracts/          Zod schemas, error codes, state tables, money, totals, agreement terms
+  contracts/          Zod schemas (exportable as JSON Schema), error codes, state tables, money, totals, agreement terms
   db/                 Drizzle schema, migrations, RLS policies, shared write paths
   sync/               command definitions, sync rules, hub protocol
   print/              receipt and ticket documents, Skia rendering to 1-bit pages, ESC/POS, network and spooler transports, print queue (ADR 0023)
@@ -90,4 +90,4 @@ Table names are indicative; each spec fixes them.
 
 ## Data conventions
 
-UUIDv7 ids, `tenant_id` with forced RLS on tenant data (the Vertex Shifa pattern: owner, app, audited jobs and queue roles, none bypassing RLS except the sync service's read-only replication role with `tenant_id`-filtered streams), `timestamptz` in UTC displayed in `Asia/Damascus`, integer money with currency, append-only payments, order events, job events, ledger entries, agreement terms and audit, archive instead of delete. Full rules: ADR 0020.
+UUIDv7 ids, `tenant_id` with forced RLS on tenant data (the Vertex Shifa pattern: owner, app, audited jobs and queue roles, none bypassing RLS except the sync service's read-only replication role with `tenant_id`-filtered streams; roles and rules in `packages/db/CLAUDE.md`), `timestamptz` in UTC displayed in `Asia/Damascus`, integer money with currency, append-only payments, order events, job events, ledger entries, agreement terms and audit, archive instead of delete. Full rules: ADR 0020.
