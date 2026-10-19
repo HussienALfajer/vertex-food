@@ -63,7 +63,6 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
-
 import { v7 as uuidv7 } from 'uuid';
 import {
   type PlatformOperator,

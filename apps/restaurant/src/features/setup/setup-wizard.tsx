@@ -121,22 +121,33 @@ export function SetupWizard({
     return tenantNow;
   }
 
-  /** Saves one branch's part of the step; answers the branch as saved. */
-  async function saveBranch(sent: SetupStep, detail: BranchDetail): Promise<BranchDetail> {
+  /**
+   * The branch as the server now holds it, kept at once after every request that succeeds: if a
+   * later request of the step fails, the retry starts from these versions, never from versions
+   * the server has already moved past, and the drafts stay as typed.
+   */
+  function commit(detail: BranchDetail) {
+    cache.detailSaved(detail);
+    setSaved((current) =>
+      current.map((item) => (item.branch.id === detail.branch.id ? detail : item)),
+    );
+  }
+
+  /** Saves one branch's part of the step, committing each request's answer. */
+  async function saveBranch(sent: SetupStep, detail: BranchDetail): Promise<void> {
     const draft = branchForm.draft[detail.branch.id];
-    if (!draft) return detail;
+    if (!draft) return;
     const { branch } = detail;
     if (sent === 'location') {
       const update = locationUpdate(draft.location, branch);
-      if (!changesSomething(update)) return detail;
-      const next = await updateBranch(branch.id, update);
-      cache.branchSaved(next);
-      return { ...detail, branch: next };
+      if (!changesSomething(update)) return;
+      commit({ ...detail, branch: await updateBranch(branch.id, update) });
+      return;
     }
     if (sent === 'hours') {
-      if (sameHours(draft.hours, detail)) return detail;
+      if (sameHours(draft.hours, detail)) return;
       const hours = await replaceHours(branch.id, hoursInput(draft.hours, branch.updatedAt));
-      return {
+      commit({
         ...detail,
         hours: hours.periods,
         branch: {
@@ -144,14 +155,14 @@ export function SetupWizard({
           businessDayEndsAt: hours.businessDayEndsAt,
           updatedAt: hours.updatedAt,
         },
-      };
+      });
+      return;
     }
     let current = detail;
     const update = currencyUpdate(draft.money, branch);
     if (changesSomething(update)) {
-      const next = await updateBranch(branch.id, update);
-      cache.branchSaved(next);
-      current = { ...current, branch: next };
+      current = { ...current, branch: await updateBranch(branch.id, update) };
+      commit(current);
     }
     if (chargesChanged(draft.money, current.charges)) {
       await replaceCharges(branch.id, {
@@ -162,9 +173,8 @@ export function SetupWizard({
       // anything else that changed meanwhile as a conflict (rule 16).
       const fresh = await cache.reloadBranch(branch.id);
       if (!onlyChargesMoved(current, fresh)) throw new ApiError('CONFLICT');
-      current = fresh;
+      commit(fresh);
     }
-    return current;
   }
 
   // Each save works on the step it was sent from; the form is locked until it ends.
@@ -184,13 +194,8 @@ export function SetupWizard({
         cache.tenantSaved(await completeOnboarding());
         return;
       }
-      const next: BranchDetail[] = [];
-      for (const detail of saved) {
-        const result = await saveBranch(sent, detail);
-        cache.detailSaved(result);
-        next.push(result);
-      }
-      setSaved(next);
+      // `saved` is this render's: a retry renders again after the failed attempt's commits.
+      for (const detail of saved) await saveBranch(sent, detail);
       branchForm.reset(branchForm.draft);
       // The completeness list on the review follows the saved branches.
       await cache.reloadTenant();

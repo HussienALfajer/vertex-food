@@ -10,6 +10,8 @@ function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
       data-slot="switch"
       className={cn(
         'relative inline-flex h-6 w-10 shrink-0 items-center rounded-md border border-input bg-surface p-0.5',
+        // A 44 px touch area around the 24 px track (AGENTS.md, responsive).
+        "after:absolute after:-inset-2.5 after:content-['']",
         'transition-colors duration-150 ease-out',
         'data-checked:border-primary data-checked:bg-primary',
         'data-disabled:cursor-not-allowed data-disabled:opacity-50',

@@ -52,7 +52,6 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
     for (const tenant of due) {
       const { scheduledStatus, scheduledStatusReason, scheduledStatusAt } = tenant;
       if (!scheduledStatus || !scheduledStatusReason || !scheduledStatusAt) continue;
-
       const changed = await withTenant(this.db, tenant.id, async (tx) => {
         const closing = scheduledStatus === 'closed';
         const [row] = await tx
@@ -81,7 +80,6 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
               eq(tenants.scheduledStatusAt, scheduledStatusAt),
             ),
           )
-
           .returning({ id: tenants.id });
         if (!row) return false;
         await tx.insert(auditEntries).values({

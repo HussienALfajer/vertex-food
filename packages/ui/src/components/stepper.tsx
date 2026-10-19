@@ -56,7 +56,7 @@ function Stepper({ steps, current, onSelect, className, ...props }: StepperProps
               {state === 'completed' && onSelect ? (
                 <button
                   type="button"
-                  className="flex flex-col gap-2 rounded-sm pb-1 text-start hover:[&>span:last-child]:underline"
+                  className="flex min-h-11 flex-col gap-2 rounded-sm pb-1 text-start hover:[&>span:last-child]:underline"
                   onClick={() => onSelect(index)}
                 >
                   {content}

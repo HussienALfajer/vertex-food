@@ -30,7 +30,11 @@ export interface Draft<T> {
   reset: (values: T) => void;
 }
 
-/** A form's values and whether they changed: Save waits for a change, leaving asks first. */
+/**
+ * A form's values and whether they changed: Save waits for a change, Discard returns to the
+ * start. It does not guard leaving the screen; a screen that needs a confirmation before
+ * unsaved changes are dropped adds it from `dirty`.
+ */
 export function useDraft<T>(initial: T | (() => T)): Draft<T> {
   const [state, setState] = useState(() => {
     const values = typeof initial === 'function' ? (initial as () => T)() : initial;

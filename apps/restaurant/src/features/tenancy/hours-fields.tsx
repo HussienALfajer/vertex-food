@@ -1,4 +1,5 @@
-import { isOvernight, type OpeningPeriod } from '@vertex-food/contracts';
+import { type OpeningPeriod, periodNextDay, type TimeOfDay } from '@vertex-food/contracts';
+
 import {
   Button,
   Field,
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from '@vertex-food/ui';
 import { CopyPlus, Plus, Trash2 } from 'lucide-react';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   businessDayEnds,
@@ -88,6 +90,7 @@ export function HoursFields({
               periods={draft.days[index] ?? []}
               errors={errors}
               prefix={`days.${index}`}
+              dayEnd={draft.businessDayEndsAt}
               disabled={disabled}
               onChange={(periods) => setDay(index, periods)}
               onCopy={() => onChange((current) => copyDayToAll(current, index))}
@@ -108,6 +111,7 @@ function DayRow({
   periods,
   errors,
   prefix,
+  dayEnd,
   disabled,
   onChange,
   onCopy,
@@ -116,6 +120,7 @@ function DayRow({
   periods: PeriodDraft[];
   errors: FieldErrors;
   prefix: string;
+  dayEnd: string;
   disabled: boolean;
   onChange: (periods: PeriodDraft[]) => void;
   onCopy: () => void;
@@ -136,13 +141,18 @@ function DayRow({
             day={day}
             number={index + 1}
             period={period}
+            dayEnd={dayEnd}
             error={errors[`${prefix}.${index}`]}
             disabled={disabled}
             onChange={(next) => onChange(periods.map((item, at) => (at === index ? next : item)))}
             onRemove={() => onChange(periods.filter((_, at) => at !== index))}
           />
         ))}
-        {dayError && <p className="text-sm text-destructive-text">{t(`validation.${dayError}`)}</p>}
+        {dayError && (
+          <p role="alert" className="text-sm text-destructive-text">
+            {t(`validation.${dayError}`)}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {canAddPeriod(periods) && (
@@ -177,11 +187,16 @@ function DayRow({
 
 const TIME = /^\d{2}:\d{2}$/;
 
-/** One opening period: opens and closes as typed times, "next day" past midnight. */
+/**
+ * One opening period: opens and closes as typed times, "next day" after each time that falls on
+ * the next calendar day (rule 12): past midnight, or the whole period when it opens after
+ * midnight but before the business day end. Its error is tied to both times and announced.
+ */
 export function PeriodRow({
   day,
   number,
   period,
+  dayEnd,
   error,
   disabled,
   onChange,
@@ -190,20 +205,30 @@ export function PeriodRow({
   day: string;
   number: number;
   period: PeriodDraft;
+  /** The branch's business day end, `HH:MM`. */
+  dayEnd: string;
   error: ValidationKey | undefined;
   disabled: boolean;
   onChange: (period: PeriodDraft) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation('restaurant');
-  const overnight =
-    TIME.test(period.opensAt) && TIME.test(period.closesAt) && isOvernight(period as OpeningPeriod);
+  const errorId = useId();
+  const nextDay =
+    TIME.test(period.opensAt) && TIME.test(period.closesAt) && TIME.test(dayEnd)
+      ? periodNextDay(period as OpeningPeriod, dayEnd as TimeOfDay)
+      : { opens: false, closes: false };
+  const nextDayMark = (
+    <span className="text-sm text-muted-foreground">{t('fields.hours.nextDay')}</span>
+  );
   const time = (key: 'opensAt' | 'closesAt') => (
     <Input
       dir="ltr"
       inputMode="numeric"
       aria-label={t(`fields.hours.${key}`, { day, number })}
       aria-invalid={error !== undefined}
+      aria-describedby={error ? errorId : undefined}
+      aria-errormessage={error ? errorId : undefined}
       placeholder={t('fields.hours.timePlaceholder')}
       className="w-20 text-center"
       value={period[key]}
@@ -217,11 +242,10 @@ export function PeriodRow({
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{t('fields.hours.from')}</span>
         {time('opensAt')}
+        {nextDay.opens && nextDayMark}
         <span className="text-sm text-muted-foreground">{t('fields.hours.to')}</span>
         {time('closesAt')}
-        {overnight && (
-          <span className="text-sm text-muted-foreground">{t('fields.hours.nextDay')}</span>
-        )}
+        {nextDay.closes && !nextDay.opens && nextDayMark}
         <IconButton
           label={t('fields.hours.removePeriod', { day, number })}
           disabled={disabled}
@@ -230,7 +254,11 @@ export function PeriodRow({
           <Trash2 />
         </IconButton>
       </div>
-      {error && <p className="text-sm text-destructive-text">{t(`validation.${error}`)}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-destructive-text">
+          {t(`validation.${error}`)}
+        </p>
+      )}
     </div>
   );
 }

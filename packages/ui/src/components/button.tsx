@@ -25,12 +25,14 @@ const buttonVariants = cva(
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive-hover',
         link: 'text-foreground underline-offset-4 hover:underline',
       },
+      // 44 px on touch screens and narrow windows (AGENTS.md, responsive); compact only where a
+      // mouse points on a wide screen (`lg:pointer-fine:`).
       size: {
-        sm: "h-8 px-3 text-sm [&_svg:not([class*='size-'])]:size-4",
-        md: 'h-9 px-4 text-base',
-        lg: 'h-10 px-5 text-base',
-        icon: 'size-9',
-        'icon-sm': "size-8 [&_svg:not([class*='size-'])]:size-4",
+        sm: "h-11 px-3 text-sm lg:pointer-fine:h-8 [&_svg:not([class*='size-'])]:size-4",
+        md: 'h-11 px-4 text-base lg:pointer-fine:h-9',
+        lg: 'h-11 px-5 text-base lg:pointer-fine:h-10',
+        icon: 'size-11 lg:pointer-fine:size-9',
+        'icon-sm': "size-11 lg:pointer-fine:size-8 [&_svg:not([class*='size-'])]:size-4",
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

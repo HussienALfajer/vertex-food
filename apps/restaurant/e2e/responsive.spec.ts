@@ -2,6 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { branch, completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
 import {
   expectNoHorizontalOverflow,
+  expectTouchTargets,
   failOnCspViolation,
   screenshot,
   viewports,
@@ -31,6 +32,13 @@ for (const viewport of viewports) {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
     const wide = viewport.width >= 1024;
 
+    /** No sideways scrolling; below 1024 px, every control is a 44 px touch target. */
+    async function laidOut(page: Page, testInfo: Parameters<typeof screenshot>[1], name: string) {
+      await expectNoHorizontalOverflow(page);
+      if (!wide) await expectTouchTargets(page);
+      await screenshot(page, testInfo, `${viewport.name}-${name}`);
+    }
+
     test('lays out every settings screen without sideways scrolling', async ({
       page,
     }, testInfo) => {
@@ -47,36 +55,58 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'افتح القائمة' })).toBeVisible({
         visible: !wide,
       });
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-home`);
+      await laidOut(page, testInfo, 'home');
 
       if (!wide) {
         await page.getByRole('button', { name: 'افتح القائمة' }).click();
         await expect(page.getByRole('dialog')).toBeVisible();
-        await screenshot(page, testInfo, `${viewport.name}-menu`);
+        await laidOut(page, testInfo, 'menu');
         await page.keyboard.press('Escape');
         await expect(page.getByRole('dialog')).toHaveCount(0);
       }
 
       await navigate(page, wide, 'إعدادات المطعم');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('إعدادات المطعم');
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-settings-restaurant`);
+      await laidOut(page, testInfo, 'settings-restaurant');
 
       await navigate(page, wide, 'الفروع');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('الفروع');
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-branches`);
+      await laidOut(page, testInfo, 'branches');
 
       await page.getByRole('link', { name: /فرع السوق/ }).click();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('فرع السوق');
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-branch`);
+      await laidOut(page, testInfo, 'branch');
 
       await page.getByRole('link', { name: 'أوقات العمل' }).click();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('أوقات العمل: فرع السوق');
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-hours`);
+      await laidOut(page, testInfo, 'hours');
+      // The exception editor, with a period's fields.
+      await page.getByRole('button', { name: 'إضافة يوم مستثنى' }).click();
+      // Open that day, so a period's fields show.
+      await page.getByText('مغلق طوال اليوم').click();
+
+      await laidOut(page, testInfo, 'hours-exception');
+    });
+
+    test('lays out every step of the onboarding wizard', async ({ page }, testInfo) => {
+      const only = completeBranch();
+      await mockApi(page, {
+        tenant: tenant({ updatedAt: '2026-10-19T08:10:00.000Z' }),
+        branches: [only],
+        hours: { [only.id]: everyDay('10:00', '23:00') },
+      });
+      await page.goto('/setup');
+      await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
+      await laidOut(page, testInfo, 'setup-review');
+      const steps = ['المطعم', 'العنوان والتواصل', 'أوقات العمل', 'العملات والرسوم'];
+      for (const [index, name] of steps.entries()) {
+        await page.getByRole('button', { name: `${index + 1}. ${name}` }).click();
+        await expect(page.getByText(`الخطوة ${index + 1} من 5`)).toBeVisible();
+        await laidOut(page, testInfo, `setup-step-${index + 1}`);
+        // Back to the review (the resume step), from where every passed step can be chosen.
+        await page.goto('/setup');
+        await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
+      }
     });
 
     test('lays out the onboarding wizard without a sidebar', async ({ page }, testInfo) => {
@@ -86,8 +116,7 @@ for (const viewport of viewports) {
       await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'افتح القائمة' })).toHaveCount(0);
       await expect(page.locator('[data-slot="app-brand"]')).toBeVisible();
-      await expectNoHorizontalOverflow(page);
-      await screenshot(page, testInfo, `${viewport.name}-setup`);
+      await laidOut(page, testInfo, 'setup');
     });
   });
 }

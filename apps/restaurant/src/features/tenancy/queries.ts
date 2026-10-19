@@ -157,9 +157,13 @@ export function resolveMapLink(url: string): Promise<Coordinates> {
  */
 export function useSetupCache() {
   const queryClient = useQueryClient();
+  // A branch's fields decide the tenant's onboarding list (what is missing): re-read it.
+  const completenessMoved = () =>
+    void queryClient.invalidateQueries({ queryKey: tenantQuery.queryKey, exact: true });
   return {
     tenantSaved: (tenant: Tenant) => queryClient.setQueryData(tenantQuery.queryKey, tenant),
     branchSaved: (branch: Branch) => {
+      completenessMoved();
       queryClient.setQueryData(branchQuery(branch.id).queryKey, (detail?: BranchDetail) =>
         detail ? { ...detail, branch } : detail,
       );
@@ -168,6 +172,7 @@ export function useSetupCache() {
       );
     },
     detailSaved: (detail: BranchDetail) => {
+      completenessMoved();
       queryClient.setQueryData(branchQuery(detail.branch.id).queryKey, detail);
       queryClient.setQueryData(branchesQuery.queryKey, (list?: Branch[]) =>
         list?.map((item) => (item.id === detail.branch.id ? detail.branch : item)),

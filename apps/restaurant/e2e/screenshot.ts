@@ -19,13 +19,37 @@ export function failOnCspViolation(page: Page): void {
 
 /** The widths every screen is checked at (AGENTS.md, responsive): phone, tablet both ways, desktop. */
 export const viewports = [
-  { name: 'phone', width: 390, height: 844 },
+  { name: 'phone', width: 360, height: 800 },
   { name: 'tablet', width: 820, height: 1180 },
   { name: 'tablet-landscape', width: 1180, height: 820 },
   { name: 'desktop', width: 1440, height: 900 },
 ] as const;
 
+/**
+ * Every visible control is at least 44 px each way, as below 1024 px screens are touched
+ * (AGENTS.md, responsive): buttons, links styled as buttons, sidebar links, inputs and selects. A
+ * checkbox or switch draws its 44 px area as a pseudo-element, which a box cannot measure; inline
+ * links in text are exempt.
+ */
+export async function expectTouchTargets(page: Page): Promise<void> {
+  // A string: this tsconfig has no DOM types.
+  const small = (await page.evaluate(`(() => {
+    const selector = 'button, [role="combobox"], a[data-slot="button"], nav a, ' +
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"])';
+    return [...document.querySelectorAll(selector)]
+      .filter((el) => !el.closest('[aria-hidden="true"], .sr-only, [data-slot="checkbox"], [data-slot="switch"]'))
+      .map((el) => ({ el, box: el.getBoundingClientRect() }))
+      .filter(({ el, box }) => box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== 'hidden')
+      .filter(({ box }) => box.width < 43.5 || box.height < 43.5)
+      .map(({ el, box }) => el.tagName.toLowerCase() + ' "' +
+        (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40) + '" ' +
+        Math.round(box.width) + 'x' + Math.round(box.height));
+  })()`)) as string[];
+  expect(small, 'controls smaller than 44 px').toEqual([]);
+}
+
 /** Nothing on the page is wider than the window: no sideways scrolling at any width. */
+
 export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   // A string: this tsconfig has no DOM types.
   const overflow = (await page.evaluate(

@@ -4,6 +4,8 @@ import {
   currencies,
   type FilePurpose,
   imageUploadRules,
+  nameArSchema,
+  nameLatinSchema,
   type Tenant,
   type UpdateTenant,
 } from '@vertex-food/contracts';
@@ -39,17 +41,12 @@ export function profileDraft(tenant: Tenant): ProfileDraft {
   };
 }
 
-const LATIN_NAME = /^[A-Za-z0-9 &'.-]+$/;
-
+/** The profile's checks are the contract's (`nameArSchema`, `nameLatinSchema`); empty is no name. */
 export function profileErrors(draft: ProfileDraft): FieldErrors {
   const errors: FieldErrors = {};
-  const nameAr = draft.nameAr.trim();
-  if (nameAr.length < 2 || nameAr.length > 100) errors.nameAr = 'nameArRequired';
+  if (!nameArSchema.safeParse(draft.nameAr).success) errors.nameAr = 'nameArRequired';
   const nameLatin = draft.nameLatin.trim();
-  if (
-    nameLatin &&
-    (nameLatin.length < 2 || nameLatin.length > 100 || !LATIN_NAME.test(nameLatin))
-  ) {
+  if (nameLatin && !nameLatinSchema.safeParse(nameLatin).success) {
     errors.nameLatin = 'nameLatinInvalid';
   }
   return errors;
@@ -178,7 +175,7 @@ export function ImageField({
   disabled: boolean;
   onChanged: () => Promise<unknown>;
 }) {
-  const { t } = useTranslation('restaurant');
+  const { t } = useTranslation(['restaurant', 'common']);
   const errorText = useErrorText();
   const cache = useSetupCache();
   const input = useRef<HTMLInputElement>(null);
@@ -235,6 +232,17 @@ export function ImageField({
             alt={t(`fields.${purpose}.alt`)}
             className={`rounded-md border border-border bg-muted ${preview}`}
           />
+        ) : image.isError ? (
+          // The saved image could not be read: say so, with a retry, never a lasting skeleton.
+          <span
+            role="alert"
+            className={`flex flex-col items-center justify-center gap-2 rounded-md border border-border p-2 text-center text-sm text-muted-foreground ${purpose === 'logo' ? 'min-h-24 min-w-24' : 'aspect-[8/3] w-full max-w-md'}`}
+          >
+            {t('fields.imageLoadFailed')}
+            <Button variant="outline" size="sm" onClick={() => void image.refetch()}>
+              {t('common:retry')}
+            </Button>
+          </span>
         ) : (
           <Skeleton className={purpose === 'logo' ? 'size-24' : 'aspect-[8/3] w-full max-w-md'} />
         )}

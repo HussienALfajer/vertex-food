@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { type BranchDetail, formatRateBp, isOvernight, type Tenant } from '@vertex-food/contracts';
+import { type BranchDetail, formatRateBp, type Tenant } from '@vertex-food/contracts';
+
 import { Badge, Button, Callout } from '@vertex-food/ui';
 import { CircleCheck, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { weekdayKey, weekdays } from '../tenancy/branch-draft';
+import { periodTextKey, weekdayKey, weekdays } from '../tenancy/branch-draft';
 import { formatCoordinates } from '../tenancy/location-fields';
 import { citiesQuery } from '../tenancy/queries';
 import { type SetupStep, stepOfItem } from './setup-steps';
@@ -131,15 +132,10 @@ export function SetupReview({
                         ? t('fields.hours.closed')
                         : list(
                             periods.map((period) =>
-                              t(
-                                isOvernight(period)
-                                  ? 'setup.review.periodOvernight'
-                                  : 'setup.review.period',
-                                {
-                                  opensAt: period.opensAt,
-                                  closesAt: period.closesAt,
-                                },
-                              ),
+                              t(periodTextKey(period, branch.businessDayEndsAt), {
+                                opensAt: period.opensAt,
+                                closesAt: period.closesAt,
+                              }),
                             ),
                           )}
                     </li>

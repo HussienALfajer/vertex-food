@@ -38,6 +38,8 @@ export type MockApi = {
   writes: string[];
   /** Every write waits this long before it is answered. */
   writeDelayMs: number;
+  /** The next write to this `METHOD path` is refused once with this code, changing nothing. */
+  refuseOnce: { write: string; code: ErrorCode } | undefined;
   /** Another editor's change: the record changes on the server behind the screen's back. */
   editBehind: (change: (state: MockApi) => void) => void;
   /** The `updatedAt` of the next change. */
@@ -217,6 +219,7 @@ export async function mockApi(
     charges: new Map(Object.entries(seed.charges ?? {})),
     writes: [],
     writeDelayMs: 0,
+    refuseOnce: undefined,
     editBehind: (change) => change(state),
     now,
   };
@@ -266,6 +269,11 @@ export async function mockApi(
     if (method !== 'GET') {
       state.writes.push(`${method} ${path}`);
       if (state.writeDelayMs) await new Promise((done) => setTimeout(done, state.writeDelayMs));
+      const once = state.refuseOnce;
+      if (once?.write === `${method} ${path}`) {
+        state.refuseOnce = undefined;
+        return refuse(route, once.code);
+      }
     }
 
     if (path === '/api/tenant') {
