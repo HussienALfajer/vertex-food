@@ -1,0 +1,2720 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Vertex Food API",
+    "version": "0.0.0"
+  },
+  "paths": {
+    "/api/branches": {
+      "get": {
+        "operationId": "BranchesController.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}": {
+      "get": {
+        "operationId": "BranchesController.get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "BranchesController.update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBranch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Branch"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}/charges": {
+      "put": {
+        "operationId": "BranchesController.replaceCharges",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceBranchCharges"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchChargeList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}/hour-exceptions": {
+      "post": {
+        "operationId": "BranchesController.createException",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateHourException"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HourException"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}/hour-exceptions/{exceptionId}": {
+      "patch": {
+        "operationId": "BranchesController.updateException",
+        "parameters": [
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHourException"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HourException"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "BranchesController.archiveException",
+        "parameters": [
+          {
+            "name": "exceptionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}/hours": {
+      "put": {
+        "operationId": "BranchesController.replaceHours",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceBranchHours"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchHours"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cities": {
+      "get": {
+        "operationId": "AreasController.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GovernorateList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants": {
+      "get": {
+        "operationId": "TenancyConsoleController.list",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "nameAr"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TenantStatus"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsoleTenantPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "TenancyConsoleController.create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsoleTenantDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants/{id}": {
+      "get": {
+        "operationId": "TenancyConsoleController.get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsoleTenantDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants/{id}/branches": {
+      "post": {
+        "operationId": "TenancyConsoleController.createBranch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBranch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Branch"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants/{id}/branches/{branchId}/archive": {
+      "post": {
+        "operationId": "TenancyConsoleController.archiveBranch",
+        "parameters": [
+          {
+            "name": "branchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveBranch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Branch"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants/{id}/slug": {
+      "put": {
+        "operationId": "TenancyConsoleController.setSlug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTenantSlug"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsoleTenantDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/console/tenants/{id}/status": {
+      "post": {
+        "operationId": "TenancyConsoleController.changeStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsoleTenantDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/{id}": {
+      "get": {
+        "operationId": "FilesController.read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "HealthCheckController.check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheck"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/resolve-link": {
+      "post": {
+        "operationId": "MapsController.resolve",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveMapLink"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Coordinates"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenant": {
+      "get": {
+        "operationId": "TenantController.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "TenantController.update",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenant/cover": {
+      "put": {
+        "operationId": "TenantController.replaceCover",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/File"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "TenantController.removeCover",
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenant/logo": {
+      "put": {
+        "operationId": "TenantController.replaceLogo",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/File"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "TenantController.removeLogo",
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenant/onboarding/complete": {
+      "post": {
+        "operationId": "TenantController.completeOnboarding",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArchiveBranch": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuditAction": {
+        "type": "string",
+        "enum": [
+          "tenant.created",
+          "tenant.profile_updated",
+          "tenant.slug_changed",
+          "tenant.status_scheduled",
+          "tenant.status_changed",
+          "tenant.status_schedule_cancelled",
+          "tenant.onboarding_completed",
+          "tenant_logo.replaced",
+          "tenant_logo.archived",
+          "tenant_cover.replaced",
+          "tenant_cover.archived",
+          "branch.created",
+          "branch.updated",
+          "branch.archived",
+          "branch_hours.replaced",
+          "branch_hour_exception.created",
+          "branch_hour_exception.updated",
+          "branch_hour_exception.archived",
+          "branch_charges.replaced",
+          "governorate.created",
+          "city.created"
+        ]
+      },
+      "AuditActorKind": {
+        "type": "string",
+        "enum": [
+          "staff",
+          "customer",
+          "driver",
+          "platform",
+          "system"
+        ]
+      },
+      "Branch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "code": {
+            "$ref": "#/components/schemas/BranchCode"
+          },
+          "cityId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "addressDescription": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coordinates"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contactPhones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactPhone"
+            }
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "acceptedCurrencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencyCode"
+            }
+          },
+          "currencyLockedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "businessDayEndsAt": {
+            "$ref": "#/components/schemas/BusinessDayEnd"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nameAr",
+          "nameLatin",
+          "code",
+          "cityId",
+          "addressDescription",
+          "location",
+          "contactPhones",
+          "defaultCurrency",
+          "acceptedCurrencies",
+          "currencyLockedAt",
+          "businessDayEndsAt",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "additionalProperties": false
+      },
+      "BranchCharge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChargeKind"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rateBp": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ChargeMode"
+          },
+          "orderTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderType"
+            }
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "nameAr",
+          "nameLatin",
+          "rateBp",
+          "mode",
+          "orderTypes",
+          "position"
+        ],
+        "additionalProperties": false
+      },
+      "BranchChargeInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ChargeKind"
+          },
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 40
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 40,
+                "pattern": "^[A-Za-z0-9 &'.%-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rateBp": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5000
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ChargeMode"
+          },
+          "orderTypes": {
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderType"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "nameAr",
+          "rateBp",
+          "mode",
+          "orderTypes"
+        ],
+        "additionalProperties": false
+      },
+      "BranchChargeList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/BranchCharge"
+        }
+      },
+      "BranchCode": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]{2,20}$"
+      },
+      "BranchDetail": {
+        "type": "object",
+        "properties": {
+          "branch": {
+            "$ref": "#/components/schemas/Branch"
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyPeriod"
+            }
+          },
+          "exceptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HourException"
+            }
+          },
+          "charges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BranchCharge"
+            }
+          }
+        },
+        "required": [
+          "branch",
+          "hours",
+          "exceptions",
+          "charges"
+        ],
+        "additionalProperties": false
+      },
+      "BranchHours": {
+        "type": "object",
+        "properties": {
+          "businessDayEndsAt": {
+            "$ref": "#/components/schemas/BusinessDayEnd"
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyPeriod"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "businessDayEndsAt",
+          "periods",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "BranchList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Branch"
+        }
+      },
+      "BusinessDayEnd": {
+        "type": "string",
+        "pattern": "^(0[0-7]:(00|30)|08:00)$"
+      },
+      "CancelScheduledTenantStatus": {
+        "type": "object",
+        "properties": {
+          "cancelScheduled": {
+            "type": "boolean",
+            "const": true
+          },
+          "note": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "cancelScheduled"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeTenantStatus": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "closed"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/TenantStatusReason"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "ChargeKind": {
+        "type": "string",
+        "enum": [
+          "tax",
+          "service"
+        ]
+      },
+      "ChargeMode": {
+        "type": "string",
+        "enum": [
+          "inclusive",
+          "added"
+        ]
+      },
+      "City": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "governorateId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "governorateId",
+          "nameAr",
+          "nameLatin",
+          "archivedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ConsolePermission": {
+        "type": "string",
+        "enum": [
+          "console.tenants.manage",
+          "console.tenants.status"
+        ]
+      },
+      "ConsoleTenant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus"
+          },
+          "statusReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantStatusReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scheduledChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledStatusChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "onboardingCompletedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activatedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "branchCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nameAr",
+          "nameLatin",
+          "status",
+          "statusReason",
+          "scheduledChange",
+          "onboardingCompletedAt",
+          "activatedAt",
+          "branchCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleTenantDetail": {
+        "type": "object",
+        "properties": {
+          "tenant": {
+            "$ref": "#/components/schemas/ConsoleTenant"
+          },
+          "slugs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantSlug"
+            }
+          },
+          "branches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Branch"
+            }
+          }
+        },
+        "required": [
+          "tenant",
+          "slugs",
+          "branches"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleTenantPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsoleTenant"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "additionalProperties": false
+      },
+      "ContactPhone": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/PhoneNumber"
+          },
+          "whatsapp": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "phone",
+          "whatsapp"
+        ],
+        "additionalProperties": false
+      },
+      "Coordinates": {
+        "type": "object",
+        "properties": {
+          "latitudeE7": {
+            "type": "integer",
+            "minimum": -900000000,
+            "maximum": 900000000
+          },
+          "longitudeE7": {
+            "type": "integer",
+            "minimum": -1800000000,
+            "maximum": 1800000000
+          }
+        },
+        "required": [
+          "latitudeE7",
+          "longitudeE7"
+        ],
+        "additionalProperties": false
+      },
+      "CreateBranch": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9 &'.-]+$"
+          },
+          "code": {
+            "$ref": "#/components/schemas/BranchCode"
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          }
+        },
+        "required": [
+          "nameAr",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "CreateCity": {
+        "type": "object",
+        "properties": {
+          "governorateId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z][A-Za-z '.-]*$"
+          }
+        },
+        "required": [
+          "governorateId",
+          "nameAr",
+          "nameLatin"
+        ],
+        "additionalProperties": false
+      },
+      "CreateGovernorate": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z][A-Za-z '.-]*$"
+          }
+        },
+        "required": [
+          "nameAr",
+          "nameLatin"
+        ],
+        "additionalProperties": false
+      },
+      "CreateHourException": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "periods": {
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningPeriod"
+            }
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "closed",
+          "periods"
+        ],
+        "additionalProperties": false
+      },
+      "CreateTenant": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "pattern": "^[A-Za-z0-9 &'.-]+$"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "branches": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateBranch"
+            }
+          },
+          "note": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "nameAr",
+          "slug",
+          "defaultCurrency",
+          "branches"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyCode": {
+        "type": "string",
+        "enum": [
+          "USD",
+          "TRY",
+          "SYP"
+        ],
+        "description": "ISO 4217 code; amounts are integers in minor units of 10^-exponent.",
+        "x-exponents": {
+          "USD": 2,
+          "TRY": 2,
+          "SYP": 2
+        }
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "VALIDATION_FAILED",
+          "UNAUTHENTICATED",
+          "FORBIDDEN",
+          "NOT_ENTITLED",
+          "TENANT_SUSPENDED",
+          "TENANT_CLOSED",
+          "NOT_FOUND",
+          "CONFLICT",
+          "INVALID_STATUS_TRANSITION",
+          "LAST_ACTIVE_BRANCH",
+          "SLUG_TAKEN",
+          "BRANCH_CURRENCY_LOCKED",
+          "CURRENCY_MISMATCH",
+          "INVALID_AMOUNT",
+          "ONBOARDING_INCOMPLETE",
+          "FILE_REJECTED",
+          "MAP_LINK_UNRECOGNIZED",
+          "SLUG_RESERVED",
+          "INVALID_HOURS",
+          "RATE_LIMITED",
+          "INTERNAL_ERROR",
+          "SERVICE_UNAVAILABLE"
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ExchangeRate": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "to": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "rate": {
+            "type": "string",
+            "maxLength": 32,
+            "pattern": "^(0|[1-9]\\d*)(\\.\\d+)?$"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "rate"
+        ],
+        "additionalProperties": false
+      },
+      "File": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/FilePurpose"
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/webp"
+            ]
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "mediaType",
+          "byteSize",
+          "width",
+          "height",
+          "sha256",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "FileBytes": {
+        "type": "string",
+        "contentMediaType": "application/octet-stream"
+      },
+      "FilePurpose": {
+        "type": "string",
+        "enum": [
+          "logo",
+          "cover"
+        ]
+      },
+      "Governorate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": "string"
+          },
+          "cities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/City"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "nameAr",
+          "nameLatin",
+          "cities"
+        ],
+        "additionalProperties": false
+      },
+      "GovernorateList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Governorate"
+        }
+      },
+      "HealthCheck": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          },
+          "database": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status",
+          "database"
+        ],
+        "additionalProperties": false
+      },
+      "HourException": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "date": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "closed": {
+            "type": "boolean"
+          },
+          "periods": {
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningPeriod"
+            }
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "branchId",
+          "date",
+          "closed",
+          "periods",
+          "note",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Id": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
+      },
+      "Instant": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "ListConsoleTenantsQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "default": 50,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "createdAt",
+              "nameAr"
+            ]
+          },
+          "order": {
+            "default": "asc",
+            "$ref": "#/components/schemas/SortOrder"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus"
+          },
+          "q": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "order"
+        ],
+        "additionalProperties": false
+      },
+      "Liveness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "LocalDate": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+      },
+      "MissingOnboardingItem": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/OnboardingItem"
+          },
+          "branchId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "item",
+          "branchId"
+        ],
+        "additionalProperties": false
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "additionalProperties": false
+      },
+      "NoContent": {
+        "type": "null"
+      },
+      "OnboardingCompleteness": {
+        "type": "object",
+        "properties": {
+          "complete": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingOnboardingItem"
+            }
+          }
+        },
+        "required": [
+          "complete",
+          "missing"
+        ],
+        "additionalProperties": false
+      },
+      "OnboardingItem": {
+        "type": "string",
+        "enum": [
+          "tenant.name",
+          "branch.city",
+          "branch.address",
+          "branch.location",
+          "branch.phone",
+          "branch.hours",
+          "branch.currency"
+        ]
+      },
+      "OpeningPeriod": {
+        "type": "object",
+        "properties": {
+          "opensAt": {
+            "$ref": "#/components/schemas/TimeOfDay"
+          },
+          "closesAt": {
+            "$ref": "#/components/schemas/TimeOfDay"
+          }
+        },
+        "required": [
+          "opensAt",
+          "closesAt"
+        ],
+        "additionalProperties": false
+      },
+      "OrderType": {
+        "type": "string",
+        "enum": [
+          "dine_in",
+          "takeaway",
+          "delivery",
+          "pickup"
+        ]
+      },
+      "PhoneNumber": {
+        "type": "string",
+        "pattern": "^\\+\\d{8,15}$"
+      },
+      "ReplaceBranchCharges": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BranchChargeInput"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "lines",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ReplaceBranchHours": {
+        "type": "object",
+        "properties": {
+          "businessDayEndsAt": {
+            "$ref": "#/components/schemas/BusinessDayEnd"
+          },
+          "periods": {
+            "maxItems": 14,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyPeriod"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "businessDayEndsAt",
+          "periods",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ResolveMapLink": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "ScheduledStatusChange": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ScheduledTenantStatus"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/TenantStatusReason"
+          },
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "ScheduledTenantStatus": {
+        "type": "string",
+        "enum": [
+          "suspended",
+          "closed"
+        ]
+      },
+      "SetTenantSlug": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "additionalProperties": false
+      },
+      "Slug": {
+        "type": "string",
+        "pattern": "^[a-z](?:[a-z0-9]|-(?=[a-z0-9])){2,29}$"
+      },
+      "SortOrder": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ]
+      },
+      "StaffPermission": {
+        "type": "string",
+        "enum": [
+          "tenant.view",
+          "tenant.profile.edit",
+          "branch.settings.edit",
+          "branch.hours.edit"
+        ]
+      },
+      "Tenant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TenantStatus"
+          },
+          "statusReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TenantStatusReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusChangedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "scheduledChange": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduledStatusChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "onboardingCompletedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activatedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerReadUntil": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "onboarding": {
+            "$ref": "#/components/schemas/OnboardingCompleteness"
+          },
+          "logoFileId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverFileId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "branchCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "nameAr",
+          "nameLatin",
+          "defaultCurrency",
+          "status",
+          "statusReason",
+          "statusChangedAt",
+          "scheduledChange",
+          "onboardingCompletedAt",
+          "activatedAt",
+          "closedAt",
+          "ownerReadUntil",
+          "onboarding",
+          "logoFileId",
+          "coverFileId",
+          "branchCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "TenantSlug": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "$ref": "#/components/schemas/Slug"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "slug",
+          "isPrimary",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "TenantStatus": {
+        "type": "string",
+        "enum": [
+          "onboarding",
+          "active",
+          "suspended",
+          "closed"
+        ]
+      },
+      "TenantStatusReason": {
+        "type": "string",
+        "enum": [
+          "non_payment",
+          "abuse",
+          "other"
+        ]
+      },
+      "TenantStatusRequest": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ChangeTenantStatus"
+          },
+          {
+            "$ref": "#/components/schemas/CancelScheduledTenantStatus"
+          }
+        ]
+      },
+      "TimeOfDay": {
+        "type": "string",
+        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+      },
+      "UpdateBranch": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cityId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "addressDescription": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 300
+          },
+          "location": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "contactPhones": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContactPhone"
+            }
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "acceptedCurrencies": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencyCode"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateHourException": {
+        "type": "object",
+        "properties": {
+          "closed": {
+            "type": "boolean"
+          },
+          "periods": {
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningPeriod"
+            }
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "closed",
+          "periods",
+          "note",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateTenant": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "defaultCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "nameAr",
+          "nameLatin",
+          "defaultCurrency",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Weekday": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 7
+      },
+      "WeeklyPeriod": {
+        "type": "object",
+        "properties": {
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          },
+          "opensAt": {
+            "$ref": "#/components/schemas/TimeOfDay"
+          },
+          "closesAt": {
+            "$ref": "#/components/schemas/TimeOfDay"
+          }
+        },
+        "required": [
+          "weekday",
+          "opensAt",
+          "closesAt"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

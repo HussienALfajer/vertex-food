@@ -2,19 +2,33 @@
 
 The live checklist of the current spec or Phase 0 item, replaced when the next one starts. Tick items as they finish; add work you discover.
 
-## S01 spec — Tenancy and restaurant setup (`docs/S01-spec`)
+## S01 — Tenancy and restaurant setup (`docs/specs/S01-tenancy-and-restaurant-setup.md`)
 
-Owner's decisions (2026-10-19): Vertex staff create and activate tenants and are the only ones to add or archive branches; onboarding allows setup and training mode only; suspension is read-only after the current business day; closure leaves the owner 90 days of read and export; working hours are weekly with dated exceptions and a business day end; 0–3 charge lines per branch; currencies per branch, the default locked after the first order; Vertex staff choose and change the slug, old slugs stay aliases; branch addresses use governorate and city only, no neighborhoods; the owner edits everything, a branch manager edits that branch's hours, exceptions and phones.
+Two PRs, run one after the other (one front end only, so nothing runs in parallel). PR 2 starts after PR 1 merges into `main`.
 
-- [x] Interview the owner
-- [x] `docs/specs/S01-tenancy-and-restaurant-setup.md`
-- [x] Glossary, architecture module map, ROADMAP `[~]`
-- [x] Owner approves the spec; `Status: Approved` (2026-10-19)
-- [x] PR open with auto-merge (documentation only: CI runs on the PR)
+### PR 1 — backend (`feat/S01-tenancy`)
 
-## Follow-ups (not this PR)
+- [x] contracts: `primitives` additions, `phone.ts` (from Vertex Shifa), `currencies` codes, `tenancy.ts` (schemas, status table, `effectiveStatus`, scheduled time from business day ends, slug shape and reserved list, hours validation, `businessDateOf`, `isBranchOpenAt`, charge lines, `onboardingCompleteness`, permissions), `areas.ts`, `files.ts`, `maps.ts`, list params; new error codes with Arabic text in `packages/i18n`; audit actions and outbox event names; unit tests
+- [x] db (`/db-migration`): `tenancy.ts` schema (`tenants`, `tenant_slugs`, `branches`, `branch_hours`, `branch_hour_exceptions`, `branch_charges`), `areas.ts` (`governorates`, `cities`), `files.ts`; registry; generated migration; custom migration with RLS, grants (`DELETE` on `branch_hours` only), `food_jobs` grant and policy on `tenants`, seed Aleppo → Azaz with fixed UUIDv7 ids; convention, isolation and jobs tests; no drift
+- [x] api core: access decorators and fail-closed guard (`UNAUTHENTICATED` until S02), `@NoFeature()`, architecture test, audit and outbox writers in the transaction, optimistic concurrency, rate limit, multipart uploads, OpenAPI export
+- [x] api modules: `platform/tenancy` (restaurant and console controllers, service, image pipeline, map-link resolver), `platform/areas`, `platform/files`; `test/tenancy.test.ts` (401 on every route; service-level tests for rules, isolation, conflicts, suspended and closed writes, images, map links)
+- [x] api CLI: `tenant:create`, `tenant:list`, `tenant:set-slug`, `tenant:set-status`, `tenant:cancel-scheduled-status`, `branch:create`, `branch:archive`, `city:add`, `governorate:add`; CLI tests against the same rows and audit as the routes
+- [x] worker: queue core (pg-boss as `food_queue`, jobs as `food_jobs`) and `tenancy/apply-scheduled-status` every minute; tests: applies once, twice changes nothing
+- [x] wiring checklist, docs (`apps/api/CLAUDE.md`, `apps/worker/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table if a command is added), `wiring.md` patterns table
+- [x] checks (`checker`: lint, typecheck, test, build, migration drift), `reviewer`, owner acceptance (endpoints and rules summary, 2026-10-19), PR with auto-merge
 
-- `apps/api`: access guard, architecture test and OpenAPI generation arrive with S01/S02, before any non-public route
+### PR 2 — restaurant app (`feat/S01-restaurant-setup`)
+
+- [ ] API client and TanStack Query; `connect-src` for the API origin; online-only "needs a connection" state
+- [ ] onboarding wizard `/setup` (5 steps, saving on Next), waiting-for-activation and setup-in-progress screens
+- [ ] settings: `/settings/restaurant`, `/settings/branches`, `/settings/branches/:id`, `/settings/branches/:id/hours` (single-branch tenants never see "branch")
+- [ ] status banners (scheduled, suspended, closed); i18n keys
+- [ ] E2E with the API mocked: wizard steps, settings, banners, offline; RTL screenshots light and dark, looked at
+- [ ] ROADMAP marks S01 done; docs
+- [ ] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
+
+## Follow-ups (not this spec)
+
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
 - Store icons wired into `app.config.ts` with the first store build (Q3); the files are in `brand/logo/png/`
 - Madani Arabic: provisioned only when its licence is bought (outside the repository)

@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start": "node --env-file-if-exists=../../.env dist/main.js"
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "cli": "node --env-file-if-exists=../../.env dist/cli/main.js"
   },
   "dependencies": {
     "@nestjs/common": "12.1.3",
@@ -18,6 +19,8 @@
     "drizzle-orm": "0.45.4",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
+    "sharp": "0.35.5",
+    "uuid": "14.0.3",
     "zod": "4.6.7"
   },
   "devDependencies": {

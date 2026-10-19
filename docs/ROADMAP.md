@@ -15,7 +15,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [ ] Deploy skeleton (needs Q1)
 
 ## Phase 1 — Platform core
-- [~] S01 Tenancy and restaurant setup: F01 (spec: `docs/specs/S01-tenancy-and-restaurant-setup.md`)
+- [~] S01 Tenancy and restaurant setup: F01 (spec: `docs/specs/S01-tenancy-and-restaurant-setup.md`). Backend (PR 1): contracts, schema with RLS and the Aleppo → Azaz seed, the API's access guard (fail closed until S02), architecture test and OpenAPI document, the tenancy, areas and files modules with console routes and the CLI, the worker's `tenancy/apply-scheduled-status`. Next: the restaurant app's wizard, settings and banners (PR 2)
 - [ ] S02 Identity, access and devices: F02 · F03
 - [ ] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012)
 - [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub with journal, standby and failover, client outbox, sync status (ADR 0008, 0022)

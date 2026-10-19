@@ -41,12 +41,14 @@ Walk this list against the diff before a PR closes. Tick only what applies to th
 
 ## Patterns to copy
 
-Filled after the first feature ships. Until then, the patterns are Vertex Shifa's (read only, through the `explorer` subagent):
+From S01 (backend). For a need not listed here, Vertex Shifa's files (read only, through the `explorer` subagent).
 
-| Need | Vertex Shifa file |
+| Need | File |
 |---|---|
-| Contracts | `packages/contracts/src/tenancy.ts` |
-| Schema and RLS migration | `packages/db/src/schema/tenancy.ts`, `packages/db/migrations/0001_tenant-isolation-and-append-only.sql`, `packages/db/migrations/0006_tenancy-isolation.sql` |
-| API module | `apps/api/src/modules/platform/tenancy/` |
-| CLI commands | `apps/api/src/cli/tenant-commands.ts` |
-| Convention tests | `packages/db/test/conventions.test.ts`, `apps/api/test/architecture/rules.ts` |
+| Contracts with a state table and rules | `packages/contracts/src/tenancy.ts` (and `tenancy.test.ts`) |
+| Schema and RLS migration | `packages/db/src/schema/tenancy.ts`, `packages/db/migrations/0003_tenancy-isolation-and-seed.sql`, `packages/db/test/tenancy.test.ts` |
+| API module (restaurant and console routes, service, views) | `apps/api/src/modules/platform/tenancy/` |
+| API integration test before sessions exist (S02) | `apps/api/test/tenancy.test.ts` |
+| CLI commands | `apps/api/src/cli/commands.ts`, `apps/api/test/cli.test.ts` |
+| Scheduled worker job | `apps/worker/src/jobs/tenancy/apply-scheduled-status.job.ts`, `apps/worker/test/apply-scheduled-status.test.ts` |
+| Convention and architecture tests | `packages/db/test/conventions.test.ts`, `apps/api/test/architecture/rules.ts` |

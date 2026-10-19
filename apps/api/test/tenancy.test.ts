@@ -1,0 +1,675 @@
+import type { INestApplication } from '@nestjs/common';
+import {
+  DomainError,
+  nextBusinessDayEnd,
+  type StaffPermission,
+  staffPermissions,
+} from '@vertex-food/contracts';
+import {
+  auditEntries,
+  branches as branchTable,
+  createDatabase,
+  outboxEvents,
+  tenants,
+  withTenant,
+} from '@vertex-food/db';
+import { eq } from 'drizzle-orm';
+import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
+import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import type { StaffActor, SystemActor } from '../src/core/access/actor.js';
+import { listRoutes } from '../src/core/routes.js';
+import { AreasService } from '../src/modules/platform/areas/index.js';
+import { TenancyService } from '../src/modules/platform/tenancy/index.js';
+import { createTestApp } from './app.js';
+
+// Spec S01 over the API. Until S02 there are no sessions: every non-public route answers 401, and
+// the rules are exercised on the service the routes call, with the actors S02 will build.
+
+const AZAZ = '0199fd00-0000-7000-8000-00000000c001';
+const OPERATOR: SystemActor = { kind: 'system', name: 'test operator' };
+
+let app: INestApplication;
+let tenancy: TenancyService;
+const db = createDatabase(inject('databaseUrl'));
+
+beforeAll(async () => {
+  app = await createTestApp();
+  tenancy = app.get(TenancyService);
+});
+afterAll(async () => {
+  await app.close();
+  await db.$client.end();
+});
+
+async function codeOf(work: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await work;
+  } catch (error) {
+    if (error instanceof DomainError) return error.code;
+    throw error;
+  }
+  return undefined;
+}
+
+function staff(
+  tenantId: string,
+  permissions: readonly StaffPermission[] = staffPermissions,
+  branchIds?: string[],
+): StaffActor {
+  return {
+    kind: 'staff',
+    tenantId,
+    accountId: uuidv7(),
+    permissions: [...permissions],
+    allBranches: branchIds === undefined,
+    branchIds: branchIds ?? [],
+  };
+}
+
+let slugCount = 0;
+async function newTenant(branchCodes = ['main']) {
+  slugCount += 1;
+  const detail = await tenancy.createTenant(OPERATOR, {
+    nameAr: 'مطعم تجريبي',
+    slug: `test-${Date.now().toString(36)}-${slugCount}`,
+    defaultCurrency: 'USD',
+    branches: branchCodes.map((code, index) => ({ nameAr: `فرع ${index + 1}`, code })),
+  });
+  const owner = staff(detail.tenant.id);
+  return { detail, tenantId: detail.tenant.id, owner, branchIds: detail.branches.map((b) => b.id) };
+}
+
+const weekly = [1, 2, 3, 4, 5, 6].map((weekday) => ({
+  weekday,
+  opensAt: '10:00',
+  closesAt: '23:00',
+}));
+
+/** Fills every onboarding item of a branch, as the wizard would. */
+async function completeBranch(owner: StaffActor, branchId: string) {
+  const { branch } = await tenancy.getBranch(owner, branchId);
+  const updated = await tenancy.updateBranch(owner, branchId, {
+    cityId: AZAZ,
+    addressDescription: 'قرب الساحة',
+    location: { latitudeE7: 365_876_000, longitudeE7: 370_448_000 },
+    contactPhones: [{ phone: '+963900000001', whatsapp: true }],
+    updatedAt: branch.updatedAt,
+  });
+  return tenancy.replaceHours(owner, branchId, {
+    businessDayEndsAt: '04:00',
+    periods: [...weekly, { weekday: 7, opensAt: '13:00', closesAt: '01:00' }],
+    updatedAt: updated.updatedAt,
+  });
+}
+
+describe('routes', () => {
+  it('refuse every non-public route with 401 until sessions exist (S02)', async () => {
+    const routes = listRoutes(app).filter((route) => route.access?.kind !== 'public');
+    expect(routes.length).toBeGreaterThan(20);
+    for (const route of routes) {
+      const path = route.path.replace(/:\w+/g, uuidv7());
+      const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+      const response = await request(app.getHttpServer())[method](path).send({});
+      expect(response.status, `${route.method} ${route.path}`).toBe(401);
+      expect(response.body.code).toBe('UNAUTHENTICATED');
+    }
+  });
+
+  it('keep the health check public', async () => {
+    await request(app.getHttpServer()).get('/api/health').expect(200);
+  });
+});
+
+describe('creating a tenant', () => {
+  it('starts onboarding with its slug and branches, audited, with events', async () => {
+    const { detail, tenantId } = await newTenant(['main', 'east']);
+    expect(detail.tenant).toMatchObject({ status: 'onboarding', branchCount: 2 });
+    expect(detail.slugs).toEqual([expect.objectContaining({ isPrimary: true })]);
+    expect(detail.branches.map((b) => b.code)).toEqual(['main', 'east']);
+    expect(detail.branches[0]).toMatchObject({
+      defaultCurrency: 'USD',
+      acceptedCurrencies: ['USD'],
+      businessDayEndsAt: '04:00',
+      contactPhones: [],
+    });
+    const [actions, events] = await withTenant(db, tenantId, async (tx) => [
+      await tx
+        .select({ action: auditEntries.action, actorName: auditEntries.actorName })
+        .from(auditEntries),
+      await tx.select({ type: outboxEvents.type }).from(outboxEvents),
+    ]);
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        { action: 'tenant.created', actorName: 'test operator' },
+        { action: 'branch.created', actorName: 'test operator' },
+      ]),
+    );
+    expect(events.map((e) => e.type).sort()).toEqual([
+      'branch.created.v1',
+      'branch.created.v1',
+      'tenant.created.v1',
+    ]);
+  });
+
+  it('refuses a taken or reserved slug', async () => {
+    const { detail } = await newTenant();
+    const input = {
+      nameAr: 'مطعم آخر',
+      defaultCurrency: 'TRY' as const,
+      branches: [{ nameAr: 'الرئيسي', code: 'main' }],
+    };
+    expect(
+      await codeOf(tenancy.createTenant(OPERATOR, { ...input, slug: detail.tenant.slug })),
+    ).toBe('SLUG_TAKEN');
+    expect(await codeOf(tenancy.createTenant(OPERATOR, { ...input, slug: 'admin' }))).toBe(
+      'SLUG_RESERVED',
+    );
+    expect(await codeOf(tenancy.createTenant(OPERATOR, { ...input, slug: 'a--b' }))).toBe(
+      'SLUG_RESERVED',
+    );
+  });
+});
+
+describe('onboarding', () => {
+  it('lists what is missing, completes once everything is set, and is idempotent', async () => {
+    const { tenantId, owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    const before = await tenancy.getTenant(owner);
+    expect(before.onboarding.missing.map((m) => m.item)).toEqual([
+      'branch.city',
+      'branch.address',
+      'branch.location',
+      'branch.phone',
+      'branch.hours',
+    ]);
+    try {
+      await tenancy.completeOnboarding(owner);
+      expect.unreachable();
+    } catch (error) {
+      expect((error as DomainError).code).toBe('ONBOARDING_INCOMPLETE');
+      expect((error as DomainError).details?.missing).toHaveLength(5);
+    }
+    expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' }))).toBe(
+      'ONBOARDING_INCOMPLETE',
+    );
+    await completeBranch(owner, branchId);
+    const done = await tenancy.completeOnboarding(owner);
+    expect(done.onboarding).toEqual({ complete: true, missing: [] });
+    expect(done.onboardingCompletedAt).not.toBeNull();
+    expect((await tenancy.completeOnboarding(owner)).onboardingCompletedAt).toBe(
+      done.onboardingCompletedAt,
+    );
+    const active = await tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' });
+    expect(active.tenant).toMatchObject({ status: 'active' });
+    expect(active.tenant.activatedAt).not.toBeNull();
+  });
+});
+
+describe('status lifecycle', () => {
+  async function activeTenant() {
+    const created = await newTenant();
+    await completeBranch(created.owner, created.branchIds[0] ?? '');
+    await tenancy.completeOnboarding(created.owner);
+    await tenancy.changeStatus(OPERATOR, created.tenantId, { to: 'active' });
+    return created;
+  }
+
+  /** Moves a scheduled change into the past, as time passing would. */
+  async function makeDue(tenantId: string) {
+    await db
+      .update(tenants)
+      .set({ scheduledStatusAt: new Date(Date.now() - 1000) })
+      .where(eq(tenants.id, tenantId));
+  }
+
+  it('schedules a suspension at the next business day end and enforces it once due', async () => {
+    const { tenantId, owner } = await activeTenant();
+    const requestedAt = new Date();
+    const scheduled = await tenancy.changeStatus(OPERATOR, tenantId, {
+      to: 'suspended',
+      reason: 'non_payment',
+      note: 'synthetic test note',
+    });
+    expect(scheduled.tenant.status).toBe('active');
+    expect(scheduled.tenant.scheduledChange?.status).toBe('suspended');
+    expect(Date.parse(scheduled.tenant.scheduledChange?.at ?? '')).toBe(
+      nextBusinessDayEnd(requestedAt, ['04:00']).getTime(),
+    );
+    // A repeat of the same request is refused, so a double submit never applies twice.
+    expect(
+      await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'other' })),
+    ).toBe('INVALID_STATUS_TRANSITION');
+    // Until then the restaurant still writes.
+    const before = await tenancy.getTenant(owner);
+    await tenancy.updateTenant(owner, {
+      nameAr: 'مطعم تجريبي 2',
+      nameLatin: null,
+      defaultCurrency: 'USD',
+      updatedAt: before.updatedAt,
+    });
+    await makeDue(tenantId);
+    // Enforced without the job having run (rule 7).
+    const suspended = await tenancy.getTenant(owner);
+    expect(suspended).toMatchObject({ status: 'suspended', statusReason: 'non_payment' });
+    expect(
+      await codeOf(
+        tenancy.updateTenant(owner, {
+          nameAr: 'مطعم',
+          nameLatin: null,
+          defaultCurrency: 'USD',
+          updatedAt: suspended.updatedAt,
+        }),
+      ),
+    ).toBe('TENANT_SUSPENDED');
+    // Reactivation is immediate; the due change was written first, with its own audit entry.
+    const reactivated = await tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' });
+    expect(reactivated.tenant).toMatchObject({ status: 'active', scheduledChange: null });
+    const changes = await withTenant(db, tenantId, (tx) =>
+      tx
+        .select({ actorName: auditEntries.actorName })
+        .from(auditEntries)
+        .where(eq(auditEntries.action, 'tenant.status_changed')),
+    );
+    expect(changes.map((c) => c.actorName)).toEqual(
+      expect.arrayContaining(['tenancy/apply-scheduled-status', 'test operator']),
+    );
+  });
+
+  it('cancels a scheduled change, and refuses to cancel when none is scheduled', async () => {
+    const { tenantId } = await activeTenant();
+    expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { cancelScheduled: true }))).toBe(
+      'INVALID_STATUS_TRANSITION',
+    );
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'closed', reason: 'other' });
+    const cancelled = await tenancy.changeStatus(OPERATOR, tenantId, { cancelScheduled: true });
+    expect(cancelled.tenant).toMatchObject({ status: 'active', scheduledChange: null });
+  });
+
+  it('closes an onboarding tenant at once; a closed tenant refuses writes and keeps 90 days of reading', async () => {
+    const { tenantId, owner, branchIds } = await newTenant();
+    const closed = await tenancy.changeStatus(OPERATOR, tenantId, {
+      to: 'closed',
+      reason: 'abuse',
+    });
+    expect(closed.tenant.status).toBe('closed');
+    const view = await tenancy.getTenant(owner);
+    expect(view.ownerReadUntil).not.toBeNull();
+    expect(Date.parse(view.ownerReadUntil ?? '') - Date.parse(view.closedAt ?? '')).toBe(
+      90 * 86_400_000,
+    );
+    const { branch } = await tenancy.getBranch(owner, branchIds[0] ?? '');
+    expect(
+      await codeOf(
+        tenancy.updateBranch(owner, branch.id, {
+          addressDescription: 'شارع',
+          updatedAt: branch.updatedAt,
+        }),
+      ),
+    ).toBe('TENANT_CLOSED');
+    expect(await codeOf(tenancy.completeOnboarding(owner))).toBe('TENANT_CLOSED');
+    expect(await codeOf(tenancy.setSlug(OPERATOR, tenantId, 'closed-slug'))).toBe('TENANT_CLOSED');
+    expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' }))).toBe(
+      'INVALID_STATUS_TRANSITION',
+    );
+  });
+});
+
+describe('slugs', () => {
+  it('keeps every old slug as an alias of its tenant (edge case 15)', async () => {
+    const { tenantId, detail } = await newTenant();
+    const first = detail.tenant.slug;
+    await tenancy.setSlug(OPERATOR, tenantId, `${first}-b`);
+    const twice = await tenancy.setSlug(OPERATOR, tenantId, `${first}-c`);
+    expect(twice.tenant.slug).toBe(`${first}-c`);
+    expect(twice.slugs.map((s) => [s.slug, s.isPrimary])).toEqual([
+      [first, false],
+      [`${first}-b`, false],
+      [`${first}-c`, true],
+    ]);
+    // An alias is never given to anyone, its own tenant included.
+    expect(await codeOf(tenancy.setSlug(OPERATOR, tenantId, first))).toBe('SLUG_TAKEN');
+    const other = await newTenant();
+    expect(await codeOf(tenancy.setSlug(OPERATOR, other.tenantId, first))).toBe('SLUG_TAKEN');
+  });
+});
+
+describe('branches', () => {
+  it('refuse a stale updatedAt with CONFLICT (rule 16)', async () => {
+    const { owner, branchIds } = await newTenant();
+    const { branch } = await tenancy.getBranch(owner, branchIds[0] ?? '');
+    await tenancy.updateBranch(owner, branch.id, {
+      addressDescription: 'أول',
+      updatedAt: branch.updatedAt,
+    });
+    expect(
+      await codeOf(
+        tenancy.updateBranch(owner, branch.id, {
+          addressDescription: 'ثان',
+          updatedAt: branch.updatedAt,
+        }),
+      ),
+    ).toBe('CONFLICT');
+  });
+
+  it("answer another tenant's branch with NOT_FOUND", async () => {
+    const a = await newTenant();
+    const b = await newTenant();
+    const [other = ''] = b.branchIds;
+    expect(await codeOf(tenancy.getBranch(a.owner, other))).toBe('NOT_FOUND');
+    expect(
+      await codeOf(
+        tenancy.replaceHours(a.owner, other, {
+          businessDayEndsAt: '04:00',
+          periods: [],
+          updatedAt: new Date().toISOString(),
+        }),
+      ),
+    ).toBe('NOT_FOUND');
+  });
+
+  it('hold each permission to its fields and branches', async () => {
+    const { tenantId, owner, branchIds } = await newTenant(['main', 'east']);
+    const [main = '', east = ''] = branchIds;
+    const manager = staff(tenantId, ['tenant.view', 'branch.hours.edit'], [main]);
+    const cashier = staff(tenantId, ['tenant.view']);
+    const { branch } = await tenancy.getBranch(owner, main);
+    // A manager edits the phones of their branch, not its address, charges or another branch.
+    const phones = await tenancy.updateBranch(manager, main, {
+      contactPhones: [{ phone: '+905000000001', whatsapp: false }],
+      updatedAt: branch.updatedAt,
+    });
+    expect(phones.contactPhones).toEqual([{ phone: '+905000000001', whatsapp: false }]);
+    expect(
+      await codeOf(
+        tenancy.updateBranch(manager, main, {
+          addressDescription: 'شارع',
+          updatedAt: phones.updatedAt,
+        }),
+      ),
+    ).toBe('FORBIDDEN');
+    expect(
+      await codeOf(
+        tenancy.replaceCharges(manager, main, { lines: [], updatedAt: phones.updatedAt }),
+      ),
+    ).toBe('FORBIDDEN');
+    const eastBranch = (await tenancy.getBranch(owner, east)).branch;
+    expect(
+      await codeOf(
+        tenancy.replaceHours(manager, east, {
+          businessDayEndsAt: '04:00',
+          periods: weekly,
+          updatedAt: eastBranch.updatedAt,
+        }),
+      ),
+    ).toBe('FORBIDDEN');
+    expect(await codeOf(tenancy.getBranch(manager, east))).toBe('NOT_FOUND');
+    expect((await tenancy.listBranches(manager)).map((b) => b.id)).toEqual([main]);
+    // A cashier edits no hours and no profile.
+    expect(
+      await codeOf(
+        tenancy.replaceHours(cashier, main, {
+          businessDayEndsAt: '04:00',
+          periods: weekly,
+          updatedAt: phones.updatedAt,
+        }),
+      ),
+    ).toBe('FORBIDDEN');
+    const tenant = await tenancy.getTenant(cashier);
+    expect(
+      await codeOf(
+        tenancy.updateTenant(cashier, {
+          nameAr: 'مطعم',
+          nameLatin: null,
+          defaultCurrency: 'USD',
+          updatedAt: tenant.updatedAt,
+        }),
+      ),
+    ).toBe('FORBIDDEN');
+  });
+
+  it('keep the default currency among the accepted ones and fixed once locked (rule 11)', async () => {
+    const { owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    let { branch } = await tenancy.getBranch(owner, branchId);
+    expect(
+      await codeOf(
+        tenancy.updateBranch(owner, branchId, {
+          defaultCurrency: 'TRY',
+          updatedAt: branch.updatedAt,
+        }),
+      ),
+    ).toBe('VALIDATION_FAILED');
+    branch = await tenancy.updateBranch(owner, branchId, {
+      defaultCurrency: 'TRY',
+      acceptedCurrencies: ['TRY', 'USD', 'SYP'],
+      updatedAt: branch.updatedAt,
+    });
+    expect(branch).toMatchObject({
+      defaultCurrency: 'TRY',
+      acceptedCurrencies: ['TRY', 'USD', 'SYP'],
+    });
+    await withTenant(db, owner.tenantId, (tx) =>
+      tx
+        .update(branchTable)
+        .set({ currencyLockedAt: new Date() })
+        .where(eq(branchTable.id, branchId)),
+    );
+    branch = (await tenancy.getBranch(owner, branchId)).branch;
+    expect(
+      await codeOf(
+        tenancy.updateBranch(owner, branchId, {
+          defaultCurrency: 'USD',
+          updatedAt: branch.updatedAt,
+        }),
+      ),
+    ).toBe('BRANCH_CURRENCY_LOCKED');
+    const accepted = await tenancy.updateBranch(owner, branchId, {
+      acceptedCurrencies: ['TRY'],
+      updatedAt: branch.updatedAt,
+    });
+    expect(accepted.acceptedCurrencies).toEqual(['TRY']);
+  });
+
+  it('are added and archived by Vertex staff, never the last one', async () => {
+    const { tenantId, branchIds } = await newTenant();
+    expect(
+      await codeOf(tenancy.archiveBranch(OPERATOR, tenantId, branchIds[0] ?? '', undefined)),
+    ).toBe('LAST_ACTIVE_BRANCH');
+    expect(
+      await codeOf(tenancy.createBranch(OPERATOR, tenantId, { nameAr: 'آخر', code: 'main' })),
+    ).toBe('CONFLICT');
+    const east = await tenancy.createBranch(OPERATOR, tenantId, { nameAr: 'الشرقي', code: 'east' });
+    expect(east).toMatchObject({ defaultCurrency: 'USD', cityId: null });
+    const archived = await tenancy.archiveBranch(OPERATOR, tenantId, east.id, 'synthetic');
+    expect(archived.archivedAt).not.toBeNull();
+    // Its code stays taken.
+    expect(
+      await codeOf(tenancy.createBranch(OPERATOR, tenantId, { nameAr: 'جديد', code: 'east' })),
+    ).toBe('CONFLICT');
+  });
+});
+
+describe('hours', () => {
+  it('replaces the weekly set, audited with the old and new sets', async () => {
+    const { owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    const hours = await completeBranch(owner, branchId);
+    expect(hours.periods).toHaveLength(7);
+    const detail = await tenancy.getBranch(owner, branchId);
+    expect(detail.hours.at(-1)).toEqual({ weekday: 7, opensAt: '13:00', closesAt: '01:00' });
+    expect(detail.branch.updatedAt).toBe(hours.updatedAt);
+    const [entry] = await withTenant(db, owner.tenantId, (tx) =>
+      tx
+        .select({ details: auditEntries.details })
+        .from(auditEntries)
+        .where(eq(auditEntries.action, 'branch_hours.replaced')),
+    );
+    expect(entry?.details).toMatchObject({
+      before: { periods: [] },
+      after: { businessDayEndsAt: '04:00', periods: expect.any(Array) },
+    });
+  });
+
+  it('refuses periods that contain the business day end or overlap', async () => {
+    const { owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    const { branch } = await tenancy.getBranch(owner, branchId);
+    expect(
+      await codeOf(
+        tenancy.replaceHours(owner, branchId, {
+          businessDayEndsAt: '04:00',
+          periods: [{ weekday: 1, opensAt: '22:00', closesAt: '05:00' }],
+          updatedAt: branch.updatedAt,
+        }),
+      ),
+    ).toBe('INVALID_HOURS');
+  });
+
+  it('keeps one exception per date, never in the past', async () => {
+    const { owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    const future = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const exception = await tenancy.createHourException(owner, branchId, {
+      date: future,
+      closed: false,
+      periods: [{ opensAt: '12:00', closesAt: '16:00' }],
+      note: 'عيد',
+    });
+    expect(
+      await codeOf(
+        tenancy.createHourException(owner, branchId, { date: future, closed: true, periods: [] }),
+      ),
+    ).toBe('CONFLICT');
+    expect(
+      await codeOf(
+        tenancy.createHourException(owner, branchId, {
+          date: '2020-01-01',
+          closed: true,
+          periods: [],
+        }),
+      ),
+    ).toBe('INVALID_HOURS');
+    const changed = await tenancy.updateHourException(owner, branchId, exception.id, {
+      closed: true,
+      periods: [],
+      note: null,
+      updatedAt: exception.updatedAt,
+    });
+    expect(changed).toMatchObject({ closed: true, periods: [] });
+    expect((await tenancy.getBranch(owner, branchId)).exceptions).toHaveLength(1);
+    await tenancy.archiveHourException(owner, branchId, exception.id);
+    expect((await tenancy.getBranch(owner, branchId)).exceptions).toEqual([]);
+    // The date is free again.
+    await tenancy.createHourException(owner, branchId, { date: future, closed: true, periods: [] });
+  });
+});
+
+describe('charge lines', () => {
+  const line = (rateBp: number) => ({
+    kind: 'service' as const,
+    nameAr: 'خدمة',
+    rateBp,
+    mode: 'added' as const,
+    orderTypes: ['dine_in' as const],
+  });
+
+  it('are edited in place, extra lines archived, positions from the list', async () => {
+    const { owner, branchIds } = await newTenant();
+    const [branchId = ''] = branchIds;
+    let { branch } = await tenancy.getBranch(owner, branchId);
+    const three = await tenancy.replaceCharges(owner, branchId, {
+      lines: [line(1000), line(500), line(250)],
+      updatedAt: branch.updatedAt,
+    });
+    expect(three.map((c) => [c.position, c.rateBp])).toEqual([
+      [1, 1000],
+      [2, 500],
+      [3, 250],
+    ]);
+    branch = (await tenancy.getBranch(owner, branchId)).branch;
+    const one = await tenancy.replaceCharges(owner, branchId, {
+      lines: [line(1500)],
+      updatedAt: branch.updatedAt,
+    });
+    expect(one).toEqual([expect.objectContaining({ id: three[0]?.id, rateBp: 1500, position: 1 })]);
+    expect((await tenancy.getBranch(owner, branchId)).charges).toHaveLength(1);
+    // The stale branch updatedAt of the first write is refused.
+    expect(
+      await codeOf(
+        tenancy.replaceCharges(owner, branchId, { lines: [], updatedAt: branch.updatedAt }),
+      ),
+    ).toBe('CONFLICT');
+  });
+});
+
+describe('images', () => {
+  it('replaces the logo, archiving the previous file, and removes it', async () => {
+    const sharp = (await import('sharp')).default;
+    const png = await sharp({
+      create: { width: 300, height: 300, channels: 3, background: { r: 10, g: 120, b: 60 } },
+    })
+      .png()
+      .toBuffer();
+    const { owner } = await newTenant();
+    const first = await tenancy.replaceImage(owner, 'logo', png);
+    const second = await tenancy.replaceImage(owner, 'logo', png);
+    expect((await tenancy.getTenant(owner)).logoFileId).toBe(second.id);
+    expect(second.id).not.toBe(first.id);
+    await tenancy.removeImage(owner, 'logo');
+    expect((await tenancy.getTenant(owner)).logoFileId).toBeNull();
+    // Removing nothing is not an error.
+    await tenancy.removeImage(owner, 'logo');
+  });
+});
+
+describe('map links', () => {
+  it('resolve a full link and stop at 20 per minute per tenant', async () => {
+    const { owner } = await newTenant();
+    const link = 'https://www.google.com/maps/@36.5876,37.0448,17z';
+    for (let i = 0; i < 20; i++) {
+      expect(await tenancy.resolveMapLink(owner, link)).toEqual({
+        latitudeE7: 365_876_000,
+        longitudeE7: 370_448_000,
+      });
+    }
+    expect(await codeOf(tenancy.resolveMapLink(owner, link))).toBe('RATE_LIMITED');
+    expect(await codeOf(tenancy.resolveMapLink(staff(uuidv7()), 'https://example.com/x'))).toBe(
+      'MAP_LINK_UNRECOGNIZED',
+    );
+  });
+});
+
+describe('areas', () => {
+  it('lists Aleppo with Azaz for the address pickers', async () => {
+    const groups = await app.get(AreasService).listCities();
+    expect(groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          nameLatin: 'Aleppo',
+          cities: expect.arrayContaining([
+            expect.objectContaining({ id: AZAZ, nameLatin: 'Azaz' }),
+          ]),
+        }),
+      ]),
+    );
+  });
+});
+
+describe('the console list', () => {
+  it('filters by status and finds a tenant by slug', async () => {
+    const { detail } = await newTenant();
+    const page = await tenancy.listTenants({
+      page: 1,
+      pageSize: 50,
+      order: 'asc',
+      status: 'onboarding',
+      q: detail.tenant.slug,
+    });
+    expect(page.items.map((t) => t.id)).toEqual([detail.tenant.id]);
+    expect(page.total).toBe(1);
+    const none = await tenancy.listTenants({ page: 1, pageSize: 50, order: 'asc', q: '%' });
+    // A typed % matches itself, not everything.
+    expect(none.items).toEqual([]);
+  });
+});

@@ -15,6 +15,20 @@
       "when": 1792365445644,
       "tag": "0001_tenant-isolation-and-roles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792374559164,
+      "tag": "0002_tenancy",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792374560242,
+      "tag": "0003_tenancy-isolation-and-seed",
+      "breakpoints": true
     }
   ]
 }

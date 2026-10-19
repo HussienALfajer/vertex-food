@@ -16,6 +16,7 @@ import { connect, refusal } from './connections.js';
 
 const { owner, app, jobs } = connect();
 const DENIED = /permission denied for table/;
+const RLS_REFUSAL = /new row violates row-level security policy/;
 const CLAIM_ONLY = /only a claim, setting dispatched_at once, is allowed/;
 
 const event = (tenantId: string) => ({ tenantId, type: 'test.ran', payload: { run: 1 } });
@@ -107,40 +108,39 @@ describe('the jobs role on outbox_events', () => {
     }
   });
 
-  it('cannot add, delete or empty events, with or without a tenant context', async () => {
+  it('adds events only inside its tenant, and never deletes or empties them', async () => {
     const { tenants, ids } = await seed();
-    const [id = '', tenant = ''] = [ids[0], tenants[0]];
-    expect(await refusal(jobs.insert(outboxEvents).values(event(tenant)))).toMatch(DENIED);
+    const [id = '', tenant = '', other = ''] = [ids[0], tenants[0], tenants[1]];
+    // A job's event (spec S01) is written in its tenant's transaction, bounded by tenant_isolation.
+    expect(await refusal(jobs.insert(outboxEvents).values(event(tenant)))).toMatch(RLS_REFUSAL);
+    await withTenant(jobs, tenant, (tx) => tx.insert(outboxEvents).values(event(tenant)));
     expect(
-      await refusal(
-        withTenant(jobs, tenant, (tx) => tx.insert(outboxEvents).values(event(tenant))),
-      ),
-    ).toMatch(DENIED);
+      await refusal(withTenant(jobs, tenant, (tx) => tx.insert(outboxEvents).values(event(other)))),
+    ).toMatch(RLS_REFUSAL);
     expect(await refusal(jobs.delete(outboxEvents).where(eq(outboxEvents.id, id)))).toMatch(DENIED);
     expect(await refusal(jobs.$client.query('truncate outbox_events'))).toMatch(DENIED);
   });
 });
 
 describe('the jobs role elsewhere', () => {
-  it('cannot read or write any other table, with or without a tenant context', async () => {
-    const tenant = uuidv7();
+  it('never reads the audit log, and adds entries only inside their tenant', async () => {
+    const [tenant, other] = [uuidv7(), uuidv7()];
+    const entry = (tenantId: string) => ({
+      tenantId,
+      actorKind: 'system',
+      action: 'test.ran',
+      entityType: 'test',
+      occurredAt: new Date(),
+    });
     expect(await refusal(jobs.select().from(auditEntries))).toMatch(DENIED);
     expect(await refusal(withTenant(jobs, tenant, (tx) => tx.select().from(auditEntries)))).toMatch(
       DENIED,
     );
+    expect(await refusal(jobs.insert(auditEntries).values(entry(tenant)))).toMatch(RLS_REFUSAL);
+    await withTenant(jobs, tenant, (tx) => tx.insert(auditEntries).values(entry(tenant)));
     expect(
-      await refusal(
-        withTenant(jobs, tenant, (tx) =>
-          tx.insert(auditEntries).values({
-            tenantId: tenant,
-            actorKind: 'system',
-            action: 'test.ran',
-            entityType: 'test',
-            occurredAt: new Date(),
-          }),
-        ),
-      ),
-    ).toMatch(DENIED);
+      await refusal(withTenant(jobs, tenant, (tx) => tx.insert(auditEntries).values(entry(other)))),
+    ).toMatch(RLS_REFUSAL);
   });
 });
 

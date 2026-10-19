@@ -53,7 +53,11 @@ function isExposedHttpError(error: unknown): error is { status: number; message:
 }
 
 export function toErrorResponse(error: unknown): ErrorResponse {
-  if (error instanceof DomainError) return { code: error.code, message: error.message };
+  if (error instanceof DomainError) {
+    return error.details
+      ? { code: error.code, message: error.message, details: error.details }
+      : { code: error.code, message: error.message };
+  }
   const http =
     error instanceof HttpException
       ? { status: error.getStatus(), message: error.message }
