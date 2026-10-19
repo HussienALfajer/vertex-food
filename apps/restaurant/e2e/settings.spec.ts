@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { branch, completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
-import { failOnCspViolation, screenshot } from './screenshot.js';
+import { failOnCspViolation, preloadOnHover, screenshot } from './screenshot.js';
 
 // Restaurant and branch settings (S01 screens) against the mocked API, the owner's view until S02.
 
@@ -185,8 +185,7 @@ test.describe('offline', () => {
     await page.goto('/');
     // The screen's code is on the device (the desktop app ships it); only its data needs the API.
     const hoursLink = page.getByRole('navigation').getByRole('link', { name: 'أوقات العمل' });
-    await hoursLink.hover();
-    await page.waitForLoadState('networkidle');
+    await preloadOnHover(page, hoursLink);
 
     // A screen never loaded has nothing to show until the connection is back.
     await context.setOffline(true);
