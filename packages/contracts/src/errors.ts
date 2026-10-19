@@ -15,10 +15,20 @@ export const errorStatus = {
   FORBIDDEN: 403,
   NOT_ENTITLED: 403,
   TENANT_SUSPENDED: 403,
+  TENANT_CLOSED: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  INVALID_STATUS_TRANSITION: 409,
+  LAST_ACTIVE_BRANCH: 409,
+  SLUG_TAKEN: 409,
+  BRANCH_CURRENCY_LOCKED: 409,
   CURRENCY_MISMATCH: 422,
   INVALID_AMOUNT: 422,
+  ONBOARDING_INCOMPLETE: 422,
+  FILE_REJECTED: 422,
+  MAP_LINK_UNRECOGNIZED: 422,
+  SLUG_RESERVED: 422,
+  INVALID_HOURS: 422,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
   SERVICE_UNAVAILABLE: 503,
@@ -34,6 +44,12 @@ export const errorResponseSchema = z
   .object({
     code: errorCodeSchema,
     message: z.string(),
+    /**
+     * What the client needs to point at the problem, for the codes that carry it: the offending
+     * period of `INVALID_HOURS`, the missing items of `ONBOARDING_INCOMPLETE`. Ids, codes and
+     * times only, never personal data (ADR 0016).
+     */
+    details: z.record(z.string(), z.unknown()).optional(),
   })
   .meta({ id: 'ErrorResponse' });
 
@@ -46,6 +62,7 @@ export class DomainError extends Error {
   constructor(
     readonly code: ErrorCode,
     message: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }
