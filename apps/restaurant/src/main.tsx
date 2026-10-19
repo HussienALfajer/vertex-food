@@ -1,7 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { textDirection } from '@vertex-food/i18n';
-import { DirectionProvider, Toaster } from '@vertex-food/ui';
+import { CSPProvider, DirectionProvider, Toaster } from '@vertex-food/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -38,13 +38,17 @@ createRoot(root, {
     <I18nextProvider i18n={i18n}>
       {/* Base UI reads the direction from this provider, not from <html dir> (keyboard, placement). */}
       <DirectionProvider direction={textDirection}>
-        {/* Online-only screens (S01): server state through TanStack Query, never queued offline. */}
-        <QueryClientProvider client={queryClient}>
-          {/* Success feedback is a toast: it never moves the screen under the cursor. */}
-          <Toaster closeLabel={i18n.t('close')}>
-            <RouterProvider router={router} />
-          </Toaster>
-        </QueryClientProvider>
+        {/* The CSP allows stylesheets from 'self' only: Base UI's inline style elements are off,
+            and the rules they held are in packages/ui's base.css. */}
+        <CSPProvider disableStyleElements>
+          {/* Online-only screens (S01): server state through TanStack Query, never queued offline. */}
+          <QueryClientProvider client={queryClient}>
+            {/* Success feedback is a toast: it never moves the screen under the cursor. */}
+            <Toaster closeLabel={i18n.t('close')}>
+              <RouterProvider router={router} />
+            </Toaster>
+          </QueryClientProvider>
+        </CSPProvider>
       </DirectionProvider>
     </I18nextProvider>
   </StrictMode>,

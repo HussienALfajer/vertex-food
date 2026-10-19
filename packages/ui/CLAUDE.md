@@ -26,12 +26,13 @@ The Vertex design system for the web front ends (restaurant, console, web; ADR 0
 - `PoweredBy` is on every app shell's footer and on every restaurant-branded page; it takes only its label.
 
 ## Rules to apply yourself
+- An app under a CSP without inline styles (the restaurant app) mounts `<CSPProvider disableStyleElements>` (exported here): Base UI then injects no `<style>`; the rules it would inject (`.base-ui-disable-scrollbar`) are in `base.css`, so add any new one there.
 - Every app mounts `<DirectionProvider direction={textDirection}>` (from this package, `textDirection` from `@vertex-food/i18n`) around its tree: Base UI reads the direction from it, not from `<html dir>`, for keyboard navigation and logical placement.
 - Build on Base UI primitives, keep their accessibility (focus rings, keyboard, ARIA), and use the `render` prop instead of wrapper elements (`<Button render={<Link to="/" />}>`).
 - A file that uses hooks or a Base UI primitive starts with `'use client';` so the Next.js app can render it from server components.
 - Every component sets `data-slot` (directly, or through `useRender` state as in `badge.tsx`), merges `className` with `cn`, and passes other props through.
 - Variants through `cva` with semantic names (`tone`, `variant`, `size`), mapped to semantic tokens (`bg-primary`, `text-muted-foreground`), never to raw palette steps in app code.
 - No user-facing text inside components: labels come in as props, so the app translates them.
-- The rest of Vertex Hub's and Vertex Shifa's components (dialogs, forms, fields, menus, tables, toasts…) are copied with their first real use, as are the restaurant ones of ADR 0018 (POS grid and cart, modifier picker, table map, kitchen ticket card, order timeline, driver job card, dispatch board, receipt preview) with their specs. UI changes update the apps' E2E screenshots.
+- Copied from Vertex Shifa with S01: `field`, `input`, `textarea`, `select`, `checkbox`, `switch`, `form` (`Form`, `FormFields`, `FormActions`: Enter moves between fields, busy locks them), `stepper`, `callout`, `skeleton`, `toast` (`Toaster`, `toast`) and `useDraft` (`lib/use-draft.ts`). The rest of Vertex Hub's and Vertex Shifa's components (dialogs, menus, tables…) are copied with their first real use, as are the restaurant ones of ADR 0018 (POS grid and cart, modifier picker, table map, kitchen ticket card, order timeline, driver job card, dispatch board, receipt preview) with their specs. UI changes update the apps' E2E screenshots.
 
 Run: `pnpm --filter @vertex-food/ui test` · `pnpm --filter @vertex-food/ui typecheck`.

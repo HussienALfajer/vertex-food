@@ -35,10 +35,12 @@ export function TenantGate({ children }: { children: ReactNode }) {
         if (view === 'redirect-home') return <Navigate to="/" replace />;
         if (view === 'setup-in-progress') return <SetupInProgress />;
         const inWizard = current.status === 'onboarding' && !current.onboardingCompletedAt;
+        // The waiting screen at `/setup` says what the banner would.
+        const waitingScreen = current.onboardingCompletedAt && pathname === '/setup';
         return (
           <div className="flex flex-col gap-6">
             {!inWizard && <MainNav tenant={current} />}
-            <StatusBanner tenant={current} />
+            {!waitingScreen && <StatusBanner tenant={current} />}
             <OfflineNotice />
             {children}
           </div>

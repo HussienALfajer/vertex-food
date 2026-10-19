@@ -1,3 +1,4 @@
+export { CSPProvider } from '@base-ui/react/csp-provider';
 export { DirectionProvider } from '@base-ui/react/direction-provider';
 export { AscentLines } from './brand/ascent-lines';
 export { VertexFoodLogo, VertexFoodMark } from './brand/logo';

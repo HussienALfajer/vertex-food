@@ -115,6 +115,7 @@ export function SetupWizard({
     const fresh = await Promise.all(saved.map((detail) => cache.reloadBranch(detail.branch.id)));
     setSaved(fresh);
     branchForm.reset(branchDrafts(fresh));
+    return tenantNow;
   }
 
   /** Saves one branch's part of the step; answers the branch as saved. */
@@ -207,7 +208,8 @@ export function SetupWizard({
         error.code === 'ONBOARDING_INCOMPLETE' &&
         sent === 'review'
       ) {
-        const fresh = await cache.reloadTenant().catch(() => undefined);
+        // Something changed on another device: show what is saved, at the step that lacks it.
+        const fresh = await reloadAll().catch(() => undefined);
         const [first] = fresh?.onboarding.missing ?? [];
         if (first) setStep(stepOfItem[first.item]);
       }

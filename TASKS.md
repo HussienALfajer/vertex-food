@@ -23,8 +23,8 @@ Two PRs, run one after the other (one front end only, so nothing runs in paralle
 - [x] onboarding wizard `/setup` (5 steps, saving on Next), waiting-for-activation and setup-in-progress screens
 - [x] settings: `/settings/restaurant`, `/settings/branches`, `/settings/branches/:id`, `/settings/branches/:id/hours` (single-branch tenants never see "branch")
 - [x] status banners (scheduled, suspended, closed); i18n keys
-- [ ] E2E with the API mocked: wizard steps, settings, banners, offline; RTL screenshots light and dark, looked at
-- [ ] ROADMAP marks S01 done; docs
+- [x] E2E with the API mocked: wizard steps, settings, banners, offline; RTL screenshots light and dark, looked at
+- [x] ROADMAP marks S01 done; docs
 - [ ] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
 ## Follow-ups (not this spec)

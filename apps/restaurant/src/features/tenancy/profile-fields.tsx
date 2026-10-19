@@ -230,9 +230,11 @@ export function ImageField({
             ref={input}
             type="file"
             accept={rules.acceptedTypes.join(',')}
+            // Opened by the button below; hidden from assistive technology so it is one control.
             className="sr-only"
             tabIndex={-1}
-            aria-label={t(`fields.${purpose}.upload`)}
+            aria-hidden
+            data-purpose={purpose}
             onChange={(event) => {
               picked(event.currentTarget.files?.[0]);
               event.currentTarget.value = '';
