@@ -18,9 +18,28 @@ const QUEUE_SCHEMA = 'pgboss';
 // The only schemas besides PostgreSQL's own: the tables, Drizzle's migration journal, pg-boss.
 const SCHEMAS = ['drizzle', QUEUE_SCHEMA, 'public'];
 // Everything the platform-jobs role may touch (ADR 0004): it reads the listed tables across tenants
-// through policies of its own and updates only the listed columns. Any other grant fails here.
-const JOBS_ACCESS: Record<string, { select: boolean; update: string[] }> = {
-  outbox_events: { select: true, update: ['dispatched_at', 'updated_at'] },
+// through policies of its own (tenant tables) or as platform data, adds rows where `insert` is set
+// (inside withTenant, so the tenant_isolation policy bounds them) and updates only the listed
+// columns. Any other grant fails here.
+const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: string[] }> = {
+  // The scheduled-status job's audit entries and events (spec S01).
+  audit_entries: { select: false, insert: true, update: [] },
+  outbox_events: { select: true, insert: true, update: ['dispatched_at', 'updated_at'] },
+  // tenancy/apply-scheduled-status (spec S01).
+  tenants: {
+    select: true,
+    update: [
+      'archived_at',
+      'closed_at',
+      'scheduled_status',
+      'scheduled_status_at',
+      'scheduled_status_reason',
+      'status',
+      'status_changed_at',
+      'status_reason',
+      'updated_at',
+    ],
+  },
 };
 // The tables the sync service replicates to devices (ADR 0022): it reads them whole, bypassing RLS,
 // so each one is listed here by the migration that publishes it (S04). Through SQL it reads nothing
@@ -249,7 +268,7 @@ describe.each(tables)('$name', (table) => {
     expect(info).toBeDefined();
     const updated = column(table.name, 'updated_at');
     const archived = column(table.name, 'archived_at');
-    if (info?.kind === 'append-only') {
+    if (info?.kind === 'append-only' || info?.kind === 'replaceable') {
       expect(updated).toBeUndefined();
       expect(archived).toBeUndefined();
     } else {
@@ -289,9 +308,10 @@ describe.each(tables)('$name', (table) => {
   it('gives the app role no privilege that ignores RLS, rewrites history or deletes records', async () => {
     const privileges = await appPrivileges(table.name);
     expect(privileges).toMatchObject({ truncate: false, trigger: false, references: false });
-    if (info?.kind === 'business') expect(privileges.delete).toBe(false);
-    if (info?.kind === 'append-only') {
-      expect(privileges).toMatchObject({ update: false, delete: false });
+    // Only a set replaced whole (a branch's weekly hours) is deleted from; nothing else is.
+    if (info?.kind !== 'replaceable') expect(privileges.delete).toBe(false);
+    if (info?.kind === 'append-only' || info?.kind === 'replaceable') {
+      expect(privileges.update).toBe(false);
     }
   });
 
@@ -308,14 +328,13 @@ describe.each(tables)('$name', (table) => {
   it('gives the jobs role exactly the access listed for it, and no table-wide write', async () => {
     const expected = JOBS_ACCESS[table.name] ?? { select: false, update: [] };
     const privileges = await privilegesOf(JOBS_ROLE, table.name);
-    expect(privileges.tableWide).toEqual(NO_TABLE_WIDE_WRITE);
+    const allColumns = columnsOf(table.name)
+      .map((c) => c.name)
+      .sort();
+    expect(privileges.tableWide).toEqual({ ...NO_TABLE_WIDE_WRITE, insert: !!expected.insert });
     expect(privileges.columns).toEqual({
-      select: expected.select
-        ? columnsOf(table.name)
-            .map((c) => c.name)
-            .sort()
-        : [],
-      insert: [],
+      select: expected.select ? allColumns : [],
+      insert: expected.insert ? allColumns : [],
       update: [...expected.update].sort(),
       references: [],
     });
