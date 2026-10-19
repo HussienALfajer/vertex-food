@@ -4,7 +4,15 @@ import { expect, type Locator, type Page, type Request, type TestInfo } from '@p
 export async function screenshot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
   const path = testInfo.outputPath(`${name}-${testInfo.project.name}.png`);
   // Transitions end at once, so a control just pressed shows its final state.
-  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  const capture = () => page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  try {
+    await capture();
+  } catch (error) {
+    // Chromium sometimes fails a full-page capture under parallel load ("Unable to capture
+    // screenshot"), on any screen; only that is tried once more, every assertion already ran.
+    if (!String(error).includes('Unable to capture screenshot')) throw error;
+    await capture();
+  }
   await testInfo.attach(name, { path, contentType: 'image/png' });
 }
 
