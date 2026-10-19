@@ -50,7 +50,12 @@ export function RestaurantSettingsScreen() {
         description={t('settings.restaurant.description')}
       />
       <ProfileSection tenant={tenant} />
-      {only && <SingleBranchSections tenant={tenant} branchId={only.id} />}
+      {/* A failed or slow branch list says so, with a retry: the sections never vanish silently. */}
+      {tenant.branchCount === 1 && (
+        <QueryStates queries={[branches]}>
+          {() => only && <SingleBranchSections tenant={tenant} branchId={only.id} />}
+        </QueryStates>
+      )}
     </section>
   );
 }

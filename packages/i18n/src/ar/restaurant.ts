@@ -82,6 +82,7 @@ export const restaurant = {
       notSet: 'غير محدد',
       period: 'من {{opensAt}} إلى {{closesAt}}',
       periodOvernight: 'من {{opensAt}} إلى {{closesAt}} (اليوم التالي)',
+      periodNextDay: 'من {{opensAt}} (اليوم التالي) إلى {{closesAt}}',
     },
     missing: {
       'tenant.name': 'اسم المطعم بالعربية',
@@ -156,9 +157,12 @@ export const restaurant = {
       save: 'حفظ',
       cancel: 'إلغاء',
       conflict: 'تغيّر هذا اليوم أو حُجز تاريخه قبل حفظك. تُعرض القائمة الحالية.',
+      conflictValues: 'غيّر شخص آخر هذا اليوم قبل حفظك. تُعرض قيمه الحالية؛ راجعها ثم احفظ.',
+      conflictGone: 'أُزيل هذا اليوم قبل حفظك.',
     },
   },
   fields: {
+    imageLoadFailed: 'تعذّر عرض الصورة المحفوظة.',
     nameAr: { label: 'اسم المطعم بالعربية' },
     nameLatin: {
       label: 'اسم المطعم بالأحرف اللاتينية (اختياري)',

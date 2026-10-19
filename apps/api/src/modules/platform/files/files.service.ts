@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DomainError, type StoredFile } from '@vertex-food/contracts';
 import { type Database, files, type Transaction, withTenant } from '@vertex-food/db';
 import { and, eq, isNull } from 'drizzle-orm';
-import type { StaffActor } from '../../../core/access/actor.js';
+import { requirePermission, type StaffActor } from '../../../core/access/actor.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import type { EncodedImage } from './image-encoding.js';
 
@@ -59,6 +59,9 @@ export class FilesService {
 
   /** The bytes of one of the session tenant's files; another tenant's id is `NOT_FOUND`. */
   async read(actor: StaffActor, id: string): Promise<{ mediaType: string; bytes: Buffer }> {
+    // Checked here too, not only by the route (apps/api/CLAUDE.md, Rules).
+    requirePermission(actor, 'tenant.view');
+
     const [row] = await withTenant(this.db, actor.tenantId, (tx) =>
       tx
         .select({ mediaType: files.mediaType, bytes: files.bytes })

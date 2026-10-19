@@ -13,6 +13,7 @@ export const auditActions = [
   'tenant.status_scheduled',
   'tenant.status_changed',
   'tenant.status_schedule_cancelled',
+  'tenant.status_rescheduled',
   'tenant.onboarding_completed',
   'tenant_logo.replaced',
   'tenant_logo.archived',

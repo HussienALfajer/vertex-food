@@ -110,14 +110,17 @@ export function toCharge(row: ChargeRow): BranchCharge {
   };
 }
 
-/** The tenant row, locked for the transaction with `forUpdate`; `NOT_FOUND` if none. */
+/**
+ * The tenant row, locked for the transaction with `lock`: `update` when the row changes, `share`
+ * when a branch write only reads its status (a status change then waits); `NOT_FOUND` if none.
+ */
 export async function readTenant(
   tx: Transaction,
   tenantId: string,
-  options: { forUpdate?: boolean } = {},
+  options: { lock?: 'update' | 'share' } = {},
 ): Promise<TenantRow> {
   const query = tx.select().from(tenants).where(eq(tenants.id, tenantId));
-  const [row] = await (options.forUpdate ? query.for('update') : query);
+  const [row] = await (options.lock ? query.for(options.lock) : query);
   if (!row) throw new DomainError('NOT_FOUND', 'No such tenant');
   return row;
 }

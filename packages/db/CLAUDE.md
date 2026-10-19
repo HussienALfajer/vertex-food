@@ -32,6 +32,7 @@ Drizzle schema, migrations, RLS policies, the database roles and the tenant cont
 - Append-only tables: no `updated_at` or `archived_at`; triggers with `refuse_change()` refuse `UPDATE`, `DELETE` and `TRUNCATE` for every role; the app role gets `SELECT, INSERT` only.
 - `outbox_events`: the API adds events, always pending (trigger `outbox_events_pending_on_insert`), in its tenant's transaction; the only change allowed afterwards, for every role, is the claim that sets `dispatched_at` once (trigger `outbox_events_claim_only`); no role deletes or empties it (`refuse_change` triggers), so no event is dropped silently.
 - Audit entries and outbox payloads hold ids and codes, never a customer's phone or address or a driver's location (ADR 0016).
+- The database holds what the services guarantee, so another writer cannot store what the API would refuse: checks repeat the contracts' shapes (Latin names, phone JSON, distinct currencies, whole-minute times, exception periods, through `jsonb_path_exists` for JSON), and counts or "exactly one" rules are unique partial indexes or triggers (`0005_tenancy-audit-guards.sql`: one primary slug, checked at commit; two periods per weekday). A check on a function that can answer NULL says `is true` (`idIsUuidV7`).
 
 ## Local database
 1. PostgreSQL 17 running locally (the Windows installer, or `docker run -d -p 127.0.0.1:5432:5432 -e POSTGRES_PASSWORD=… postgres:17`).

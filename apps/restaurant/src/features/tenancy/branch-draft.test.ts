@@ -21,6 +21,7 @@ import {
   normalizeTime,
   onlyChargesMoved,
   parseRate,
+  updateErrors,
 } from './branch-draft';
 
 const branch: Branch = {
@@ -94,6 +95,30 @@ describe('location draft', () => {
     });
     const saved = { ...branch, ...locationUpdate(draft, branch) } as Branch;
     expect(locationUpdate(locationDraft(saved), saved)).toEqual({ updatedAt: saved.updatedAt });
+  });
+
+  it('checks a settings save by its update only: phones save on a branch without a pin (audit A05)', () => {
+    // A manager changes the phones of a branch that has no city, address or pin yet.
+    const draft = { ...locationDraft(branch), phones: [{ phone: '0900 000 001', whatsapp: true }] };
+    const {
+      cityId: _,
+      addressDescription: __,
+      location: ___,
+      ...phonesOnly
+    } = locationUpdate(draft, branch);
+    expect(updateErrors(draft, phonesOnly)).toEqual({});
+    const bad = { ...draft, phones: [{ phone: '12345', whatsapp: false }] };
+    expect(updateErrors(bad, locationUpdate(bad, branch))).toEqual({ 'phones.0': 'phoneInvalid' });
+    // The owner clearing a saved address is refused as the API would; a long one too.
+    const withAddress = { ...branch, addressDescription: 'شارع السوق' };
+    const cleared = { ...locationDraft(withAddress), addressDescription: ' ' };
+    expect(updateErrors(cleared, locationUpdate(cleared, withAddress))).toMatchObject({
+      addressDescription: 'addressRequired',
+    });
+    const long = { ...cleared, addressDescription: 'ش'.repeat(301) };
+    expect(updateErrors(long, locationUpdate(long, withAddress))).toMatchObject({
+      addressDescription: 'addressTooLong',
+    });
   });
 });
 

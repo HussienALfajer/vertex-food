@@ -13,7 +13,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+
 import {
   branchChargeListSchema,
   branchDetailSchema,
@@ -22,12 +22,9 @@ import {
   branchSchema,
   coordinatesSchema,
   createHourExceptionSchema,
-  DomainError,
-  type FilePurpose,
   fileSchema,
   hourExceptionSchema,
   idSchema,
-  imageUploadRules,
   noContentSchema,
   replaceBranchChargesSchema,
   replaceBranchHoursSchema,
@@ -40,22 +37,11 @@ import {
 import type { z } from 'zod';
 import { NoFeature, StaffRoute } from '../../../core/access/access.decorators.js';
 import { CurrentStaff, type StaffActor } from '../../../core/access/actor.js';
+import { imageUpload, type Upload, uploadedBytes } from '../../../core/uploads/image-upload.js';
 import { RejectedUpload } from '../../../core/uploads/rejected-upload.js';
 import { TenancyService } from './tenancy.service.js';
 
 const idParam = { schema: idSchema };
-
-const upload = (purpose: FilePurpose) =>
-  FileInterceptor('file', {
-    limits: { fileSize: imageUploadRules[purpose].maxUploadBytes, files: 1, fields: 0, parts: 1 },
-  });
-
-type Upload = { buffer: Buffer } | undefined;
-
-function bytesOf(file: Upload): Buffer {
-  if (!file) throw new DomainError('FILE_REJECTED', 'No file in the upload');
-  return file.buffer;
-}
 
 /** The restaurant's own tenant: profile, logo, cover, onboarding (spec S01). */
 @Controller('tenant')
@@ -83,9 +69,9 @@ export class TenantController {
   @Put('logo')
   @StaffRoute('tenant.profile.edit')
   @SerializeOptions({ schema: fileSchema })
-  @UseInterceptors(RejectedUpload, upload('logo'))
+  @UseInterceptors(RejectedUpload, imageUpload('logo'))
   replaceLogo(@CurrentStaff() staff: StaffActor, @UploadedFile() file: Upload) {
-    return this.tenancy.replaceImage(staff, 'logo', bytesOf(file));
+    return this.tenancy.replaceImage(staff, 'logo', uploadedBytes(file));
   }
 
   @Delete('logo')
@@ -99,9 +85,9 @@ export class TenantController {
   @Put('cover')
   @StaffRoute('tenant.profile.edit')
   @SerializeOptions({ schema: fileSchema })
-  @UseInterceptors(RejectedUpload, upload('cover'))
+  @UseInterceptors(RejectedUpload, imageUpload('cover'))
   replaceCover(@CurrentStaff() staff: StaffActor, @UploadedFile() file: Upload) {
-    return this.tenancy.replaceImage(staff, 'cover', bytesOf(file));
+    return this.tenancy.replaceImage(staff, 'cover', uploadedBytes(file));
   }
 
   @Delete('cover')

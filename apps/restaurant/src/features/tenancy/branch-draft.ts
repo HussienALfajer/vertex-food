@@ -3,6 +3,7 @@ import {
   type BranchCharge,
   type BranchChargeInput,
   type BranchDetail,
+  branchChargeInputSchema,
   type Coordinates,
   type CreateHourException,
   type CurrencyCode,
@@ -17,8 +18,11 @@ import {
   type OrderType,
   orderTypeSchema,
   parsePhoneNumber,
+  periodNextDay,
   type ReplaceBranchHours,
+  type TimeOfDay,
   type UpdateBranch,
+  updateBranchSchema,
   validateDayPeriods,
   type Weekday,
   type WeeklyPeriod,
@@ -81,7 +85,10 @@ function typedPhones(phones: readonly PhoneDraft[]): PhoneDraft[] {
   return phones.filter((entry) => entry.phone.trim() !== '');
 }
 
-export function phoneErrors(phones: readonly PhoneDraft[]): FieldErrors {
+export function phoneErrors(
+  phones: readonly PhoneDraft[],
+  { required = true }: { required?: boolean } = {},
+): FieldErrors {
   const errors: FieldErrors = {};
   const seen = new Set<string>();
   phones.forEach((entry, index) => {
@@ -91,17 +98,51 @@ export function phoneErrors(phones: readonly PhoneDraft[]): FieldErrors {
     else if (seen.has(parsed.e164)) errors[`phones.${index}`] = 'phoneDuplicate';
     else seen.add(parsed.e164);
   });
-  if (typedPhones(phones).length === 0) errors.phones = 'phoneRequired';
+  if (required && typedPhones(phones).length === 0) errors.phones = 'phoneRequired';
   return errors;
 }
 
+/** The address as the contract reads it, or the key of what is wrong with it. */
+function addressError(address: string): ValidationKey | undefined {
+  const result = updateBranchSchema.shape.addressDescription.safeParse(address);
+  if (result.success) return undefined;
+  return result.error.issues.some((issue) => issue.code === 'too_big')
+    ? 'addressTooLong'
+    : 'addressRequired';
+}
+
+/** The wizard's location step: everything onboarding needs (rule 3), in the contract's shapes. */
 export function locationErrors(draft: LocationDraft): FieldErrors {
   const errors: FieldErrors = phoneErrors(draft.phones);
   if (!draft.cityId) errors.cityId = 'cityRequired';
-  const address = draft.addressDescription.trim();
-  if (address.length < 2) errors.addressDescription = 'addressRequired';
-  else if (address.length > 300) errors.addressDescription = 'addressTooLong';
+  const address = addressError(draft.addressDescription);
+  if (address) errors.addressDescription = address;
   if (!draft.location) errors.location = 'locationRequired';
+  return errors;
+}
+
+/**
+ * The checks of a settings save: the partial update the member may send, through the contract's
+ * schema, each refusal on its field. Completeness (a city, an address, a pin and a phone) is the
+ * wizard's (rule 3): a branch missing its pin still takes a manager's new phone.
+ */
+export function updateErrors(draft: LocationDraft, update: UpdateBranch): FieldErrors {
+  const errors: FieldErrors =
+    update.contactPhones !== undefined ? phoneErrors(draft.phones, { required: false }) : {};
+  if (update.addressDescription !== undefined) {
+    const address = addressError(update.addressDescription);
+    if (address) errors.addressDescription = address;
+  }
+  const result = updateBranchSchema.safeParse(update);
+  for (const issue of result.success ? [] : result.error.issues) {
+    const [field] = issue.path;
+    if (field === 'cityId') errors.cityId ??= 'cityRequired';
+    else if (field === 'location') errors.location ??= 'locationRequired';
+    else if (field === 'addressDescription') errors.addressDescription ??= 'addressRequired';
+    else if (field === 'contactPhones' && !hasErrorsUnder(errors, 'phones')) {
+      errors.phones = 'phoneInvalid';
+    }
+  }
   return errors;
 }
 
@@ -261,6 +302,16 @@ export function hoursInput(draft: HoursDraft, updatedAt: string): ReplaceBranchH
   };
 }
 
+/**
+ * The text of a saved period in `restaurant:setup.review` (rule 12): "(next day)" after the
+ * opening when the whole period falls after midnight, after the closing when only that does.
+ */
+export function periodTextKey(period: OpeningPeriod, businessDayEndsAt: string) {
+  const next = periodNextDay(period, businessDayEndsAt as TimeOfDay);
+  if (next.opens) return 'setup.review.periodNextDay' as const;
+  return next.closes ? ('setup.review.periodOvernight' as const) : ('setup.review.period' as const);
+}
+
 export const canAddPeriod = (periods: readonly PeriodDraft[]) =>
   periods.length < MAX_PERIODS_PER_DAY;
 
@@ -325,18 +376,17 @@ export function parseRate(text: string): number | undefined {
   return basisPoints >= 1 && basisPoints <= 5000 ? basisPoints : undefined;
 }
 
-const LATIN_CHARGE_NAME = /^[A-Za-z0-9 &'.%-]+$/;
-
 export function moneyErrors(draft: MoneyDraft): FieldErrors {
   const errors: FieldErrors = {};
   if (!draft.acceptedCurrencies.includes(draft.defaultCurrency)) {
     errors.acceptedCurrencies = 'defaultNotAccepted';
   }
+  const { nameAr, nameLatin } = branchChargeInputSchema.shape;
   draft.charges.forEach((charge, index) => {
-    const name = charge.nameAr.trim();
-    if (name.length < 2 || name.length > 40) errors[`charges.${index}.nameAr`] = 'chargeNameAr';
+    if (!nameAr.safeParse(charge.nameAr).success)
+      errors[`charges.${index}.nameAr`] = 'chargeNameAr';
     const latin = charge.nameLatin.trim();
-    if (latin && (latin.length < 2 || latin.length > 40 || !LATIN_CHARGE_NAME.test(latin))) {
+    if (latin && !nameLatin.safeParse(latin).success) {
       errors[`charges.${index}.nameLatin`] = 'chargeNameLatin';
     }
     if (parseRate(charge.rate) === undefined) errors[`charges.${index}.rate`] = 'chargeRate';

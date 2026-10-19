@@ -216,7 +216,11 @@ test.describe('onboarding wizard', () => {
     });
     await page.getByRole('button', { name: 'إنهاء الإعداد' }).click();
     await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
-    await expect(page.getByRole('alert')).toContainText('إعداد المطعم غير مكتمل');
+    // The refusal's callout; the missing phone's own field error is announced as well.
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'إعداد المطعم غير مكتمل' }),
+    ).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'أضف رقم تواصل' })).toBeVisible();
     // The step shows what is saved now, not what this device last loaded.
     await expect(page.getByLabel('رقم التواصل 1', { exact: true })).toHaveValue('');
     await screenshot(page, testInfo, 'setup-incomplete');
@@ -237,5 +241,39 @@ test.describe('onboarding wizard', () => {
     await expect(page.getByRole('heading', { name: 'فرع الجامعة' })).toBeVisible();
     await expect(page.getByLabel('وصف العنوان')).toHaveCount(2);
     await screenshot(page, testInfo, 'setup-2-branches');
+  });
+
+  test('keeps each branch saved at once when a later one fails, and retries without a conflict', async ({
+    page,
+  }) => {
+    const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+    const campus = completeBranch({ nameAr: 'فرع الجامعة', code: 'campus' });
+    const api = await mockApi(page, {
+      tenant: tenant({ branchCount: 2, updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [souq, campus],
+      hours: { [souq.id]: everyDay('10:00', '23:00'), [campus.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
+    await page.getByRole('button', { name: '2. الفروع' }).click();
+    const addresses = page.getByLabel('وصف العنوان');
+    await addresses.nth(0).fill('شارع السوق الجديد');
+    await addresses.nth(1).fill('قرب الجامعة، البوابة الشمالية');
+    // The first branch saves; the second is refused once.
+    api.refuseOnce = { write: `PATCH /api/branches/${campus.id}`, code: 'INTERNAL_ERROR' };
+    await page.getByRole('button', { name: 'التالي' }).click();
+    await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
+    await expect(page.locator('[data-slot="callout"][role="alert"]')).toBeVisible();
+    await expect(addresses.nth(1)).toHaveValue('قرب الجامعة، البوابة الشمالية');
+    // The retry sends only the second branch, from the first one's saved version: no conflict.
+    await page.getByRole('button', { name: 'التالي' }).click();
+    await expect(page.getByText('الخطوة 3 من 5')).toBeVisible();
+    expect(api.writes.filter((write) => write === `PATCH /api/branches/${souq.id}`)).toHaveLength(
+      1,
+    );
+    expect(api.branches.map((item) => item.addressDescription)).toEqual([
+      'شارع السوق الجديد',
+      'قرب الجامعة، البوابة الشمالية',
+    ]);
   });
 });

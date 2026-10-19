@@ -276,6 +276,108 @@ describe('status lifecycle', () => {
     );
   });
 
+  it('checks the status once its locks are held: a write that waited past a suspension is refused', async () => {
+    const { tenantId, owner, branchIds } = await activeTenant();
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'non_payment' });
+    const { branch } = await tenancy.getBranch(owner, branchIds[0] ?? '');
+    // A barrier: another transaction holds the tenant row, as a status change would, and moves the
+    // suspension a moment ahead. The branch write starts while it holds the row.
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let holding = () => {};
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    const holder = withTenant(db, tenantId, async (tx) => {
+      await tx.select().from(tenants).where(eq(tenants.id, tenantId)).for('update');
+      await tx
+        .update(tenants)
+        .set({ scheduledStatusAt: new Date(Date.now() + 300) })
+        .where(eq(tenants.id, tenantId));
+      holding();
+      await released;
+    });
+    await held;
+    const write = codeOf(
+      tenancy.updateBranch(owner, branch.id, {
+        addressDescription: 'شارع آخر',
+        updatedAt: branch.updatedAt,
+      }),
+    );
+    // The write waits for the row while the suspension's time passes, then is checked at its time.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    release();
+    await holder;
+    expect(await write).toBe('TENANT_SUSPENDED');
+  });
+
+  it('moves a scheduled suspension when a business day end changes, audited (owner 2026-10-19)', async () => {
+    const { tenantId, owner, branchIds } = await activeTenant();
+    const branchId = branchIds[0] ?? '';
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'non_payment' });
+    const scheduledAt = (await tenancy.getTenant(owner)).scheduledChange?.at;
+    const detail = await tenancy.getBranch(owner, branchId);
+    // The same day end changes nothing.
+    const same = await tenancy.replaceHours(owner, branchId, {
+      businessDayEndsAt: '04:00',
+      periods: detail.hours,
+      updatedAt: detail.branch.updatedAt,
+    });
+    expect((await tenancy.getTenant(owner)).scheduledChange?.at).toBe(scheduledAt);
+    const changedAt = new Date();
+    await tenancy.replaceHours(owner, branchId, {
+      businessDayEndsAt: '06:00',
+      periods: detail.hours,
+      updatedAt: same.updatedAt,
+    });
+    const moved = await tenancy.getTenant(owner);
+    expect(moved.status).toBe('active');
+    expect(moved.scheduledChange).toMatchObject({ status: 'suspended', reason: 'non_payment' });
+    expect(Date.parse(moved.scheduledChange?.at ?? '')).toBe(
+      nextBusinessDayEnd(changedAt, ['06:00']).getTime(),
+    );
+    const [entries, events] = await withTenant(db, tenantId, async (tx) => [
+      await tx
+        .select()
+        .from(auditEntries)
+        .where(eq(auditEntries.action, 'tenant.status_rescheduled')),
+      await tx
+        .select()
+        .from(outboxEvents)
+        .where(eq(outboxEvents.type, 'tenant.status_scheduled.v1')),
+    ]);
+    expect(entries).toEqual([
+      expect.objectContaining({
+        entityId: tenantId,
+        details: {
+          status: 'suspended',
+          from: scheduledAt,
+          to: moved.scheduledChange?.at,
+          branchId,
+        },
+      }),
+    ]);
+    expect(events).toHaveLength(2);
+  });
+
+  it('lists a tenant in the console under the status in force, before the job writes it', async () => {
+    const { tenantId, detail } = await activeTenant();
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'non_payment' });
+    const list = (status: 'active' | 'suspended') =>
+      tenancy.listTenants({ page: 1, pageSize: 50, order: 'asc', status, q: detail.tenant.slug });
+    expect((await list('active')).items.map((t) => t.id)).toEqual([tenantId]);
+    await makeDue(tenantId);
+    const active = await list('active');
+    expect(active).toMatchObject({ items: [], total: 0 });
+    const suspended = await list('suspended');
+    expect(suspended.total).toBe(1);
+    expect(suspended.items).toEqual([
+      expect.objectContaining({ id: tenantId, status: 'suspended', branchCount: 1 }),
+    ]);
+  });
+
   it('cancels a scheduled change, and refuses to cancel when none is scheduled', async () => {
     const { tenantId } = await activeTenant();
     expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { cancelScheduled: true }))).toBe(

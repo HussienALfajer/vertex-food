@@ -301,6 +301,9 @@ function PinField({
             <Button
               variant="outline"
               size="sm"
+              // A Callout's action sits outside the field: it follows the offline and read-only
+              // disable itself.
+              disabled={disabled}
               onClick={() => {
                 onChange(outside);
                 setOutside(undefined);
@@ -329,6 +332,7 @@ function PhoneFields({
   disabled: boolean;
 }) {
   const { t } = useTranslation('restaurant');
+  const groupId = useId();
   const update = (index: number, patch: Partial<PhoneDraft>) =>
     onChange(phones.map((entry, at) => (at === index ? { ...entry, ...patch } : entry)));
   return (
@@ -342,6 +346,7 @@ function PhoneFields({
         {phones.map((entry, index) => {
           const error = errors[`phones.${index}`];
           const number = index + 1;
+          const errorId = `${groupId}-phone-${index}`;
           return (
             // A row has no identity of its own; its place is its name ("phone 2").
             // biome-ignore lint/suspicious/noArrayIndexKey: rows are edited in place, never reordered.
@@ -352,6 +357,8 @@ function PhoneFields({
                   inputMode="tel"
                   aria-label={t('fields.phones.phone', { number })}
                   aria-invalid={error !== undefined}
+                  aria-describedby={error ? errorId : undefined}
+                  aria-errormessage={error ? errorId : undefined}
                   className="max-w-56"
                   value={entry.phone}
                   disabled={disabled}
@@ -378,7 +385,11 @@ function PhoneFields({
                   </IconButton>
                 )}
               </div>
-              {error && <p className="text-sm text-destructive-text">{t(`validation.${error}`)}</p>}
+              {error && (
+                <p id={errorId} role="alert" className="text-sm text-destructive-text">
+                  {t(`validation.${error}`)}
+                </p>
+              )}
             </li>
           );
         })}

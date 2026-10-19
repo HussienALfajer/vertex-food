@@ -32,10 +32,15 @@ const AZAZ = '0199fd00-0000-7000-8000-00000000c001';
 async function seedTenant() {
   const tenantId = uuidv7();
   const branchId = uuidv7();
-  await app.insert(tenants).values({ id: tenantId, nameAr: 'مطعم تجريبي', defaultCurrency: 'USD' });
-  await app
-    .insert(tenantSlugs)
-    .values({ slug: `t-${tenantId.slice(-12)}`, subjectTenantId: tenantId, isPrimary: true });
+  // One transaction: a tenant needs its primary slug by commit (tenants_primary_slug).
+  await app.transaction(async (tx) => {
+    await tx
+      .insert(tenants)
+      .values({ id: tenantId, nameAr: 'مطعم تجريبي', defaultCurrency: 'USD' });
+    await tx
+      .insert(tenantSlugs)
+      .values({ slug: `t-${tenantId.slice(-12)}`, subjectTenantId: tenantId, isPrimary: true });
+  });
   await withTenant(app, tenantId, (tx) =>
     tx.insert(branches).values({
       id: branchId,
@@ -263,6 +268,139 @@ describe('branches', () => {
     );
   });
 
+  it('hold the shapes the contracts check (audit A08)', async () => {
+    const a = await seedTenant();
+    const update = (values: Partial<typeof branches.$inferInsert>) =>
+      refusal(
+        withTenant(app, a.tenantId, (tx) =>
+          tx.update(branches).set(values).where(eq(branches.id, a.branchId)),
+        ),
+      );
+    expect(await update({ nameLatin: 'فرع' })).toMatch(/branches_name_latin/);
+    expect(await update({ nameLatin: ' Main ' })).toMatch(/branches_name_latin/);
+    expect(await update({ acceptedCurrencies: ['USD', 'USD'] })).toMatch(/branches_currencies/);
+    for (const phones of [
+      [{ phone: '0933000000', whatsapp: true }],
+      [{ phone: '+963933000001' }],
+      [{ phone: '+963933000001', whatsapp: 'yes' }],
+      ['+963933000001'],
+      [
+        { phone: '+963933000001', whatsapp: true },
+        { phone: '+963933000001', whatsapp: false },
+      ],
+    ]) {
+      expect(await update({ contactPhones: phones }), JSON.stringify(phones)).toMatch(
+        /branches_contact_phones/,
+      );
+    }
+    await withTenant(app, a.tenantId, (tx) =>
+      tx
+        .update(branches)
+        .set({
+          nameLatin: 'Al-Sham & Co.',
+          acceptedCurrencies: ['USD', 'TRY'],
+          contactPhones: [
+            { phone: '+963933000001', whatsapp: true },
+            { phone: '+905321234567', whatsapp: false },
+          ],
+        })
+        .where(eq(branches.id, a.branchId)),
+    );
+    expect(
+      await refusal(
+        app.update(tenants).set({ nameLatin: 'مطعم' }).where(eq(tenants.id, a.tenantId)),
+      ),
+    ).toMatch(/tenants_name_latin/);
+    const insertHours = (opensAt: string, closesAt: string) =>
+      refusal(
+        withTenant(app, a.tenantId, (tx) =>
+          tx
+            .insert(branchHours)
+            .values({ tenantId: a.tenantId, branchId: a.branchId, weekday: 2, opensAt, closesAt }),
+        ),
+      );
+    expect(await insertHours('10:00:30', '14:00')).toMatch(/branch_hours_period/);
+    for (const periods of [
+      [{ opensAt: '10:00' }],
+      [{ opensAt: '10:00', closesAt: '25:00' }],
+      [{ opensAt: 10, closesAt: '14:00' }],
+      [{ opensAt: '10:00', closesAt: '10:00' }],
+      ['10:00-14:00'],
+    ]) {
+      expect(
+        await refusal(
+          withTenant(app, a.tenantId, (tx) =>
+            tx.insert(branchHourExceptions).values({
+              tenantId: a.tenantId,
+              branchId: a.branchId,
+              date: '2099-01-01',
+              closed: false,
+              periods,
+            }),
+          ),
+        ),
+        JSON.stringify(periods),
+      ).toMatch(/branch_hour_exceptions_periods/);
+    }
+  });
+
+  it('hold at most two periods per weekday and three charge lines in force (audit A09)', async () => {
+    const a = await seedTenant();
+    const period = (opensAt: string, closesAt: string) => ({
+      tenantId: a.tenantId,
+      branchId: a.branchId,
+      weekday: 3,
+      opensAt,
+      closesAt,
+    });
+    expect(
+      await refusal(
+        withTenant(app, a.tenantId, (tx) =>
+          tx
+            .insert(branchHours)
+            .values([period('08:00', '09:00'), period('10:00', '11:00'), period('12:00', '13:00')]),
+        ),
+      ),
+    ).toMatch(/at most two periods per weekday/);
+    await withTenant(app, a.tenantId, (tx) =>
+      tx.insert(branchHours).values([period('08:00', '09:00'), period('10:00', '11:00')]),
+    );
+    expect(
+      await refusal(
+        withTenant(app, a.tenantId, (tx) =>
+          tx.insert(branchHours).values(period('12:00', '13:00')),
+        ),
+      ),
+    ).toMatch(/at most two periods per weekday/);
+    const line = (position: number) => ({
+      tenantId: a.tenantId,
+      branchId: a.branchId,
+      kind: 'service',
+      nameAr: 'خدمة',
+      rateBp: 1000,
+      mode: 'added',
+      orderTypes: ['dine_in'],
+      position,
+    });
+    await withTenant(app, a.tenantId, (tx) =>
+      tx.insert(branchCharges).values([line(1), line(2), line(3)]),
+    );
+    expect(
+      await refusal(withTenant(app, a.tenantId, (tx) => tx.insert(branchCharges).values(line(2)))),
+    ).toMatch(/branch_charges_position_idx/);
+    expect(
+      await refusal(withTenant(app, a.tenantId, (tx) => tx.insert(branchCharges).values(line(4)))),
+    ).toMatch(/branch_charges_position/);
+    // An archived line frees its position.
+    await withTenant(app, a.tenantId, async (tx) => {
+      await tx
+        .update(branchCharges)
+        .set({ archivedAt: new Date() })
+        .where(eq(branchCharges.position, 3));
+      await tx.insert(branchCharges).values(line(3));
+    });
+  });
+
   it('accept a business day end on the hour or half hour up to 08:00', async () => {
     const a = await seedTenant();
     for (const end of ['08:30', '04:15']) {
@@ -309,6 +447,45 @@ describe('tenants and slugs', () => {
           .where(eq(tenantSlugs.subjectTenantId, a.tenantId)),
       ),
     ).toMatch(DENIED);
+    // Never without a primary slug: not when it is cleared, nor for a tenant made without one.
+    expect(
+      await refusal(
+        app
+          .update(tenantSlugs)
+          .set({ isPrimary: false })
+          .where(eq(tenantSlugs.subjectTenantId, a.tenantId)),
+      ),
+    ).toMatch(/exactly one primary slug/);
+    expect(
+      await refusal(
+        app.insert(tenants).values({ nameAr: 'مطعم بلا رابط', defaultCurrency: 'USD' }),
+      ),
+    ).toMatch(/exactly one primary slug/);
+    // A slug change in one transaction, as the service makes it, keeps one primary.
+    await app.transaction(async (tx) => {
+      await tx
+        .update(tenantSlugs)
+        .set({ isPrimary: false })
+        .where(eq(tenantSlugs.subjectTenantId, a.tenantId));
+      await tx.insert(tenantSlugs).values({
+        slug: `n-${a.tenantId.slice(-12)}`,
+        subjectTenantId: a.tenantId,
+        isPrimary: true,
+      });
+    });
+  });
+
+  it('refuse an id whose version cannot be read (audit A07)', async () => {
+    // Variant bits 11 (reserved, not RFC 9562): uuid_extract_version answers NULL.
+    expect(
+      await refusal(
+        app.insert(tenants).values({
+          id: '0199fd00-0000-7000-c000-000000000001',
+          nameAr: 'مطعم تجريبي',
+          defaultCurrency: 'USD',
+        }),
+      ),
+    ).toMatch(/tenants_id_is_uuidv7/);
   });
 
   it('keep a closed tenant closed and require its reason and archive', async () => {

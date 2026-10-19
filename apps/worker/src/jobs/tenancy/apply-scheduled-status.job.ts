@@ -42,6 +42,7 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
         scheduledStatus: tenants.scheduledStatus,
         scheduledStatusReason: tenants.scheduledStatusReason,
         scheduledStatusAt: tenants.scheduledStatusAt,
+        updatedAt: tenants.updatedAt,
       })
       .from(tenants)
       .where(and(isNotNull(tenants.scheduledStatus), lte(tenants.scheduledStatusAt, now)))
@@ -49,8 +50,8 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
       .limit(BATCH);
     let applied = 0;
     for (const tenant of due) {
-      const { scheduledStatus, scheduledStatusAt } = tenant;
-      if (!scheduledStatus || !scheduledStatusAt) continue;
+      const { scheduledStatus, scheduledStatusReason, scheduledStatusAt } = tenant;
+      if (!scheduledStatus || !scheduledStatusReason || !scheduledStatusAt) continue;
       const changed = await withTenant(this.db, tenant.id, async (tx) => {
         const closing = scheduledStatus === 'closed';
         const [row] = await tx
@@ -63,12 +64,19 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
             scheduledStatusReason: null,
             scheduledStatusAt: null,
             ...(closing ? { closedAt: scheduledStatusAt, archivedAt: scheduledStatusAt } : {}),
+            // Moves the version forward, as every change does (spec S01 rule 16).
+            updatedAt: new Date(Math.max(Date.now(), tenant.updatedAt.getTime() + 1)),
           })
+          // Every status field it read: any change since (a replaced, moved or cancelled schedule,
+          // a status written by the API or by another run) leaves the row alone. A run that waits
+          // for another's row lock re-checks this once that one commits. Not `updated_at`: rows
+          // keep its microseconds, which a JavaScript date cannot give back.
           .where(
             and(
               eq(tenants.id, tenant.id),
               eq(tenants.status, tenant.status),
               eq(tenants.scheduledStatus, scheduledStatus),
+              eq(tenants.scheduledStatusReason, scheduledStatusReason),
               eq(tenants.scheduledStatusAt, scheduledStatusAt),
             ),
           )

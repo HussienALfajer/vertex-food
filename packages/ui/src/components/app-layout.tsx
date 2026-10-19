@@ -181,7 +181,7 @@ function SidebarPanel({
  * page with `data-status="active"`; it then takes the darker fill and the gold marker.
  */
 const sidebarLinkClassName = cn(
-  'relative flex h-10 items-center gap-3 rounded-md px-3 text-base text-sidebar-muted-foreground transition-colors duration-150 ease-out',
+  'relative flex h-11 items-center gap-3 rounded-md px-3 text-base lg:pointer-fine:h-10 text-sidebar-muted-foreground transition-colors duration-150 ease-out',
   'hover:bg-sidebar-hover hover:text-sidebar-foreground',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
   'data-[status=active]:bg-sidebar-active data-[status=active]:font-medium data-[status=active]:text-sidebar-foreground',

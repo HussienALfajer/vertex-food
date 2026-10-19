@@ -4,7 +4,6 @@ import {
   type BranchDetail,
   businessDateOf,
   type HourException,
-  isOvernight,
   type Tenant,
   type TimeOfDay,
 } from '@vertex-food/contracts';
@@ -47,6 +46,7 @@ import {
   exceptionDraft,
   exceptionErrors,
   exceptionInput,
+  periodTextKey,
 } from '../tenancy/branch-draft';
 import { PeriodRow } from '../tenancy/hours-fields';
 import {
@@ -58,8 +58,11 @@ import {
 import { isTenantWritable } from '../tenancy/tenant-status';
 import type { Notice } from './save-actions';
 
-/** How far ahead an exception can be planned from the hours screen. */
-const PLANNING_DAYS = 120;
+/**
+ * How far ahead the date list of the hours screen reaches: a year. The API accepts any date from
+ * today's business date on (rule 13); the list only bounds the picker (spec S01, screens).
+ */
+const PLANNING_DAYS = 366;
 
 /**
  * The upcoming exceptions of a branch (rule 13): a dated day that replaces the weekly periods,
@@ -69,8 +72,8 @@ export function HourExceptions({ tenant, detail }: { tenant: Tenant; detail: Bra
   const { t } = useTranslation('restaurant');
   const access = useStaffAccess();
   const online = useOnline();
-  const allowed =
-    isTenantWritable(tenant) && can(access, 'branch.hours.edit', detail.branch.id) && online;
+  const permitted = isTenantWritable(tenant) && can(access, 'branch.hours.edit', detail.branch.id);
+  const allowed = permitted && online;
   /** The exception being edited, or `'new'`. */
   const [editing, setEditing] = useState<HourException | 'new'>();
   const exceptions = [...detail.exceptions].sort((a, b) => a.date.localeCompare(b.date));
@@ -91,6 +94,7 @@ export function HourExceptions({ tenant, detail }: { tenant: Tenant; detail: Bra
                 <ExceptionEditor
                   detail={detail}
                   exception={exception}
+                  permitted={permitted}
                   onDone={() => setEditing(undefined)}
                 />
               </li>
@@ -107,7 +111,11 @@ export function HourExceptions({ tenant, detail }: { tenant: Tenant; detail: Bra
         </ul>
       )}
       {editing === 'new' ? (
-        <ExceptionEditor detail={detail} onDone={() => setEditing(undefined)} />
+        <ExceptionEditor
+          detail={detail}
+          permitted={permitted}
+          onDone={() => setEditing(undefined)}
+        />
       ) : (
         allowed &&
         editing === undefined && (
@@ -159,7 +167,7 @@ function ExceptionRow({
             ) : (
               exception.periods
                 .map((period) =>
-                  t(isOvernight(period) ? 'setup.review.periodOvernight' : 'setup.review.period', {
+                  t(periodTextKey(period, detail.branch.businessDayEndsAt), {
                     opensAt: period.opensAt,
                     closesAt: period.closesAt,
                   }),
@@ -198,23 +206,33 @@ function ExceptionRow({
   );
 }
 
-/** Adds an exception, or changes one; its date is fixed once it exists. */
+/**
+ * Adds an exception, or changes one; its date is fixed once it exists. The draft keeps the
+ * `updatedAt` of the values it started from, so a refresh in the background never makes a stale
+ * draft look current; after a `CONFLICT` the values and their version reload together.
+ */
 function ExceptionEditor({
   detail,
   exception,
+  permitted,
   onDone,
 }: {
   detail: BranchDetail;
   exception?: HourException;
+  /** The restaurant writes and the member may edit hours; it changes while the editor is open. */
+  permitted: boolean;
   onDone: () => void;
 }) {
   const { t } = useTranslation('restaurant');
   const errorText = useErrorText();
   const cache = useSetupCache();
   const noteId = useId();
-  // Offline, the editor keeps its values but changes nothing (S01).
+  // Offline, or once the restaurant is suspended or closed, the editor keeps its values but
+  // changes nothing (S01).
   const online = useOnline();
+  const editable = online && permitted;
   const [draft, setDraft] = useState<ExceptionDraft>(() => exceptionDraft(exception));
+  const [base, setBase] = useState(exception?.updatedAt);
   const [checking, setChecking] = useState(false);
   const [notice, setNotice] = useState<Notice>();
   const dayEnd = detail.branch.businessDayEndsAt;
@@ -232,7 +250,7 @@ function ExceptionEditor({
     mutationFn: async () => {
       const input = exceptionInput(draft);
       if (exception) {
-        await updateException(branchId, exception.id, { ...input, updatedAt: exception.updatedAt });
+        await updateException(branchId, exception.id, { ...input, updatedAt: base ?? '' });
       } else {
         await createException(branchId, { ...input, date: draft.date as string });
       }
@@ -245,9 +263,25 @@ function ExceptionEditor({
     },
     onError: async (error) => {
       if (error instanceof ApiError && error.code === 'CONFLICT') {
-        // Another editor changed it, or took the date: show the current list.
-        await cache.reloadBranch(branchId).catch(() => undefined);
-        setNotice({ tone: 'warning', text: t('settings.exceptions.conflict') });
+        // Another editor changed it, or took the date: show the current values with their
+        // version, never the old values on the new version.
+        const fresh = await cache.reloadBranch(branchId).catch(() => undefined);
+        if (!exception) {
+          setDraft((current) => ({ ...current, date: undefined }));
+          setNotice({ tone: 'warning', text: t('settings.exceptions.conflict') });
+          return;
+        }
+        const current = fresh?.exceptions.find((item) => item.id === exception.id);
+        if (fresh && !current) {
+          toast.add({ title: t('settings.exceptions.conflictGone'), type: 'warning' });
+          onDone();
+          return;
+        }
+        if (current) {
+          setDraft(exceptionDraft(current));
+          setBase(current.updatedAt);
+        }
+        setNotice({ tone: 'warning', text: t('settings.exceptions.conflictValues') });
         return;
       }
       setNotice({ tone: 'danger', text: errorText(error) });
@@ -268,13 +302,13 @@ function ExceptionEditor({
       aria-label={exception ? t('settings.exceptions.edit') : t('settings.exceptions.add')}
     >
       <FormFields>
-        <Field invalid={errors.date !== undefined} disabled={exception !== undefined || !online}>
+        <Field invalid={errors.date !== undefined} disabled={exception !== undefined || !editable}>
           <FieldLabel render={<span />}>{t('settings.exceptions.date')}</FieldLabel>
           <Select
             value={draft.date ?? null}
             onValueChange={(date) => date && setDraft((current) => ({ ...current, date }))}
             items={dates.map((date) => ({ value: date, label: formatDate(date) }))}
-            disabled={exception !== undefined || !online}
+            disabled={exception !== undefined || !editable}
           >
             <SelectTrigger aria-label={t('settings.exceptions.date')} className="sm:max-w-xs">
               <SelectValue placeholder={t('settings.exceptions.datePlaceholder')} />
@@ -293,7 +327,7 @@ function ExceptionEditor({
         <label className="flex items-center gap-2">
           <Checkbox
             checked={draft.closed}
-            disabled={!online}
+            disabled={!editable}
             onCheckedChange={(closed) =>
               setDraft((current) => ({
                 ...current,
@@ -319,8 +353,9 @@ function ExceptionEditor({
                 day={draft.date ? formatDate(draft.date) : t('settings.exceptions.date')}
                 number={index + 1}
                 period={period}
+                dayEnd={dayEnd}
                 error={errors[`periods.${index}`]}
-                disabled={!online}
+                disabled={!editable}
                 onChange={(next) =>
                   setDraft((current) => ({
                     ...current,
@@ -340,7 +375,7 @@ function ExceptionEditor({
                 variant="ghost"
                 size="sm"
                 className="w-fit"
-                disabled={!online}
+                disabled={!editable}
                 onClick={() =>
                   setDraft((current) => ({
                     ...current,
@@ -354,7 +389,7 @@ function ExceptionEditor({
             )}
           </FieldGroup>
         )}
-        <Field invalid={errors.note !== undefined} disabled={!online}>
+        <Field invalid={errors.note !== undefined} disabled={!editable}>
           <FieldLabel htmlFor={noteId}>{t('settings.exceptions.note')}</FieldLabel>
           <Input
             id={noteId}
@@ -368,7 +403,7 @@ function ExceptionEditor({
         </Field>
       </FormFields>
       <FormActions>
-        <Button type="submit" loading={save.isPending} disabled={!online}>
+        <Button type="submit" loading={save.isPending} disabled={!editable}>
           {t('settings.exceptions.save')}
         </Button>
         <Button variant="ghost" disabled={save.isPending} onClick={onDone}>

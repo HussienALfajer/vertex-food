@@ -21,12 +21,13 @@ import {
   chargesChanged,
   currencyUpdate,
   locationDraft,
-  locationErrors,
   locationUpdate,
   moneyDraft,
   moneyErrors,
   onlyChargesMoved,
+  updateErrors,
 } from '../tenancy/branch-draft';
+
 import { LocationFields } from '../tenancy/location-fields';
 import { MoneyFields } from '../tenancy/money-fields';
 import { replaceCharges, updateBranch, useSetupCache } from '../tenancy/queries';
@@ -112,18 +113,25 @@ function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionPro
   const phones = writable && can(access, 'branch.hours.edit', branchId);
   const form = useDraft(() => locationDraft(base.branch));
   const [checking, setChecking] = useState(false);
-  const errors = checking ? locationErrors(form.draft) : {};
+
+  /** What the member may change and changed; only this is sent (the API checks it again). */
+  const allowedUpdate = (): UpdateBranch => {
+    const update: UpdateBranch = locationUpdate(form.draft, base.branch);
+    if (!settings) {
+      delete update.cityId;
+      delete update.addressDescription;
+      delete update.location;
+    }
+    if (!phones) delete update.contactPhones;
+    return update;
+  };
+  // The update is checked, not the whole form: fields the member cannot change never block a save.
+  const errorsNow = () => updateErrors(form.draft, allowedUpdate());
+  const errors = checking ? errorsNow() : {};
 
   const save = useSettingsSave({
     save: async () => {
-      const update: UpdateBranch = locationUpdate(form.draft, base.branch);
-      // Only what the member may change is sent (the API checks it again).
-      if (!settings) {
-        delete update.cityId;
-        delete update.addressDescription;
-        delete update.location;
-      }
-      if (!phones) delete update.contactPhones;
+      const update = allowedUpdate();
       if (!changesSomething(update)) return;
       const saved = await updateBranch(branchId, update);
       cache.branchSaved(saved);
@@ -143,7 +151,7 @@ function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionPro
       <Form
         onSubmit={() => {
           setChecking(true);
-          if (Object.keys(locationErrors(form.draft)).length > 0) return false;
+          if (Object.keys(errorsNow()).length > 0) return false;
           save.run();
           return true;
         }}

@@ -324,6 +324,19 @@ export function isOvernight(period: OpeningPeriod): boolean {
   return minutesOfDay(period.closesAt) < minutesOfDay(period.opensAt);
 }
 
+/**
+ * Which ends of a period fall on the next calendar day (rule 12). A period that opens after
+ * midnight but before the business day end belongs to the previous business date: 01:00–03:00
+ * under Saturday with the day ending at 04:00 is Sunday early morning, shown as "01:00 (next day)".
+ */
+export function periodNextDay(
+  period: OpeningPeriod,
+  businessDayEndsAt: TimeOfDay,
+): { opens: boolean; closes: boolean } {
+  const opens = minutesOfDay(period.opensAt) < minutesOfDay(businessDayEndsAt);
+  return { opens, closes: opens || isOvernight(period) };
+}
+
 function invalidHours(message: string, period: OpeningPeriod & { weekday?: Weekday }): never {
   throw new DomainError('INVALID_HOURS', message, { period });
 }

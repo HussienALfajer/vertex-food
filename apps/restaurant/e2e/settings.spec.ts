@@ -136,6 +136,65 @@ test.describe('single-branch restaurant', () => {
     expect(api.exceptions.get(only.id)).toMatchObject([{ closed: true, note: 'عطلة' }]);
     await screenshot(page, testInfo, 'settings-hours');
   });
+
+  test('marks an early-morning period as the next day, on the previous business day', async ({
+    page,
+  }) => {
+    const only = completeBranch();
+    await mockApi(page, {
+      tenant: active(),
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('link', { name: 'أوقات العمل' }).click();
+    // Saturday 01:00–03:00 with the day ending at 04:00: Sunday early morning, Saturday's day.
+    await page.getByLabel('السبت: بداية الفترة 1').fill('01:00');
+    await page.getByLabel('السبت: نهاية الفترة 1').fill('03:00');
+    await page.getByLabel('السبت: نهاية الفترة 1').blur();
+    const saturday = page.getByRole('listitem').filter({ hasText: 'السبت' }).first();
+    await expect(saturday.getByText('(اليوم التالي)')).toHaveCount(1);
+    await page.getByRole('button', { name: 'حفظ التغييرات' }).click();
+    await expect(page.getByText('تم الحفظ')).toBeVisible();
+  });
+
+  test('reloads an exception changed by another editor with its values, never overwriting them', async ({
+    page,
+  }) => {
+    const only = completeBranch();
+    const exception = {
+      id: '0199f000-0000-7000-8000-0000000e0001',
+      branchId: only.id,
+      date: '2026-12-31',
+      closed: true,
+      periods: [],
+      note: 'عطلة',
+      createdAt: '2026-10-19T08:00:00.000Z',
+      updatedAt: '2026-10-19T08:00:00.000Z',
+    };
+    const api = await mockApi(page, {
+      tenant: active(),
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+      exceptions: { [only.id]: [exception] },
+    });
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('link', { name: 'أوقات العمل' }).click();
+    await page.getByRole('button', { name: /^تعديل / }).click();
+    // Another device renames the day while this editor is open.
+    api.editBehind((state) => {
+      state.exceptions.set(only.id, [{ ...exception, note: 'جرد', updatedAt: state.now() }]);
+    });
+    await page.getByLabel('ملاحظة (اختياري)').fill('صيانة');
+    await page.getByRole('button', { name: 'حفظ', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'غيّر شخص آخر' })).toBeVisible();
+    // The editor shows the other editor's values, and saving now sends their version.
+    await expect(page.getByLabel('ملاحظة (اختياري)')).toHaveValue('جرد');
+    await page.getByLabel('ملاحظة (اختياري)').fill('صيانة');
+    await page.getByRole('button', { name: 'حفظ', exact: true }).click();
+    await expect(page.getByText('صيانة', { exact: true })).toBeVisible();
+    expect(api.exceptions.get(only.id)).toMatchObject([{ note: 'صيانة' }]);
+  });
 });
 
 test.describe('multi-branch restaurant', () => {
