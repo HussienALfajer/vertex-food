@@ -93,7 +93,7 @@ async function completeBranch(owner: StaffActor, branchId: string) {
     cityId: AZAZ,
     addressDescription: 'قرب الساحة',
     location: { latitudeE7: 365_876_000, longitudeE7: 370_448_000 },
-    contactPhones: [{ phone: '0900 000 001', whatsapp: true }],
+    contactPhones: [{ phone: '+963900000001', whatsapp: true }],
     updatedAt: branch.updatedAt,
   });
   return tenancy.replaceHours(owner, branchId, {
