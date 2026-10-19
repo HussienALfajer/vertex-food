@@ -362,6 +362,22 @@ describe('status lifecycle', () => {
     expect(events).toHaveLength(2);
   });
 
+  it('lists a tenant in the console under the status in force, before the job writes it', async () => {
+    const { tenantId, detail } = await activeTenant();
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'non_payment' });
+    const list = (status: 'active' | 'suspended') =>
+      tenancy.listTenants({ page: 1, pageSize: 50, order: 'asc', status, q: detail.tenant.slug });
+    expect((await list('active')).items.map((t) => t.id)).toEqual([tenantId]);
+    await makeDue(tenantId);
+    const active = await list('active');
+    expect(active).toMatchObject({ items: [], total: 0 });
+    const suspended = await list('suspended');
+    expect(suspended.total).toBe(1);
+    expect(suspended.items).toEqual([
+      expect.objectContaining({ id: tenantId, status: 'suspended', branchCount: 1 }),
+    ]);
+  });
+
   it('cancels a scheduled change, and refuses to cancel when none is scheduled', async () => {
     const { tenantId } = await activeTenant();
     expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { cancelScheduled: true }))).toBe(

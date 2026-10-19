@@ -49,7 +49,21 @@ import {
   tenants,
   withTenant,
 } from '@vertex-food/db';
-import { and, asc, count, desc, eq, exists, gte, ilike, isNull, or, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  gte,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
+
 import { v7 as uuidv7 } from 'uuid';
 import {
   type PlatformOperator,
@@ -580,9 +594,19 @@ export class TenancyService {
 
   // The console and the CLI.
 
+  /**
+   * The console's list. The status filter is on the status in force (rule 7), as the list shows
+   * it: a suspension the job has not written yet already counts as suspended. Slugs come in the
+   * same query; branch counts take one count per tenant, inside its `withTenant` (RLS).
+   */
   async listTenants(query: ListConsoleTenantsQuery): Promise<ConsoleTenantPage> {
+    const now = new Date();
     const filters: SQL[] = [];
-    if (query.status) filters.push(eq(tenants.status, query.status));
+    if (query.status) {
+      filters.push(
+        sql`(case when ${tenants.scheduledStatus} is not null and ${tenants.scheduledStatusAt} <= ${now} then ${tenants.scheduledStatus} else ${tenants.status} end) = ${query.status}`,
+      );
+    }
     if (query.q) {
       const pattern = likePattern(query.q);
       const condition = or(
@@ -603,26 +627,27 @@ export class TenancyService {
     const sortColumn = query.sort === 'nameAr' ? tenants.nameAr : tenants.createdAt;
     const direction = query.order === 'desc' ? desc : asc;
     const rows = await this.db
-      .select()
+      .select({ tenant: tenants, slug: tenantSlugs.slug })
       .from(tenants)
+      .innerJoin(
+        tenantSlugs,
+        and(eq(tenantSlugs.subjectTenantId, tenants.id), eq(tenantSlugs.isPrimary, true)),
+      )
       .where(where)
       .orderBy(direction(sortColumn), direction(tenants.id))
       .limit(query.pageSize)
       .offset((query.page - 1) * query.pageSize);
     const [total] = await this.db.select({ total: count() }).from(tenants).where(where);
-    const now = new Date();
     const items = [];
-    for (const row of rows) {
-      items.push(
-        await withTenant(this.db, row.id, async (tx) =>
-          consoleTenantView(
-            row,
-            await primarySlug(tx, row.id),
-            (await activeBranches(tx)).length,
-            now,
-          ),
-        ),
-      );
+    for (const { tenant, slug } of rows) {
+      const branchCount = await withTenant(this.db, tenant.id, async (tx) => {
+        const [result] = await tx
+          .select({ branches: count() })
+          .from(branches)
+          .where(isNull(branches.archivedAt));
+        return result?.branches ?? 0;
+      });
+      items.push(consoleTenantView(tenant, slug, branchCount, now));
     }
     return { items, total: total?.total ?? 0, page: query.page, pageSize: query.pageSize };
   }
