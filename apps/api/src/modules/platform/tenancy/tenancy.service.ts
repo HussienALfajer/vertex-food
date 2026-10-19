@@ -23,9 +23,11 @@ import {
   type HourException,
   isScheduleDue,
   type ListConsoleTenantsQuery,
+  nextBusinessDayEnd,
   planTenantStatusChange,
   type ReplaceBranchCharges,
   type ReplaceBranchHours,
+  type ScheduledTenantStatus,
   type StoredFile,
   type Tenant,
   type TenantStatusRequest,
@@ -120,8 +122,7 @@ export class TenancyService {
   async updateTenant(actor: StaffActor, input: UpdateTenant): Promise<Tenant> {
     requirePermission(actor, 'tenant.profile.edit');
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
-      const row = await this.writableTenant(tx, actor.tenantId, now);
+      const { row, now } = await this.writableTenant(tx, actor.tenantId);
       assertCurrent(row, input.updatedAt);
       const [updated] = await tx
         .update(tenants)
@@ -161,8 +162,7 @@ export class TenancyService {
     // Decoded before the transaction: no lock is held while the image is encoded.
     const image = await encodeImage(purpose, upload);
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
-      const row = await this.writableTenant(tx, actor.tenantId, now);
+      const { row, now } = await this.writableTenant(tx, actor.tenantId);
       const previous = purpose === 'logo' ? row.logoFileId : row.coverFileId;
       const file = await this.files.store(tx, row.id, image);
       if (previous) await this.files.archive(tx, previous);
@@ -187,8 +187,7 @@ export class TenancyService {
   async removeImage(actor: StaffActor, purpose: FilePurpose): Promise<void> {
     requirePermission(actor, 'tenant.profile.edit');
     await withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
-      const row = await this.writableTenant(tx, actor.tenantId, now);
+      const { row, now } = await this.writableTenant(tx, actor.tenantId);
       const previous = purpose === 'logo' ? row.logoFileId : row.coverFileId;
       if (!previous) return;
       await this.files.archive(tx, previous);
@@ -211,8 +210,8 @@ export class TenancyService {
   async completeOnboarding(actor: StaffActor): Promise<Tenant> {
     requirePermission(actor, 'tenant.profile.edit');
     return withTenant(this.db, actor.tenantId, async (tx) => {
+      const row = await readTenant(tx, actor.tenantId, { lock: 'update' });
       const now = new Date();
-      const row = await readTenant(tx, actor.tenantId, { forUpdate: true });
       if (effectiveStatus(statusState(row), now) === 'closed') {
         throw new DomainError('TENANT_CLOSED', 'The tenant is closed');
       }
@@ -264,7 +263,7 @@ export class TenancyService {
       (key) => key !== 'updatedAt' && input[key] !== undefined,
     );
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
       if (changed.some((key) => (branchSettingsFields as readonly string[]).includes(key))) {
         requirePermission(actor, 'branch.settings.edit', branchId);
@@ -273,7 +272,7 @@ export class TenancyService {
         requirePermission(actor, 'branch.hours.edit', branchId);
       }
       if (changed.length === 0) requirePermission(actor, 'tenant.view', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
+      const now = writableAt(tenant);
       assertCurrent(row, input.updatedAt);
       const defaultCurrency = input.defaultCurrency ?? row.defaultCurrency;
       if (defaultCurrency !== row.defaultCurrency && row.currencyLockedAt) {
@@ -341,10 +340,11 @@ export class TenancyService {
   ): Promise<BranchHours> {
     validateWeeklyHours(input.periods, input.businessDayEndsAt);
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      // Locked for update: a changed business day end moves a scheduled change (rule 6).
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'update' });
       const row = await this.lockBranch(tx, branchId);
       requirePermission(actor, 'branch.hours.edit', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
+      const now = writableAt(tenant);
       assertCurrent(row, input.updatedAt);
       const previousEnd = timeOf(row.businessDayEndsAt);
       if (input.businessDayEndsAt !== previousEnd) {
@@ -388,6 +388,9 @@ export class TenancyService {
         branchId: row.id,
         part: 'hours',
       });
+      if (input.businessDayEndsAt !== previousEnd) {
+        await this.rescheduleStatusChange(tx, actor, tenant, row.id, now);
+      }
       return {
         businessDayEndsAt: input.businessDayEndsAt,
         periods: after,
@@ -402,10 +405,10 @@ export class TenancyService {
     input: CreateHourException,
   ): Promise<HourException> {
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
       requirePermission(actor, 'branch.hours.edit', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
+      const now = writableAt(tenant);
       const dayEnd = timeOf(row.businessDayEndsAt);
       assertNotPast(input.date, dayEnd, now);
       validateHourException(input, dayEnd);
@@ -446,11 +449,11 @@ export class TenancyService {
     input: UpdateHourException,
   ): Promise<HourException> {
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
       requirePermission(actor, 'branch.hours.edit', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
       const exception = await this.lockException(tx, row.id, exceptionId);
+      const now = writableAt(tenant);
       assertCurrent(exception, input.updatedAt);
       const dayEnd = timeOf(row.businessDayEndsAt);
       assertNotPast(exception.date, dayEnd, now);
@@ -483,11 +486,11 @@ export class TenancyService {
   /** Removing an exception archives it (rule 13); a past one is kept as it is. */
   async archiveHourException(actor: StaffActor, branchId: string, exceptionId: string) {
     await withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
       requirePermission(actor, 'branch.hours.edit', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
       const exception = await this.lockException(tx, row.id, exceptionId);
+      const now = writableAt(tenant);
       assertNotPast(exception.date, timeOf(row.businessDayEndsAt), now);
       await tx
         .update(branchHourExceptions)
@@ -512,10 +515,10 @@ export class TenancyService {
     input: ReplaceBranchCharges,
   ): Promise<BranchCharge[]> {
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date();
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
       requirePermission(actor, 'branch.settings.edit', branchId);
-      await this.writableTenant(tx, actor.tenantId, now, { lock: false });
+      const now = writableAt(tenant);
       assertCurrent(row, input.updatedAt);
       const existing = await this.currentCharges(tx, row.id);
       const result: BranchCharge[] = [];
@@ -674,8 +677,8 @@ export class TenancyService {
   ): Promise<ConsoleTenantDetail> {
     assertSlugAllowed(slug);
     return withTenant(this.db, tenantId, async (tx) => {
+      const row = await readTenant(tx, tenantId, { lock: 'update' });
       const now = new Date();
-      const row = await readTenant(tx, tenantId, { forUpdate: true });
       if (effectiveStatus(statusState(row), now) === 'closed') {
         throw new DomainError('TENANT_CLOSED', 'The tenant is closed');
       }
@@ -702,12 +705,9 @@ export class TenancyService {
     request: TenantStatusRequest,
   ): Promise<ConsoleTenantDetail> {
     return withTenant(this.db, tenantId, async (tx) => {
+      const locked = await readTenant(tx, tenantId, { lock: 'update' });
       const now = new Date();
-      const row = await this.applyDueSchedule(
-        tx,
-        await readTenant(tx, tenantId, { forUpdate: true }),
-        now,
-      );
+      const row = await this.applyDueSchedule(tx, locked, now);
       const note = request.note ?? null;
       if ('cancelScheduled' in request) {
         if (!row.scheduledStatus) {
@@ -791,7 +791,8 @@ export class TenancyService {
     input: CreateBranch,
   ): Promise<Branch> {
     return withTenant(this.db, tenantId, async (tx) => {
-      const row = await readTenant(tx, tenantId);
+      // Shared: a closure waits for the new branch, and the branch for a closure.
+      const row = await readTenant(tx, tenantId, { lock: 'share' });
       if (effectiveStatus(statusState(row), new Date()) === 'closed') {
         throw new DomainError('TENANT_CLOSED', 'The tenant is closed');
       }
@@ -807,7 +808,7 @@ export class TenancyService {
     note: string | undefined,
   ): Promise<Branch> {
     return withTenant(this.db, tenantId, async (tx) => {
-      await readTenant(tx, tenantId, { forUpdate: true });
+      await readTenant(tx, tenantId, { lock: 'update' });
       const [row] = await tx.select().from(branches).where(eq(branches.id, branchId)).for('update');
       if (!row) throw branchNotFound();
       if (row.archivedAt) return toBranch(row);
@@ -835,16 +836,13 @@ export class TenancyService {
 
   // Shared steps.
 
-  /** The tenant row (locked by default), refusing a write while suspended or closed (rules 8, 9). */
+  /** The tenant row locked for update, with the time of the write (`writableAt`). */
   private async writableTenant(
     tx: Transaction,
     tenantId: string,
-    now: Date,
-    options: { lock?: boolean } = {},
-  ): Promise<TenantRow> {
-    const row = await readTenant(tx, tenantId, { forUpdate: options.lock ?? true });
-    assertTenantWritable(effectiveStatus(statusState(row), now));
-    return row;
+  ): Promise<{ row: TenantRow; now: Date }> {
+    const row = await readTenant(tx, tenantId, { lock: 'update' });
+    return { row, now: writableAt(row) };
   }
 
   /** The branch locked for a change; archived branches are not changed. */
@@ -998,6 +996,45 @@ export class TenancyService {
     return updated;
   }
 
+  /**
+   * A branch's business day end changed while a suspension or closure is scheduled (rule 6, owner
+   * 2026-10-19): the change moves to the tenant's next business day end under the new ends,
+   * audited, with `tenant.status_scheduled.v1` again. The tenant row is locked for update and the
+   * branch already holds its new end; a schedule already due never reaches here (`writableAt`).
+   */
+  private async rescheduleStatusChange(
+    tx: Transaction,
+    actor: StaffActor,
+    tenant: TenantRow,
+    branchId: string,
+    now: Date,
+  ): Promise<void> {
+    const { scheduledStatus, scheduledStatusAt } = tenant;
+    if (!scheduledStatus || !scheduledStatusAt) return;
+    const dayEnds = (await activeBranches(tx)).map((branch) => timeOf(branch.businessDayEndsAt));
+    const at = nextBusinessDayEnd(now, dayEnds);
+    if (at.getTime() === scheduledStatusAt.getTime()) return;
+    await tx
+      .update(tenants)
+      .set({ scheduledStatusAt: at, updatedAt: nextUpdatedAt(tenant, now) })
+      .where(eq(tenants.id, tenant.id));
+    await audit(tx, tenant.id, actor, {
+      action: 'tenant.status_rescheduled',
+      entityType: 'tenant',
+      entityId: tenant.id,
+      details: {
+        status: scheduledStatus,
+        from: scheduledStatusAt.toISOString(),
+        to: at.toISOString(),
+        branchId,
+      },
+    });
+    await emit(tx, tenant.id, 'tenant.status_scheduled.v1', {
+      tenantId: tenant.id,
+      status: scheduledStatus as ScheduledTenantStatus,
+    });
+  }
+
   /** Sets a status now in force: clears any scheduled change, activation and closure dates. */
   private async writeStatus(
     tx: Transaction,
@@ -1054,6 +1091,18 @@ export class TenancyService {
       branches: branchRows.map(toBranch),
     };
   }
+}
+
+/**
+ * The time of a write, read after every lock it takes, once the status in force at that time lets
+ * the tenant write (rules 8, 9). Lock order of every tenancy write: the tenant row (`update` when
+ * it changes, `share` otherwise), then the branch, then the exception. A write that waited behind
+ * a status change, or past a scheduled suspension, is checked against the status when it proceeds.
+ */
+function writableAt(tenant: TenantRow): Date {
+  const now = new Date();
+  assertTenantWritable(effectiveStatus(statusState(tenant), now));
+  return now;
 }
 
 /** A business date before today's cannot be given an exception or changed (rule 13). */

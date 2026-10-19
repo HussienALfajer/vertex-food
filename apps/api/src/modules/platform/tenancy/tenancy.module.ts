@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AreasModule } from '../areas/index.js';
 import { FilesModule } from '../files/index.js';
-import { MapLinkResolver } from './map-link-resolver.js';
+import { httpsHop, lookupAll, MapLinkResolver } from './map-link-resolver.js';
 import { TenancyConsoleController } from './tenancy.console.controller.js';
 import { BranchesController, MapsController, TenantController } from './tenancy.controller.js';
 import { MAP_LINK_RESOLVER, TenancyService } from './tenancy.service.js';
@@ -14,7 +14,12 @@ import { MAP_LINK_RESOLVER, TenancyService } from './tenancy.service.js';
     TenancyService,
     {
       provide: MAP_LINK_RESOLVER,
-      useValue: new MapLinkResolver({ fetch: globalThis.fetch, timeoutMs: 5000, maxRedirects: 3 }),
+      useValue: new MapLinkResolver({
+        resolveHost: lookupAll,
+        request: httpsHop,
+        timeoutMs: 5000,
+        maxRedirects: 3,
+      }),
     },
   ],
   exports: [TenancyService],

@@ -18,6 +18,7 @@ import {
   type OnboardingBranch,
   onboardingCompleteness,
   ownerReadAccessEndsAt,
+  periodNextDay,
   planTenantStatusChange,
   replaceBranchChargesSchema,
   type TenantStatus,
@@ -342,6 +343,29 @@ describe('weekly hours', () => {
     expect(isOvernight({ opensAt: '10:00', closesAt: '23:00' })).toBe(false);
   });
 
+  it('keeps an early-morning period on the previous business date (rule 12, owner 2026-10-19)', () => {
+    // 01:00–03:00 under Saturday with the day ending at 04:00: Sunday early morning, Saturday's day.
+    const early = { opensAt: '01:00', closesAt: '03:00' };
+    expect(codeOf(() => validateWeeklyHours([day(1, '01:00', '03:00')], '04:00'))).toBeUndefined();
+    expect(periodNextDay(early, '04:00')).toEqual({ opens: true, closes: true });
+    expect(periodNextDay({ opensAt: '18:00', closesAt: '02:00' }, '04:00')).toEqual({
+      opens: false,
+      closes: true,
+    });
+    expect(periodNextDay({ opensAt: '10:00', closesAt: '23:00' }, '04:00')).toEqual({
+      opens: false,
+      closes: false,
+    });
+    // With the day ending at midnight, 01:00 is the calendar day's own morning.
+    expect(periodNextDay(early, '00:00')).toEqual({ opens: false, closes: false });
+    // It may share the day with an evening period that ends before it opens.
+    expect(
+      codeOf(() =>
+        validateWeeklyHours([day(1, '18:00', '00:30'), day(1, '01:00', '03:00')], '04:00'),
+      ),
+    ).toBeUndefined();
+  });
+
   it('accepts day ends on the hour or half hour between 00:00 and 08:00', () => {
     for (const end of ['00:00', '04:00', '04:30', '07:30', '08:00']) {
       expect(businessDayEndSchema.safeParse(end).success, end).toBe(true);
@@ -424,6 +448,18 @@ describe('isBranchOpenAt', () => {
     expect(isBranchOpenAt(branch, hours, [], '2026-10-23T21:30:00.000Z')).toBe(true);
     // Saturday at 01:00: closed.
     expect(isBranchOpenAt(branch, hours, [], '2026-10-23T22:00:00.000Z')).toBe(false);
+  });
+
+  it('opens an early-morning period on the previous day’s business date', () => {
+    // Saturday (1) 01:00–03:00: Sunday 2026-10-25 at 02:00 in Damascus is Saturday's day.
+    const early: WeeklyPeriod[] = [{ weekday: 1, opensAt: '01:00', closesAt: '03:00' }];
+    expect(isBranchOpenAt(branch, early, [], '2026-10-24T23:00:00.000Z')).toBe(true);
+    expect(businessDateOf('2026-10-24T23:00:00.000Z', '04:00')).toBe('2026-10-24');
+    // Saturday 2026-10-24 at 02:00 belongs to Friday: closed.
+    expect(isBranchOpenAt(branch, early, [], '2026-10-23T23:00:00.000Z')).toBe(false);
+    // A Saturday exception decides that early morning too.
+    const closed = [{ date: '2026-10-24', closed: true, periods: [] }];
+    expect(isBranchOpenAt(branch, early, closed, '2026-10-24T23:00:00.000Z')).toBe(false);
   });
 
   it('uses the business date’s exception instead of the weekday', () => {

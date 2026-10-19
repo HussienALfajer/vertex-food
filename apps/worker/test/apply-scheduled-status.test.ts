@@ -5,6 +5,7 @@ import {
   eq,
   inArray,
   outboxEvents,
+  tenantSlugs,
   tenants,
   withTenant,
 } from '@vertex-food/db';
@@ -36,16 +37,22 @@ afterAll(async () => {
 async function scheduled(status: 'suspended' | 'closed', at: Date) {
   const id = uuidv7();
   const now = new Date(Date.now() - 86_400_000);
-  await app.insert(tenants).values({
-    id,
-    nameAr: 'مطعم تجريبي',
-    defaultCurrency: 'USD',
-    status: 'active',
-    onboardingCompletedAt: now,
-    activatedAt: now,
-    scheduledStatus: status,
-    scheduledStatusReason: 'non_payment',
-    scheduledStatusAt: at,
+  // One transaction: a tenant needs its primary slug by commit.
+  await app.transaction(async (tx) => {
+    await tx.insert(tenants).values({
+      id,
+      nameAr: 'مطعم تجريبي',
+      defaultCurrency: 'USD',
+      status: 'active',
+      onboardingCompletedAt: now,
+      activatedAt: now,
+      scheduledStatus: status,
+      scheduledStatusReason: 'non_payment',
+      scheduledStatusAt: at,
+    });
+    await tx
+      .insert(tenantSlugs)
+      .values({ slug: `w-${id.slice(-12)}`, subjectTenantId: id, isPrimary: true });
   });
   return id;
 }
@@ -114,15 +121,52 @@ describe('tenancy/apply-scheduled-status', () => {
     }
   });
 
-  it('leaves a tenant whose schedule changed after it was read', async () => {
+  it('leaves a tenant whose schedule changes while the run waits for its row', async () => {
     const past = new Date(Date.now() - 60_000);
     const id = await scheduled('suspended', past);
-    // The API replaced the change (edge case 3) before this run.
-    await app
-      .update(tenants)
-      .set({ scheduledStatus: 'closed', scheduledStatusAt: new Date(Date.now() + 3_600_000) })
-      .where(eq(tenants.id, id));
-    await job.run(new Date());
-    expect(await read(id)).toMatchObject({ status: 'active', scheduledStatus: 'closed' });
+    // A barrier: the API's transaction holds the row and replaces the change (edge case 3) with
+    // another reason at the same time; the run has read the old schedule and waits for the row.
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let holding = () => {};
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    const api = app.transaction(async (tx) => {
+      await tx.select().from(tenants).where(eq(tenants.id, id)).for('update');
+      holding();
+      await released;
+      await tx.update(tenants).set({ scheduledStatusReason: 'abuse' }).where(eq(tenants.id, id));
+    });
+    await held;
+    const run = job.run(new Date());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await api;
+    await run;
+    expect(await read(id)).toMatchObject({
+      status: 'active',
+      scheduledStatus: 'suspended',
+      scheduledStatusReason: 'abuse',
+    });
+    const entries = await withTenant(app, id, (tx) =>
+      tx.select().from(auditEntries).where(eq(auditEntries.entityId, id)),
+    );
+    expect(entries).toEqual([]);
+  });
+
+  it('applies a change once when two runs race for it', async () => {
+    const id = await scheduled('closed', new Date(Date.now() - 60_000));
+    const now = new Date();
+    await Promise.all([job.run(now), job.run(now), job.run(now)]);
+    expect(await read(id)).toMatchObject({ status: 'closed', scheduledStatus: null });
+    const [entries, events] = await withTenant(app, id, async (tx) => [
+      await tx.select().from(auditEntries).where(eq(auditEntries.entityId, id)),
+      await tx.select().from(outboxEvents).where(eq(outboxEvents.tenantId, id)),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(events).toHaveLength(1);
   });
 });

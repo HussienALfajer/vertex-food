@@ -244,7 +244,7 @@ describe.each(tables)('$name', (table) => {
         (c) =>
           c.table === table.name &&
           c.type === 'c' &&
-          c.definition === 'CHECK ((uuid_extract_version(id) = 7))',
+          c.definition === 'CHECK (((uuid_extract_version(id) = 7) IS TRUE))',
       ),
     ).toBe(true);
   });

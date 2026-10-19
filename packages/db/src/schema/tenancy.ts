@@ -1,4 +1,5 @@
-import { isNotNull, isNull, sql } from 'drizzle-orm';
+import { type AnyColumn, isNotNull, isNull, sql } from 'drizzle-orm';
+
 import {
   boolean,
   check,
@@ -29,6 +30,18 @@ import { files } from './files.js';
 
 // Currency codes of `currencies` in @vertex-food/contracts (ADR 0014).
 const CURRENCIES = sql.raw(`'USD', 'TRY', 'SYP'`);
+
+// The shapes the contracts check, held by the database too (S01 audit A08): another writer (the
+// CLI, a later module, a hand-written fix) cannot store what the API would refuse.
+
+/** Latin names: trimmed, Latin letters, digits, spaces and `& ' . -` (`nameLatinSchema`). */
+const latinName = (column: AnyColumn, max: number, extra = '') =>
+  sql`char_length(${column}) between 2 and ${sql.raw(String(max))} and ${column} = btrim(${column}) and ${column} ~ ${sql.raw(`'^[A-Za-z0-9 &''.${extra}-]+$'`)}`;
+
+/** `HH:MM` wall-clock times: whole minutes, no seconds (`timeOfDaySchema`). */
+const wholeMinutes = (column: AnyColumn) => sql`extract(second from ${column}) = 0`;
+
+const TIME_PATTERN = '^([01][0-9]|2[0-3]):[0-5][0-9]$';
 
 /**
  * The tenant catalog (ADR 0004, spec S01): one row per restaurant. Platform scope, no RLS: its id
@@ -68,7 +81,7 @@ export const tenants = pgTable(
   (t) => [
     idIsUuidV7('tenants', t.id),
     check('tenants_name_ar', sql`char_length(${t.nameAr}) between 2 and 100`),
-    check('tenants_name_latin', sql`char_length(${t.nameLatin}) between 2 and 100`),
+    check('tenants_name_latin', latinName(t.nameLatin, 100)),
     check('tenants_default_currency', sql`${t.defaultCurrency} in (${CURRENCIES})`),
     check('tenants_status', sql`${t.status} in ('onboarding', 'active', 'suspended', 'closed')`),
     check(
@@ -181,7 +194,7 @@ export const branches = pgTable(
     unique('branches_tenant_code_unique').on(t.tenantId, t.code),
     uniqueIndex('branches_tenant_name_ar_idx').on(t.tenantId, t.nameAr).where(isNull(t.archivedAt)),
     check('branches_name_ar', sql`char_length(${t.nameAr}) between 2 and 100`),
-    check('branches_name_latin', sql`char_length(${t.nameLatin}) between 2 and 100`),
+    check('branches_name_latin', latinName(t.nameLatin, 100)),
     check('branches_code', sql`${t.code} ~ '^[a-z0-9-]{2,20}$'`),
     check(
       'branches_address_description',
@@ -191,13 +204,15 @@ export const branches = pgTable(
       'branches_location',
       sql`(${t.latitudeE7} is null) = (${t.longitudeE7} is null) and ${t.latitudeE7} between -900000000 and 900000000 and ${t.longitudeE7} between -1800000000 and 1800000000`,
     ),
+    // Up to three `{ phone, whatsapp }` with an E.164 phone, none twice (`contactPhonesSchema`).
     check(
       'branches_contact_phones',
-      sql`jsonb_typeof(${t.contactPhones}) = 'array' and jsonb_array_length(${t.contactPhones}) <= 3`,
+      sql`jsonb_typeof(${t.contactPhones}) = 'array' and jsonb_array_length(${t.contactPhones}) <= 3 and not jsonb_path_exists(${t.contactPhones}, ${sql.raw(`'lax $[*] ? (@.type() != "object" || !(@.phone.type() == "string") || !(@.phone like_regex "^[+][1-9][0-9]{7,14}$") || !(@.whatsapp.type() == "boolean"))'`)}) and coalesce(${t.contactPhones}->0->>'phone' <> ${t.contactPhones}->1->>'phone', true) and coalesce(${t.contactPhones}->0->>'phone' <> ${t.contactPhones}->2->>'phone', true) and coalesce(${t.contactPhones}->1->>'phone' <> ${t.contactPhones}->2->>'phone', true)`,
     ),
+    // Accepted currencies are distinct: as many as the known codes they contain.
     check(
       'branches_currencies',
-      sql`${t.defaultCurrency} in (${CURRENCIES}) and cardinality(${t.acceptedCurrencies}) between 1 and 3 and ${t.acceptedCurrencies} <@ array[${CURRENCIES}] and ${t.defaultCurrency} = any(${t.acceptedCurrencies})`,
+      sql`${t.defaultCurrency} in (${CURRENCIES}) and cardinality(${t.acceptedCurrencies}) between 1 and 3 and ${t.acceptedCurrencies} <@ array[${CURRENCIES}] and ${t.defaultCurrency} = any(${t.acceptedCurrencies}) and cardinality(${t.acceptedCurrencies}) = ('USD' = any(${t.acceptedCurrencies}))::int + ('TRY' = any(${t.acceptedCurrencies}))::int + ('SYP' = any(${t.acceptedCurrencies}))::int`,
     ),
     check(
       'branches_business_day_ends_at',
@@ -232,7 +247,10 @@ export const branchHours = pgTable(
       foreignColumns: [branches.tenantId, branches.id],
     }),
     check('branch_hours_weekday', sql`${t.weekday} between 1 and 7`),
-    check('branch_hours_period', sql`${t.opensAt} <> ${t.closesAt}`),
+    check(
+      'branch_hours_period',
+      sql`${t.opensAt} <> ${t.closesAt} and ${wholeMinutes(t.opensAt)} and ${wholeMinutes(t.closesAt)}`,
+    ),
     index('branch_hours_branch_idx').on(t.tenantId, t.branchId, t.weekday),
   ],
 );
@@ -264,7 +282,7 @@ export const branchHourExceptions = pgTable(
     }),
     check(
       'branch_hour_exceptions_periods',
-      sql`jsonb_typeof(${t.periods}) = 'array' and jsonb_array_length(${t.periods}) <= 2 and ${t.closed} = (jsonb_array_length(${t.periods}) = 0)`,
+      sql`jsonb_typeof(${t.periods}) = 'array' and jsonb_array_length(${t.periods}) <= 2 and ${t.closed} = (jsonb_array_length(${t.periods}) = 0) and not jsonb_path_exists(${t.periods}, ${sql.raw(`'lax $[*] ? (@.type() != "object" || !(@.opensAt.type() == "string") || !(@.closesAt.type() == "string") || !(@.opensAt like_regex "${TIME_PATTERN}") || !(@.closesAt like_regex "${TIME_PATTERN}") || @.opensAt == @.closesAt)'`)})`,
     ),
     check('branch_hour_exceptions_note', sql`char_length(${t.note}) between 1 and 100`),
     uniqueIndex('branch_hour_exceptions_date_idx')
@@ -309,7 +327,7 @@ export const branchCharges = pgTable(
     check('branch_charges_kind', sql`${t.kind} in ('tax', 'service')`),
     check('branch_charges_mode', sql`${t.mode} in ('inclusive', 'added')`),
     check('branch_charges_name_ar', sql`char_length(${t.nameAr}) between 2 and 40`),
-    check('branch_charges_name_latin', sql`char_length(${t.nameLatin}) between 2 and 40`),
+    check('branch_charges_name_latin', latinName(t.nameLatin, 40, '%')),
     check('branch_charges_rate_bp', sql`${t.rateBp} between 1 and 5000`),
     check(
       'branch_charges_order_types',
@@ -317,6 +335,10 @@ export const branchCharges = pgTable(
     ),
     check('branch_charges_position', sql`${t.position} between 1 and 3`),
     index('branch_charges_branch_idx').on(t.tenantId, t.branchId, t.position),
+    // One line per position among those in force: with positions 1–3, at most three (rule 15).
+    uniqueIndex('branch_charges_position_idx')
+      .on(t.tenantId, t.branchId, t.position)
+      .where(isNull(t.archivedAt)),
   ],
 );
 
