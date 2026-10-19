@@ -15,7 +15,7 @@ Two PRs, run one after the other (one front end only, so nothing runs in paralle
 - [x] api CLI: `tenant:create`, `tenant:list`, `tenant:set-slug`, `tenant:set-status`, `tenant:cancel-scheduled-status`, `branch:create`, `branch:archive`, `city:add`, `governorate:add`; CLI tests against the same rows and audit as the routes
 - [x] worker: queue core (pg-boss as `food_queue`, jobs as `food_jobs`) and `tenancy/apply-scheduled-status` every minute; tests: applies once, twice changes nothing
 - [x] wiring checklist, docs (`apps/api/CLAUDE.md`, `apps/worker/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table if a command is added), `wiring.md` patterns table
-- [ ] checks (`checker`: lint, typecheck, test, build, migration drift), `reviewer`, owner acceptance (endpoints and rules summary), PR with auto-merge
+- [x] checks (`checker`: lint, typecheck, test, build, migration drift), `reviewer`, owner acceptance (endpoints and rules summary, 2026-10-19), PR with auto-merge
 
 ### PR 2 — restaurant app (`feat/S01-restaurant-setup`)
 
