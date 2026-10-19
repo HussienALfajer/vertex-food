@@ -2,10 +2,10 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { vertexFoodWeb } from '@vertex-food/ui/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
-import { CONTENT_SECURITY_POLICY } from './electron/app-protocol.ts';
+import { defineConfig, loadEnv } from 'vite';
+import { connectOrigins, contentSecurityPolicy } from './electron/app-protocol.ts';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   // The router plugin must run before the React plugin. `vertexFoodWeb` serves `theme-init.js`
   // (the theme before the first paint) and preloads the first screen's fonts.
   plugins: [
@@ -19,7 +19,11 @@ export default defineConfig({
   preview: {
     port: 4273,
     strictPort: true,
-    headers: { 'Content-Security-Policy': CONTENT_SECURITY_POLICY },
+    headers: {
+      'Content-Security-Policy': contentSecurityPolicy(
+        connectOrigins({ ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env }),
+      ),
+    },
   },
   build: { outDir: 'dist/renderer', emptyOutDir: true },
-});
+}));

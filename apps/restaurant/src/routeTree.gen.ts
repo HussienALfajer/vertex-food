@@ -10,33 +10,104 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SettingsRestaurantRouteImport } from './routes/settings/restaurant'
+import { Route as SettingsBranchesIndexRouteImport } from './routes/settings/branches/index'
+import { Route as SettingsBranchesBranchIdIndexRouteImport } from './routes/settings/branches/$branchId/index'
+import { Route as SettingsBranchesBranchIdHoursRouteImport } from './routes/settings/branches/$branchId/hours'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRestaurantRoute = SettingsRestaurantRouteImport.update({
+  id: '/settings/restaurant',
+  path: '/settings/restaurant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsBranchesIndexRoute = SettingsBranchesIndexRouteImport.update({
+  id: '/settings/branches/',
+  path: '/settings/branches/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsBranchesBranchIdIndexRoute =
+  SettingsBranchesBranchIdIndexRouteImport.update({
+    id: '/settings/branches/$branchId/',
+    path: '/settings/branches/$branchId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SettingsBranchesBranchIdHoursRoute =
+  SettingsBranchesBranchIdHoursRouteImport.update({
+    id: '/settings/branches/$branchId/hours',
+    path: '/settings/branches/$branchId/hours',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/setup': typeof SetupRoute
+  '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
+  '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/setup': typeof SetupRoute
+  '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/branches': typeof SettingsBranchesIndexRoute
+  '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
+  '/settings/branches/$branchId': typeof SettingsBranchesBranchIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/setup': typeof SetupRoute
+  '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
+  '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/setup'
+    | '/settings/restaurant'
+    | '/settings/branches/'
+    | '/settings/branches/$branchId/hours'
+    | '/settings/branches/$branchId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/setup'
+    | '/settings/restaurant'
+    | '/settings/branches'
+    | '/settings/branches/$branchId/hours'
+    | '/settings/branches/$branchId'
+  id:
+    | '__root__'
+    | '/'
+    | '/setup'
+    | '/settings/restaurant'
+    | '/settings/branches/'
+    | '/settings/branches/$branchId/hours'
+    | '/settings/branches/$branchId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SetupRoute: typeof SetupRoute
+  SettingsRestaurantRoute: typeof SettingsRestaurantRoute
+  SettingsBranchesIndexRoute: typeof SettingsBranchesIndexRoute
+  SettingsBranchesBranchIdHoursRoute: typeof SettingsBranchesBranchIdHoursRoute
+  SettingsBranchesBranchIdIndexRoute: typeof SettingsBranchesBranchIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +119,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/restaurant': {
+      id: '/settings/restaurant'
+      path: '/settings/restaurant'
+      fullPath: '/settings/restaurant'
+      preLoaderRoute: typeof SettingsRestaurantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/branches/': {
+      id: '/settings/branches/'
+      path: '/settings/branches'
+      fullPath: '/settings/branches/'
+      preLoaderRoute: typeof SettingsBranchesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/branches/$branchId/': {
+      id: '/settings/branches/$branchId/'
+      path: '/settings/branches/$branchId'
+      fullPath: '/settings/branches/$branchId/'
+      preLoaderRoute: typeof SettingsBranchesBranchIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/branches/$branchId/hours': {
+      id: '/settings/branches/$branchId/hours'
+      path: '/settings/branches/$branchId/hours'
+      fullPath: '/settings/branches/$branchId/hours'
+      preLoaderRoute: typeof SettingsBranchesBranchIdHoursRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SetupRoute: SetupRoute,
+  SettingsRestaurantRoute: SettingsRestaurantRoute,
+  SettingsBranchesIndexRoute: SettingsBranchesIndexRoute,
+  SettingsBranchesBranchIdHoursRoute: SettingsBranchesBranchIdHoursRoute,
+  SettingsBranchesBranchIdIndexRoute: SettingsBranchesBranchIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

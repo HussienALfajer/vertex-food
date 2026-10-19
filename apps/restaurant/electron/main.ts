@@ -1,6 +1,12 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, net, protocol, session } from 'electron';
-import { APP_ORIGIN, APP_SCHEME, CONTENT_SECURITY_POLICY, resolveAppFile } from './app-protocol.js';
+import {
+  APP_ORIGIN,
+  APP_SCHEME,
+  connectOrigins,
+  contentSecurityPolicy,
+  resolveAppFile,
+} from './app-protocol.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
 
 // The main process will own the local database, the sync client, the branch hub server and printing
@@ -10,6 +16,8 @@ import { devServerUrl, isAllowedNavigation } from './navigation.js';
 const rendererDir = fileURLToPath(new URL('../renderer/', import.meta.url));
 const devServer = devServerUrl(process.argv, app.isPackaged);
 const rendererOrigin = devServer ?? APP_ORIGIN;
+// The API's origin is read at start from the same variable Vite builds the renderer with.
+const contentSecurity = contentSecurityPolicy(connectOrigins(process.env));
 
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -22,7 +30,7 @@ function serveRenderer(): void {
     const response = await net.fetch(pathToFileURL(file).toString()).catch(() => null);
     if (!response?.ok) return new Response(null, { status: 404 });
     const headers = new Headers(response.headers);
-    headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+    headers.set('Content-Security-Policy', contentSecurity);
     headers.set('X-Content-Type-Options', 'nosniff');
     return new Response(response.body, { status: 200, headers });
   });
