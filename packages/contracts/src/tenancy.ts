@@ -536,6 +536,8 @@ export const branchChargeSchema = z
 
 export type BranchCharge = z.infer<typeof branchChargeSchema>;
 
+export const branchChargeListSchema = z.array(branchChargeSchema).meta({ id: 'BranchChargeList' });
+
 /** The lines in order; their position is their place in the list. */
 export const replaceBranchChargesSchema = z
   .object({
@@ -611,6 +613,8 @@ export const branchSchema = z
   .meta({ id: 'Branch' });
 
 export type Branch = z.infer<typeof branchSchema>;
+
+export const branchListSchema = z.array(branchSchema).meta({ id: 'BranchList' });
 
 export const branchDetailSchema = z
   .object({

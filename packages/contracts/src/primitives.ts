@@ -33,6 +33,9 @@ export const coordinatesSchema = z
 
 export type Coordinates = z.infer<typeof coordinatesSchema>;
 
+/** The answer of a route that answers nothing (`204 No Content`), for its `@SerializeOptions`. */
+export const noContentSchema = z.null().meta({ id: 'NoContent' });
+
 export const PAGE_SIZE_DEFAULT = 50;
 export const PAGE_SIZE_MAX = 100;
 

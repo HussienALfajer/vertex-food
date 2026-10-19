@@ -2,10 +2,13 @@ import { Controller, Get, Inject, Logger, SerializeOptions } from '@nestjs/commo
 import { DomainError, type HealthCheck, healthCheckSchema } from '@vertex-food/contracts';
 import { type Database, describeForLog } from '@vertex-food/db';
 import { sql } from 'drizzle-orm';
+import { NoFeature, Public } from '../access/access.decorators.js';
 import { DATABASE } from '../database/database.module.js';
 
 /** For the reverse proxy and uptime monitors: the API is up and reaches its database. */
 @Controller('health')
+@Public()
+@NoFeature()
 export class HealthCheckController {
   private readonly logger = new Logger('HealthCheck');
 

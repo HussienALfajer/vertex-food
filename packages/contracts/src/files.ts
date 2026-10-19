@@ -47,3 +47,11 @@ export const fileSchema = z
   .meta({ id: 'File' });
 
 export type StoredFile = z.infer<typeof fileSchema>;
+
+/**
+ * The answer of `GET /api/files/:id`: the stored image itself, with its stored media type (the
+ * OpenAPI document describes it as binary).
+ */
+export const fileBytesSchema = z
+  .string()
+  .meta({ id: 'FileBytes', contentMediaType: 'application/octet-stream' });

@@ -14,6 +14,7 @@ import {
   errorStatus,
 } from '@vertex-food/contracts';
 import { describeForLog } from '@vertex-food/db';
+import { z } from 'zod';
 
 /** The code of an HTTP error Nest or Express raised before a handler ran (no route, bad JSON). */
 function codeForStatus(status: number): ErrorCode {
@@ -53,7 +54,15 @@ function isExposedHttpError(error: unknown): error is { status: number; message:
 }
 
 export function toErrorResponse(error: unknown): ErrorResponse {
-  if (error instanceof DomainError) return { code: error.code, message: error.message };
+  if (error instanceof DomainError) {
+    return error.details
+      ? { code: error.code, message: error.message, details: error.details }
+      : { code: error.code, message: error.message };
+  }
+  // A request that fails its contract schema (Nest's standard-schema validation).
+  if (error instanceof z.ZodError) {
+    return { code: 'VALIDATION_FAILED', message: fixedMessage.VALIDATION_FAILED ?? '' };
+  }
   const http =
     error instanceof HttpException
       ? { status: error.getStatus(), message: error.message }

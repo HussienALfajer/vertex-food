@@ -8,6 +8,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/migrations/meta", "!**/*.gen.ts", "!docs", "!spikes"]
+    "includes": [
+      "**",
+      "!**/migrations/meta",
+      "!**/*.gen.ts",
+      "!docs",
+      "!spikes",
+      "!apps/api/openapi.json"
+    ]
   }
 }
