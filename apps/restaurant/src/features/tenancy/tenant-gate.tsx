@@ -1,14 +1,13 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { Link, Navigate, useRouterState } from '@tanstack/react-router';
+import { Navigate, useRouterState } from '@tanstack/react-router';
 import type { Tenant } from '@vertex-food/contracts';
-import { Button } from '@vertex-food/ui';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OfflineNotice } from '../../components/offline-notice';
 import { QueryStates } from '../../components/query-states';
 import { StateCard } from '../../components/state-card';
 import { useStaffAccess } from '../../lib/staff-access';
-import { branchesQuery, tenantQuery } from './queries';
+import { tenantQuery } from './queries';
 import { StatusBanner } from './status-banner';
 import { onboardingView } from './tenant-status';
 
@@ -20,7 +19,8 @@ export function useTenant(): Tenant {
 /**
  * Every restaurant screen needs the tenant first. While it is onboarding, the owner is held at
  * the wizard until it is complete and other staff see "setup in progress" (rule 5); once active,
- * the wizard leads home. The status banner stays above every screen.
+ * the wizard leads home. The status banner stays above every screen; the sidebar's links are
+ * `restaurant-nav.tsx`.
  */
 export function TenantGate({ children }: { children: ReactNode }) {
   const tenant = useQuery(tenantQuery);
@@ -34,12 +34,10 @@ export function TenantGate({ children }: { children: ReactNode }) {
         if (view === 'redirect-to-setup') return <Navigate to="/setup" replace />;
         if (view === 'redirect-home') return <Navigate to="/" replace />;
         if (view === 'setup-in-progress') return <SetupInProgress />;
-        const inWizard = current.status === 'onboarding' && !current.onboardingCompletedAt;
         // The waiting screen at `/setup` says what the banner would.
         const waitingScreen = current.onboardingCompletedAt && pathname === '/setup';
         return (
           <div className="flex flex-col gap-6">
-            {!inWizard && <MainNav tenant={current} />}
             {!waitingScreen && <StatusBanner tenant={current} />}
             <OfflineNotice />
             {children}
@@ -59,47 +57,5 @@ function SetupInProgress() {
       title={t('setup.inProgress.title')}
       description={t('setup.inProgress.description')}
     />
-  );
-}
-
-/**
- * The restaurant's screens. A single-branch restaurant never sees the word "branch" (rule 17): its
- * working hours stand where the branch list would, and its branch settings sit in the
- * restaurant's settings.
- */
-function MainNav({ tenant }: { tenant: Tenant }) {
-  const { t } = useTranslation('restaurant');
-  const branches = useQuery(branchesQuery);
-  const [only] = branches.data ?? [];
-  const link = 'data-[status=active]:bg-muted data-[status=active]:font-bold';
-  return (
-    <nav aria-label={t('nav.label')} className="flex flex-wrap gap-1 border-b border-border pb-2">
-      <Button
-        variant="ghost"
-        className={link}
-        render={<Link to="/" activeOptions={{ exact: true }} />}
-      >
-        {t('nav.home')}
-      </Button>
-      <Button variant="ghost" className={link} render={<Link to="/settings/restaurant" />}>
-        {t('nav.restaurant')}
-      </Button>
-      {tenant.branchCount > 1 ? (
-        <Button variant="ghost" className={link} render={<Link to="/settings/branches" />}>
-          {t('nav.branches')}
-        </Button>
-      ) : (
-        only &&
-        branches.data?.length === 1 && (
-          <Button
-            variant="ghost"
-            className={link}
-            render={<Link to="/settings/branches/$branchId/hours" params={{ branchId: only.id }} />}
-          >
-            {t('nav.hours')}
-          </Button>
-        )
-      )}
-    </nav>
   );
 }

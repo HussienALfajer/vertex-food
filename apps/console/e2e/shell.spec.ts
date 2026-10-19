@@ -22,20 +22,25 @@ test.describe('console shell', () => {
     await expect(page).toHaveTitle('فيرتكس فود');
 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('لوحة فريق فيرتكس');
-    await expect(page.getByRole('banner')).toContainText('فيرتكس فود');
-    await expect(page.getByRole('banner')).toContainText('لوحة فيرتكس');
+    const sidebar = page.locator('[data-slot="sidebar"]');
+    await expect(sidebar).toContainText('فيرتكس فود');
+    await expect(sidebar).toContainText('لوحة فيرتكس');
+    await expect(sidebar.getByRole('link', { name: 'الرئيسية' })).toHaveAttribute(
+      'data-status',
+      'active',
+    );
     await expect(page.getByRole('contentinfo')).toHaveText('بدعم من فيرتكس فود');
 
-    // Right to left: the Vertex Food mark starts the header on the right, the product name follows
-    // it to the left, the theme button ends it on the left; the page's card shares the mark's edge.
-    const mark = await page.getByRole('banner').locator('svg').first().boundingBox();
-    const product = await page.getByRole('banner').getByText('فيرتكس فود').boundingBox();
+    // Right to left: the sidebar stands on the right of the content, the theme button ends the top
+    // bar on the left, and the page's card starts at the content's right edge.
+    const side = await sidebar.boundingBox();
+    const main = await page.locator('main').boundingBox();
     const toggle = await page.locator('[data-slot="theme-toggle"]').boundingBox();
     const card = await page.locator('[data-slot="card"]').first().boundingBox();
-    if (!(mark && product && toggle && card)) throw new Error('shell not laid out');
-    expect(product.x + product.width).toBeLessThanOrEqual(mark.x);
-    expect(toggle.x + toggle.width).toBeLessThanOrEqual(product.x);
-    expect(Math.abs(mark.x + mark.width - (card.x + card.width))).toBeLessThan(1);
+    if (!(side && main && toggle && card)) throw new Error('shell not laid out');
+    expect(main.x + main.width).toBeLessThanOrEqual(side.x + 1);
+    expect(toggle.x).toBeLessThan(main.x + main.width / 2);
+    expect(card.x + card.width).toBeLessThanOrEqual(side.x);
     // The device's color scheme applies before the first paint: the surface token is white in
     // light and green-900 in dark (packages/tokens).
     await expect(page.getByRole('banner')).toHaveCSS(
@@ -80,3 +85,41 @@ test.describe('console shell', () => {
     await screenshot(page, testInfo, 'not-found');
   });
 });
+
+/** The widths every screen is checked at (AGENTS.md, responsive): phone, tablet both ways, desktop. */
+const viewports = [
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'tablet', width: 820, height: 1180 },
+  { name: 'tablet-landscape', width: 1180, height: 820 },
+  { name: 'desktop', width: 1440, height: 900 },
+] as const;
+
+for (const viewport of viewports) {
+  test.describe(`console at ${viewport.name} width (${viewport.width}px)`, () => {
+    test.use({ viewport: { width: viewport.width, height: viewport.height } });
+    const wide = viewport.width >= 1024;
+
+    test('keeps the sidebar in reach without sideways scrolling', async ({ page }, testInfo) => {
+      await page.goto('/');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('لوحة فريق فيرتكس');
+      const menu = page.getByRole('button', { name: 'افتح القائمة' });
+      await expect(page.locator('aside [data-slot="sidebar"]')).toBeVisible({ visible: wide });
+      await expect(menu).toBeVisible({ visible: !wide });
+      // A string: this tsconfig has no DOM types.
+      const overflow = (await page.evaluate(
+        'document.documentElement.scrollWidth - document.documentElement.clientWidth',
+      )) as number;
+      expect(overflow, 'the page scrolls sideways').toBeLessThanOrEqual(0);
+      await screenshot(page, testInfo, `${viewport.name}-home`);
+
+      if (!wide) {
+        // The sheet holds the same links and closes once one is chosen.
+        await menu.click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await screenshot(page, testInfo, `${viewport.name}-menu`);
+        await page.getByRole('navigation').getByRole('link', { name: 'الرئيسية' }).click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+      }
+    });
+  });
+}
