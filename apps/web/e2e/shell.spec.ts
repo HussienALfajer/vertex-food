@@ -81,3 +81,29 @@ test.describe('web shell', () => {
     await screenshot(page, testInfo, 'not-found');
   });
 });
+
+/** The widths every page is checked at (AGENTS.md, responsive): phone, tablet both ways, desktop. */
+const viewports = [
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'tablet', width: 820, height: 1180 },
+  { name: 'tablet-landscape', width: 1180, height: 820 },
+  { name: 'desktop', width: 1440, height: 900 },
+] as const;
+
+for (const viewport of viewports) {
+  test.describe(`web at ${viewport.name} width (${viewport.width}px)`, () => {
+    test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+    test('lays out the page without sideways scrolling', async ({ page }, testInfo) => {
+      await page.goto('/');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByRole('contentinfo')).toBeVisible();
+      // A string: this tsconfig has no DOM types.
+      const overflow = (await page.evaluate(
+        'document.documentElement.scrollWidth - document.documentElement.clientWidth',
+      )) as number;
+      expect(overflow, 'the page scrolls sideways').toBeLessThanOrEqual(0);
+      await screenshot(page, testInfo, `${viewport.name}-home`);
+    });
+  });
+}

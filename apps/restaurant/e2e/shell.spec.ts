@@ -30,20 +30,25 @@ test.describe('restaurant shell', () => {
     await expect(page).toHaveTitle('فيرتكس فود');
 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
-    await expect(page.getByRole('banner')).toContainText('فيرتكس فود');
-    await expect(page.getByRole('banner')).toContainText('المطعم');
+    const sidebar = page.locator('[data-slot="sidebar"]');
+    await expect(sidebar).toContainText('فيرتكس فود');
+    await expect(sidebar).toContainText('المطعم');
+    await expect(sidebar.getByRole('link', { name: 'الرئيسية' })).toHaveAttribute(
+      'data-status',
+      'active',
+    );
     await expect(page.getByRole('contentinfo')).toHaveText('بدعم من فيرتكس فود');
 
-    // Right to left: the Vertex Food mark starts the header on the right, the product name follows
-    // it to the left, the theme button ends it on the left; the page's card shares the mark's edge.
-    const mark = await page.getByRole('banner').locator('svg').first().boundingBox();
-    const product = await page.getByRole('banner').getByText('فيرتكس فود').boundingBox();
+    // Right to left: the sidebar stands on the right of the content, the theme button ends the top
+    // bar on the left, and the page's card starts at the content's right edge.
+    const side = await sidebar.boundingBox();
+    const main = await page.locator('main').boundingBox();
     const toggle = await page.locator('[data-slot="theme-toggle"]').boundingBox();
     const card = await page.locator('[data-slot="card"]').first().boundingBox();
-    if (!(mark && product && toggle && card)) throw new Error('shell not laid out');
-    expect(product.x + product.width).toBeLessThanOrEqual(mark.x);
-    expect(toggle.x + toggle.width).toBeLessThanOrEqual(product.x);
-    expect(Math.abs(mark.x + mark.width - (card.x + card.width))).toBeLessThan(1);
+    if (!(side && main && toggle && card)) throw new Error('shell not laid out');
+    expect(main.x + main.width).toBeLessThanOrEqual(side.x + 1);
+    expect(toggle.x).toBeLessThan(main.x + main.width / 2);
+    expect(card.x + card.width).toBeLessThanOrEqual(side.x);
     // The device's color scheme applies before the first paint: the surface token is white in
     // light and green-900 in dark (packages/tokens).
     await expect(page.getByRole('banner')).toHaveCSS(

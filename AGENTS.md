@@ -64,6 +64,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 - **Customization (ADR 0010):** tenants change identity and settings only; no tenant CSS, HTML or logic.
 - **Audit; archive, don't delete (ADR 0016).**
 - **Arabic-first RTL UI:** logical CSS only, all text through i18n, Latin digits, design-system components and tokens only. "Powered by Vertex Food" is always visible on tenant-branded surfaces.
+- **Responsive on every screen size:** every screen, component and element built works on a phone (from 360 px), a tablet in both orientations and a desktop, with no sideways scrolling, nothing cut off and touch targets usable on touch screens. Mobile first: base classes for the phone, `sm:`/`md:`/`lg:` to widen. Back-office web apps (restaurant, console) use `AppLayout` from `packages/ui`: Vertex Hub's sidebar from 1024 px, a sheet behind the menu button below it. Every screen's E2E runs at the phone, tablet and desktop widths (`viewports` in each app's `e2e/`) and checks for sideways scrolling.
 - **Public repository:** no secrets and no real restaurant, customer, driver or phone data anywhere: synthetic data only.
 - **No Cloudflare** (blocked in Syria) (ADR 0015, 0017).
 
