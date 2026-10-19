@@ -8,6 +8,16 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | العميل / المطعم | tenant | The contracting restaurant or chain |
 | الفرع | branch | A place of a tenant that cooks and sells |
 | حالة المطعم | tenant status | `onboarding` (قيد الإعداد), `active` (نشط), `suspended` (معلّق), `closed` (مغلق) |
+| الاسم المختصر | slug | A tenant's Latin name in its web address `<slug>.<platform domain>`; old slugs stay aliases forever |
+| رمز الفرع | branch code | A branch's short Latin code, fixed at creation, used in QR links |
+| معالج الإعداد | onboarding wizard | The owner's steps that complete a new tenant before Vertex activates it |
+| وضع التدريب | training mode | POS work while a tenant is onboarding: orders left out of reports, the ledger and number ranges |
+| ساعات العمل | working hours | A branch's weekly opening periods, deciding when online orders are accepted |
+| استثناء الدوام | hours exception | A dated change to a branch's hours: closed, or special periods |
+| يوم العمل | business day | A branch's trading day, ending at its business day end (default 04:00), not at midnight |
+| بند الرسوم | charge line | A branch's tax or service charge: a rate, inclusive or added, for chosen order types |
+| المحافظة | governorate | A Syrian governorate in the platform list (for example Aleppo) |
+| المدينة | city | A city of a governorate in the platform list (for example Azaz) |
 | الموظف | staff member | A person with a role in a tenant |
 | الصلاحية | permission | A right granted through a role |
 | الجهاز | device | A registered restaurant PC or tablet |
