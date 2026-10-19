@@ -3,11 +3,11 @@
   "ui": "stream",
   "agentGuidance": false,
   "globalDependencies": [".node-version"],
-  "globalPassThroughEnv": ["CI"],
+  "globalPassThroughEnv": ["CI", "NEXT_TELEMETRY_DISABLED"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"]
@@ -22,6 +22,11 @@
         "DATABASE_QUEUE_URL",
         "DATABASE_SYNC_URL"
       ]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputs": []
     }
   }
 }

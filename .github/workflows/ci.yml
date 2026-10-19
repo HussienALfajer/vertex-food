@@ -8,6 +8,13 @@ on:
 permissions:
   contents: read
 
+env:
+  # No check launches Electron: typecheck, tests, the build and E2E (in Playwright's Chromium) need
+  # only its types.
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+  # Next.js sends no usage telemetry from CI.
+  NEXT_TELEMETRY_DISABLED: '1'
+
 # A new push to a pull request supersedes its running checks; runs on main always finish.
 concurrency:
   group: ci-${{ github.ref }}
@@ -16,6 +23,7 @@ concurrency:
 # Third-party actions are pinned to full commit SHAs (the tag in the comment); Dependabot proposes
 # updates (.github/dependabot.yml). The gate job names are the checks main will require: renaming
 # one means updating the branch protection too. Steps arrive with their first subject (.github/CLAUDE.md).
+# E2E runs the built web front ends in Playwright's Chromium and uploads their RTL screenshots.
 jobs:
   # Pull requests that change only Markdown skip the checks; the gate job below still reports, so
   # branch protection and auto-merge work.
@@ -135,11 +143,48 @@ jobs:
         run: |
           if [ -d .turbo/cache ] && [ "$(du -sm .turbo/cache | cut -f1)" -gt 1500 ]; then rm -rf .turbo/cache; fi
 
+  e2e:
+    name: E2E
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-${{ github.job }}-${{ github.sha }}
+          restore-keys: turbo-${{ github.job }}-
+      - name: Playwright browser
+        run: pnpm --filter @vertex-food/web exec playwright install --with-deps chromium
+      # Builds what each front end needs (turbo.json: test:e2e depends on build), then runs the
+      # restaurant renderer, the console and the web app, light and dark.
+      - run: pnpm test:e2e
+      - name: E2E screenshots and traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results
+          path: apps/*/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Keep the Turborepo cache small
+        if: always()
+        run: |
+          if [ -d .turbo/cache ] && [ "$(du -sm .turbo/cache | cut -f1)" -gt 1500 ]; then rm -rf .turbo/cache; fi
+
   # The check branch protection will require: it passes when every job behind it passed or was
   # skipped (documentation only), and fails otherwise.
   checks:
     name: Typecheck, lint, test, build
-    needs: [changes, static, test]
+    needs: [changes, static, test, e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -1,0 +1,4 @@
+{
+  "extends": "@vertex-food/config/tsconfig/expo.json",
+  "include": ["src", "app.config.ts"]
+}

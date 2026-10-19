@@ -30,6 +30,38 @@ describe('shared tsconfig', () => {
       moduleResolution: 'NodeNext',
     });
   });
+
+  it('react extends base and resolves modules as a bundler does, with the DOM and JSX', () => {
+    const config = readJson('tsconfig/react.json');
+    expect(config.extends).toBe('./base.json');
+    expect(config.compilerOptions).toMatchObject({
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      lib: ['ES2024', 'DOM', 'DOM.Iterable'],
+      jsx: 'react-jsx',
+      noEmit: true,
+    });
+  });
+
+  it('expo extends base and resolves modules as Metro does, with React Native first', () => {
+    const config = readJson('tsconfig/expo.json');
+    expect(config.extends).toBe('./base.json');
+    expect(config.compilerOptions).toMatchObject({
+      module: 'Preserve',
+      moduleResolution: 'Bundler',
+      customConditions: ['react-native'],
+      jsx: 'react-jsx',
+      noEmit: true,
+    });
+  });
+
+  it('nest extends node with the legacy decorators and no decorator metadata', () => {
+    const config = readJson('tsconfig/nest.json');
+    expect(config.extends).toBe('./node.json');
+    // Without emitted metadata, injection is explicit (@Inject(token)) and behaves the same in the
+    // build and under Vitest, whose transform may not emit it.
+    expect(config.compilerOptions).toEqual({ experimentalDecorators: true });
+  });
 });
 
 describe('shared biome config', () => {

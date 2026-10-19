@@ -1,0 +1,10 @@
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true }), react()],
+  server: { port: 5274, strictPort: true },
+  preview: { port: 4274, strictPort: true },
+  build: { outDir: 'dist', emptyOutDir: true },
+});

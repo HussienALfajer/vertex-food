@@ -6,6 +6,7 @@ Zod schemas and pure rules shared by every app and client (ADR 0002, ADR 0020). 
 - `src/<module>.ts` with `src/<module>.test.ts` next to it; `src/index.ts` re-exports every file.
 - `errors.ts`: stable error codes with their HTTP status, `errorResponseSchema`, `DomainError`. The pattern to copy for a schema: `errorResponseSchema`; for a module with rules: `money.ts`.
 - `money.ts`: currencies (USD, TRY, SYP with their exponents, published as `x-exponents` on `CurrencyCode`), `moneySchema`, `exchangeRateSchema`, arithmetic, conversion, parsing and formatting (ADR 0014).
+- `health-check.ts`: `healthCheckSchema` (`GET /api/health`: up and reaching the database) and `livenessSchema` (`GET /health` of the worker and the gateway).
 - `primitives.ts`: `idSchema` (UUIDv7), `instantSchema` (ISO 8601 UTC), `coordinatesSchema` (degrees × 10⁷), `listQuerySchema(sortKeys)` and `pageSchema(item)` for every list endpoint.
 - `json-schema.ts`: `contractJsonSchemas()`, every schema with an id as JSON Schema (draft 2020-12), for clients that do not run TypeScript (a Flutter or native app) and for the API's OpenAPI document.
 

@@ -1,6 +1,6 @@
 # Architecture
 
-The map of the system. Decisions and their reasons live in `docs/decisions/`; this file shows how the parts fit. Every path below arrives with its Phase 0 roadmap item; none exists yet.
+The map of the system. Decisions and their reasons live in `docs/decisions/`; this file shows how the parts fit. The apps exist as skeletons (shells with a health check or an RTL home screen) and `packages/config`, `contracts`, `db` and `i18n` exist; the other paths below arrive with their roadmap items.
 
 ## Layers (ADR 0001)
 
@@ -32,7 +32,7 @@ The map of the system. Decisions and their reasons live in `docs/decisions/`; th
 
 A module depends only on modules in its own layer or below, through their `index.ts` or their events.
 
-## Repository layout (planned)
+## Repository layout
 
 ```
 apps/
