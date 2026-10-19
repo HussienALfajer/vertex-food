@@ -27,6 +27,14 @@ Two PRs, run one after the other (one front end only, so nothing runs in paralle
 - [x] ROADMAP marks S01 done; docs
 - [x] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
+## S01 audit fixes (`fix/S01-audit`, `docs/audits/S01-audit.md`)
+
+- [x] Copy the audit into `docs/audits/S01-audit.md`; mark each finding's status
+- [x] Majors: A01 pinned DNS per hop, A02 lock order and clock after locks (barrier test), A03 exception editor version, A04 wizard commits per request, A05 partial-update validation, A06 44 px touch targets
+- [x] Minors A07–A21 (A07–A09 through `/db-migration`: `0004`, `0005`), A22 comment (confirm/undo deferred to the owner)
+- [x] Owner decisions: rule 16 wording, rule 12 clarified, rule 6 reschedule on a day end change (audited, tested), early-morning periods (contract tests, "(next day)" E2E)
+- [ ] Checks through `checker` (lint, typecheck, test with PostgreSQL, build, E2E of all five front ends, migration drift), `reviewer`, PR with auto-merge
+
 ## Follow-ups (not this spec)
 
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC

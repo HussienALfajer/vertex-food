@@ -467,13 +467,11 @@ describe('tenants and slugs', () => {
         .update(tenantSlugs)
         .set({ isPrimary: false })
         .where(eq(tenantSlugs.subjectTenantId, a.tenantId));
-      await tx
-        .insert(tenantSlugs)
-        .values({
-          slug: `n-${a.tenantId.slice(-12)}`,
-          subjectTenantId: a.tenantId,
-          isPrimary: true,
-        });
+      await tx.insert(tenantSlugs).values({
+        slug: `n-${a.tenantId.slice(-12)}`,
+        subjectTenantId: a.tenantId,
+        isPrimary: true,
+      });
     });
   });
 
