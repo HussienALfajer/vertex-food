@@ -13,8 +13,8 @@ Copied from Vertex Hub's identity and Vertex Shifa's `brand/`, `packages/tokens`
 - [x] `apps/restaurant`, `apps/console`, `apps/web`: shells on `packages/ui`; per-app logical-CSS tests replaced by the package convention test; E2E updated (theme toggle, light and dark)
 - [x] `apps/customer`, `apps/driver`: shells on `packages/ui-native`; web export and Playwright RTL screenshots (light and dark); E2E in CI
 - [x] Folder `CLAUDE.md` for each new package and every app touched; `AGENTS.md` commands, `docs/architecture.md`, `docs/ROADMAP.md`
-- [ ] Checks (lint, typecheck, test, build, E2E) through the `checker` subagent; RTL screenshots looked at
-- [ ] `reviewer` subagent; blocking findings fixed
+- [x] Checks (lint, typecheck, test, build, E2E) through the `checker` subagent; RTL screenshots looked at (the database tests of `packages/db` and `apps/api` run in CI: this worktree has no `.env`)
+- [x] `reviewer` subagent: no isolation, CSP or PoweredBy defects; its four test gaps closed (named colors, `!` and origin/bg/object utilities, the restaurant E2E under the Electron CSP, tokens pinned to the identity)
 - [ ] PR open with auto-merge, CI green
 
 ## Follow-ups (not this PR)
