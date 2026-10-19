@@ -70,7 +70,7 @@ docs/                 product, decisions, specs, roadmap, workflow
 | platform | entitlements | entitlement_overrides, resolved cache | ADR 0013 |
 | platform | config | branding_versions, custom_field_definitions | ADR 0010 |
 | platform | messaging | message_templates, messages, whatsapp_sessions, send_counters, push_tokens, opt_outs | ADR 0012 |
-| platform | files, audit, events, domains, sync, areas | files; audit_entries; outbox_events; domains; command_log, number_ranges; governorates, cities (areas below a city: S16, S23) | ADR 0015, 0016, 0008, 0021 |
+| platform | files, audit, events, domains, sync, areas | files; audit_entries, platform_audit_entries; outbox_events; domains; command_log, number_ranges; governorates, cities (areas below a city: S16, S23) | ADR 0015, 0016, 0008, 0021 |
 | food | menu | categories, items, variants, modifier_groups, modifiers, item_availability, prices, exchange_rates | ADR 0007, 0014 |
 | food | orders | orders, order_lines, order_adjustments, order_events (append-only) | ADR 0007 |
 | food | kitchen | stations, item_station_routes, kitchen_tickets, printers | ADR 0008 |
