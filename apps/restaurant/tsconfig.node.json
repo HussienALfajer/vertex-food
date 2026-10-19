@@ -1,14 +1,9 @@
 {
   "extends": "@vertex-food/config/tsconfig/node.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    // `@vertex-food/ui/vite` runs in Node as TypeScript: its imports name `.ts` files.
+    "allowImportingTsExtensions": true
   },
-  "include": [
-    "electron",
-    "test",
-    "e2e",
-    "vite.config.ts",
-    "vitest.config.ts",
-    "playwright.config.ts"
-  ]
+  "include": ["electron", "e2e", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }

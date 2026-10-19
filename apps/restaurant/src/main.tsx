@@ -1,4 +1,6 @@
 import { createRouter, RouterProvider } from '@tanstack/react-router';
+import { textDirection } from '@vertex-food/i18n';
+import { DirectionProvider } from '@vertex-food/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
@@ -30,7 +32,10 @@ createRoot(root, {
 }).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
-      <RouterProvider router={router} />
+      {/* Base UI reads the direction from this provider, not from <html dir> (keyboard, placement). */}
+      <DirectionProvider direction={textDirection}>
+        <RouterProvider router={router} />
+      </DirectionProvider>
     </I18nextProvider>
   </StrictMode>,
 );

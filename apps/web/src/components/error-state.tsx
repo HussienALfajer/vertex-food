@@ -1,4 +1,6 @@
+import { Button } from '@vertex-food/ui';
 import { i18n } from '../lib/i18n';
+import { StateCard } from './state-card';
 
 /**
  * The page of an unexpected error. It never shows or logs the error itself: its message may
@@ -7,12 +9,11 @@ import { i18n } from '../lib/i18n';
 export function ErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = i18n;
   return (
-    <section className="state" role="alert">
-      <h1 className="state-title">{t('errorTitle')}</h1>
-      <p className="state-description">{t('errorDescription')}</p>
-      <button type="button" className="button" onClick={onRetry}>
-        {t('retry')}
-      </button>
-    </section>
+    <StateCard
+      role="alert"
+      title={t('errorTitle')}
+      description={t('errorDescription')}
+      action={<Button onClick={onRetry}>{t('retry')}</Button>}
+    />
   );
 }

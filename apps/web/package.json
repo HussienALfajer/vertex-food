@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vertex-food/i18n": "workspace:*",
+    "@vertex-food/ui": "workspace:*",
     "i18next": "26.4.7",
     "next": "16.4.2",
     "react": "19.3.1",
@@ -20,10 +21,12 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vertex-food/config": "workspace:*",
+    "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "vitest": "5.0.5"
   }
