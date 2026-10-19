@@ -54,6 +54,8 @@ test.describe('restaurant shell', () => {
     const banner = page.getByRole('banner');
     const toDark = page.getByRole('button', { name: 'فعّل الوضع الداكن' });
     const toLight = page.getByRole('button', { name: 'فعّل الوضع الفاتح' });
+    // A server render (apps/web) names the light theme's button: wait for the device's theme.
+    await expect(testInfo.project.name === 'dark' ? toLight : toDark).toBeVisible();
     for (const [button, name] of [
       [toDark, 'dark'],
       [toLight, 'light'],
