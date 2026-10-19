@@ -165,7 +165,8 @@ jobs:
       - name: Playwright browser
         run: pnpm --filter @vertex-food/web exec playwright install --with-deps chromium
       # Builds what each front end needs (turbo.json: test:e2e depends on build), then runs the
-      # restaurant renderer, the console and the web app, light and dark.
+      # restaurant renderer, the console, the web app and the customer and driver web exports, light
+      # and dark.
       - run: pnpm test:e2e
       - name: E2E screenshots and traces
         if: ${{ !cancelled() }}

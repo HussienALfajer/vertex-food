@@ -9,10 +9,10 @@ Copied from Vertex Hub's identity and Vertex Shifa's `brand/`, `packages/tokens`
 - [x] `brand/`: identity, README, the FOOD logo (SVG variants, PNGs, favicon, customer and driver app icons)
 - [x] `packages/tokens`: palette, semantic roles light and dark, scales, tenant identity slots (ADR 0010); tests against the identity
 - [x] `packages/ui`: Tailwind v4 theme from the tokens, fonts, theme toggle and `theme-init.js`, the logo, `PoweredBy`, a minimal component set (button, card, badge, tooltip, icon button, page container and header, empty state); convention, theme, font and logo tests
-- [ ] `packages/ui-native`: theme provider from the tokens, theme toggle, button, card, logo mark, `PoweredBy`; convention and rule tests
+- [x] `packages/ui-native`: theme provider from the tokens, theme toggle, button, card, logo mark, `PoweredBy`; convention and rule tests
 - [x] `apps/restaurant`, `apps/console`, `apps/web`: shells on `packages/ui`; per-app logical-CSS tests replaced by the package convention test; E2E updated (theme toggle, light and dark)
-- [ ] `apps/customer`, `apps/driver`: shells on `packages/ui-native`; web export and Playwright RTL screenshots (light and dark); E2E in CI
-- [ ] Folder `CLAUDE.md` for each new package and every app touched; `AGENTS.md` commands, `docs/architecture.md`, `docs/ROADMAP.md`
+- [x] `apps/customer`, `apps/driver`: shells on `packages/ui-native`; web export and Playwright RTL screenshots (light and dark); E2E in CI
+- [x] Folder `CLAUDE.md` for each new package and every app touched; `AGENTS.md` commands, `docs/architecture.md`, `docs/ROADMAP.md`
 - [ ] Checks (lint, typecheck, test, build, E2E) through the `checker` subagent; RTL screenshots looked at
 - [ ] `reviewer` subagent; blocking findings fixed
 - [ ] PR open with auto-merge, CI green

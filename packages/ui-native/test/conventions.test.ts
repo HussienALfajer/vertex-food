@@ -1,13 +1,14 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { extname, join, relative } from 'node:path';
+import { extname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // Arabic-first RTL (ADR 0018, ADR 0020): styles use logical properties only, so the screens mirror
-// without per-direction rules. The rules copy apps/console's logical-CSS test for React Native
-// style objects and move to the packages/ui-native convention test with the design system.
+// without per-direction rules; colors come from the tokens. Applied to this package and the
+// customer and driver apps.
 
-const srcDir = fileURLToPath(new URL('../src/', import.meta.url));
+const root = fileURLToPath(new URL('../../../', import.meta.url));
+const sourceDirs = ['packages/ui-native/src', 'apps/customer/src', 'apps/driver/src'];
 
 const rules: [RegExp, string][] = [
   [
@@ -43,7 +44,10 @@ function violations(path: string): string[] {
     .flatMap((line, index) =>
       rules
         .filter(([pattern]) => pattern.test(line))
-        .map(([, hint]) => `${relative(srcDir, path)}:${index + 1} ${line.trim()} (${hint})`),
+        .map(
+          ([, hint]) =>
+            `${relative(root, path).split(sep).join('/')}:${index + 1} ${line.trim()} (${hint})`,
+        ),
     );
 }
 
@@ -80,14 +84,37 @@ describe('logical style rules', () => {
   });
 });
 
-describe('logical styles only', () => {
-  const sources = files(srcDir).filter((path) => ['.ts', '.tsx'].includes(extname(path)));
+describe('native UI conventions', () => {
+  const sources = sourceDirs
+    .flatMap((dir) => files(join(root, dir)))
+    .filter((path) => ['.ts', '.tsx'].includes(extname(path)) && !path.endsWith('.test.ts'));
 
   it('finds the components', () => {
-    expect(sources.some((path) => extname(path) === '.tsx')).toBe(true);
+    for (const dir of sourceDirs) {
+      const found = sources.filter((path) =>
+        relative(root, path).split(sep).join('/').startsWith(dir),
+      );
+      expect(
+        found.some((path) => extname(path) === '.tsx'),
+        dir,
+      ).toBe(true);
+    }
   });
 
   it('uses no physical style property', () => {
     expect(sources.flatMap((path) => violations(path))).toEqual([]);
+  });
+
+  it('keeps colors in tokens: no hex, rgb or hsl value in a component', () => {
+    const offenders = sources.flatMap((path) =>
+      readFileSync(path, 'utf8')
+        .split('\n')
+        .flatMap((line, i) =>
+          /['"`]#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(line)
+            ? [`${relative(root, path).split(sep).join('/')}:${i + 1}: ${line.trim()}`]
+            : [],
+        ),
+    );
+    expect(offenders).toEqual([]);
   });
 });
