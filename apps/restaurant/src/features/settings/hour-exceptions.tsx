@@ -212,6 +212,8 @@ function ExceptionEditor({
   const errorText = useErrorText();
   const cache = useSetupCache();
   const noteId = useId();
+  // Offline, the editor keeps its values but changes nothing (S01).
+  const online = useOnline();
   const [draft, setDraft] = useState<ExceptionDraft>(() => exceptionDraft(exception));
   const [checking, setChecking] = useState(false);
   const [notice, setNotice] = useState<Notice>();
@@ -266,13 +268,13 @@ function ExceptionEditor({
       aria-label={exception ? t('settings.exceptions.edit') : t('settings.exceptions.add')}
     >
       <FormFields>
-        <Field invalid={errors.date !== undefined} disabled={exception !== undefined}>
+        <Field invalid={errors.date !== undefined} disabled={exception !== undefined || !online}>
           <FieldLabel render={<span />}>{t('settings.exceptions.date')}</FieldLabel>
           <Select
             value={draft.date ?? null}
             onValueChange={(date) => date && setDraft((current) => ({ ...current, date }))}
             items={dates.map((date) => ({ value: date, label: formatDate(date) }))}
-            disabled={exception !== undefined}
+            disabled={exception !== undefined || !online}
           >
             <SelectTrigger aria-label={t('settings.exceptions.date')} className="sm:max-w-xs">
               <SelectValue placeholder={t('settings.exceptions.datePlaceholder')} />
@@ -291,6 +293,7 @@ function ExceptionEditor({
         <label className="flex items-center gap-2">
           <Checkbox
             checked={draft.closed}
+            disabled={!online}
             onCheckedChange={(closed) =>
               setDraft((current) => ({
                 ...current,
@@ -317,7 +320,7 @@ function ExceptionEditor({
                 number={index + 1}
                 period={period}
                 error={errors[`periods.${index}`]}
-                disabled={false}
+                disabled={!online}
                 onChange={(next) =>
                   setDraft((current) => ({
                     ...current,
@@ -337,6 +340,7 @@ function ExceptionEditor({
                 variant="ghost"
                 size="sm"
                 className="w-fit"
+                disabled={!online}
                 onClick={() =>
                   setDraft((current) => ({
                     ...current,
@@ -350,7 +354,7 @@ function ExceptionEditor({
             )}
           </FieldGroup>
         )}
-        <Field invalid={errors.note !== undefined}>
+        <Field invalid={errors.note !== undefined} disabled={!online}>
           <FieldLabel htmlFor={noteId}>{t('settings.exceptions.note')}</FieldLabel>
           <Input
             id={noteId}
@@ -364,7 +368,7 @@ function ExceptionEditor({
         </Field>
       </FormFields>
       <FormActions>
-        <Button type="submit" loading={save.isPending}>
+        <Button type="submit" loading={save.isPending} disabled={!online}>
           {t('settings.exceptions.save')}
         </Button>
         <Button variant="ghost" disabled={save.isPending} onClick={onDone}>

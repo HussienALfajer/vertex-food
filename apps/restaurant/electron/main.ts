@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, net, protocol, session } from 'electron';
 import {
   APP_ORIGIN,
   APP_SCHEME,
-  connectOrigins,
+  CONNECT_ORIGINS_FILE,
   contentSecurityPolicy,
+  readConnectOrigins,
   resolveAppFile,
 } from './app-protocol.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
@@ -16,8 +19,15 @@ import { devServerUrl, isAllowedNavigation } from './navigation.js';
 const rendererDir = fileURLToPath(new URL('../renderer/', import.meta.url));
 const devServer = devServerUrl(process.argv, app.isPackaged);
 const rendererOrigin = devServer ?? APP_ORIGIN;
-// The API's origin is read at start from the same variable Vite builds the renderer with.
-const contentSecurity = contentSecurityPolicy(connectOrigins(process.env));
+// The API's origin is the one the renderer was built with, written next to it by the build.
+function builtConnectOrigins(): string[] {
+  try {
+    return readConnectOrigins(readFileSync(join(rendererDir, CONNECT_ORIGINS_FILE), 'utf8'));
+  } catch {
+    return [];
+  }
+}
+const contentSecurity = contentSecurityPolicy(builtConnectOrigins());
 
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },

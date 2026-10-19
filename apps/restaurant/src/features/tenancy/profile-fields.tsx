@@ -55,6 +55,19 @@ export function profileErrors(draft: ProfileDraft): FieldErrors {
   return errors;
 }
 
+/**
+ * Whether the tenant read back after an image change holds the profile values the form started
+ * from. An image moves the tenant's `updatedAt` without returning it; the form may adopt the new
+ * one only when nothing else changed meanwhile (rule 16).
+ */
+export function sameProfile(base: Tenant, fresh: Tenant): boolean {
+  const a = profileDraft(base);
+  const b = profileDraft(fresh);
+  return (
+    a.nameAr === b.nameAr && a.nameLatin === b.nameLatin && a.defaultCurrency === b.defaultCurrency
+  );
+}
+
 export function profileInput(draft: ProfileDraft, updatedAt: string): UpdateTenant {
   return {
     nameAr: draft.nameAr.trim(),

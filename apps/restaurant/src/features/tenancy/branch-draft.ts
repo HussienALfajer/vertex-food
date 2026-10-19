@@ -460,3 +460,16 @@ export function exceptionInput(
     note: draft.note.trim() || null,
   };
 }
+
+/**
+ * Whether a branch read back after replacing its charge lines holds only that change: the same
+ * fields and hours as expected, with a newer `updatedAt` and the new lines. Anything else was
+ * changed by another editor in between, and adopting its `updatedAt` would hide that (rule 16).
+ */
+export function onlyChargesMoved(expected: BranchDetail, fresh: BranchDetail): boolean {
+  const fields = ({ updatedAt: _, ...rest }: BranchDetail['branch']) => JSON.stringify(rest);
+  return (
+    fields(expected.branch) === fields(fresh.branch) &&
+    JSON.stringify(expected.hours) === JSON.stringify(fresh.hours)
+  );
+}

@@ -68,7 +68,7 @@ test.describe('onboarding wizard', () => {
     await pin.fill(shortLink);
     await pin.press('Enter');
     await expect(pin).toHaveValue('36.587, 37.045');
-    await page.getByLabel('رقم التواصل 1', { exact: true }).fill('0944 000 001');
+    await page.getByLabel('رقم التواصل 1', { exact: true }).fill('0900 000 001');
     await page.getByRole('switch', { name: 'عليه واتساب' }).click();
     await page.getByRole('button', { name: 'إضافة رقم' }).click();
     await page.getByLabel('رقم التواصل 2', { exact: true }).fill('021 000 0001');
@@ -127,7 +127,7 @@ test.describe('onboarding wizard', () => {
     const review = page.getByRole('main');
     await expect(review).toContainText('Test Grill');
     await expect(review).toContainText('أعزاز، حلب');
-    await expect(review).toContainText('+963944000001');
+    await expect(review).toContainText('+963900000001');
     await expect(review).toContainText('الخميس: من 10:00 إلى 23:00');
     await expect(review).toContainText('الجمعة: من 13:00 إلى 01:00 (اليوم التالي)');
     await expect(review).toContainText('خدمة 10% تُضاف (داخل المطعم)');
@@ -158,7 +158,7 @@ test.describe('onboarding wizard', () => {
       cityId: areas.azaz,
       location: { latitudeE7: 365_870_000, longitudeE7: 370_450_000 },
       contactPhones: [
-        { phone: '+963944000001', whatsapp: true },
+        { phone: '+963900000001', whatsapp: true },
         { phone: '+963210000001', whatsapp: false },
       ],
       defaultCurrency: 'USD',

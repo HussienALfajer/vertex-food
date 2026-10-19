@@ -1,6 +1,11 @@
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { connectOrigins, contentSecurityPolicy, resolveAppFile } from './app-protocol.js';
+import {
+  connectOrigins,
+  contentSecurityPolicy,
+  readConnectOrigins,
+  resolveAppFile,
+} from './app-protocol.js';
 
 const root = resolve('/renderer');
 
@@ -78,5 +83,25 @@ describe('connectOrigins', () => {
       [],
     );
     expect(connectOrigins({ VITE_API_URL: 'file:///etc/passwd' })).toEqual([]);
+  });
+});
+
+describe('readConnectOrigins', () => {
+  it('reads the origins the renderer was built with', () => {
+    expect(readConnectOrigins('["https://api.example.test"]')).toEqual([
+      'https://api.example.test',
+    ]);
+    expect(readConnectOrigins('[]')).toEqual([]);
+  });
+
+  it('drops anything missing, malformed or wider than an origin', () => {
+    expect(readConnectOrigins(undefined)).toEqual([]);
+    expect(readConnectOrigins('not json')).toEqual([]);
+    expect(readConnectOrigins('{"origin":"https://api.example.test"}')).toEqual([]);
+    expect(
+      readConnectOrigins(
+        '["https://api.example.test/path", "http://api.example.test", "https://*.example.test", 7]',
+      ),
+    ).toEqual([]);
   });
 });

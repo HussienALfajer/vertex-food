@@ -19,6 +19,7 @@ import {
   moneyErrors,
   newCharge,
   normalizeTime,
+  onlyChargesMoved,
   parseRate,
 } from './branch-draft';
 
@@ -58,8 +59,8 @@ describe('location draft', () => {
     const draft = {
       ...locationDraft(branch),
       phones: [
-        { phone: '0944 000 001', whatsapp: true },
-        { phone: '+963944000001', whatsapp: false },
+        { phone: '0900 000 001', whatsapp: true },
+        { phone: '+963900000001', whatsapp: false },
         { phone: '12345', whatsapp: false },
       ],
     };
@@ -75,7 +76,7 @@ describe('location draft', () => {
       addressDescription: '  شارع السوق، قرب الجامع  ',
       location: { latitudeE7: 365_866_000, longitudeE7: 370_469_000 },
       phones: [
-        { phone: '0944 000 001', whatsapp: true },
+        { phone: '0900 000 001', whatsapp: true },
         { phone: '021 000 0001', whatsapp: true },
         { phone: '', whatsapp: false },
       ],
@@ -87,7 +88,7 @@ describe('location draft', () => {
       addressDescription: 'شارع السوق، قرب الجامع',
       location: draft.location,
       contactPhones: [
-        { phone: '+963944000001', whatsapp: true },
+        { phone: '+963900000001', whatsapp: true },
         { phone: '+963210000001', whatsapp: false },
       ],
     });
@@ -245,5 +246,22 @@ describe('exception draft (rule 13)', () => {
 
   it('needs a date', () => {
     expect(exceptionErrors(exceptionDraft(), '04:00')).toEqual({ date: 'exceptionDate' });
+  });
+});
+
+describe('reading a branch back after its charge lines', () => {
+  const detail = { branch, hours: [], exceptions: [], charges: [] };
+
+  it('accepts the newer updatedAt and lines of the change just made', () => {
+    const fresh = { ...detail, branch: { ...branch, updatedAt: '2026-10-19T10:00:00.000Z' } };
+    expect(onlyChargesMoved(detail, fresh)).toBe(true);
+  });
+
+  it('notices a change another editor made in between', () => {
+    const fresh = {
+      ...detail,
+      branch: { ...branch, addressDescription: 'عنوان آخر', updatedAt: '2026-10-19T10:00:00.000Z' },
+    };
+    expect(onlyChargesMoved(detail, fresh)).toBe(false);
   });
 });

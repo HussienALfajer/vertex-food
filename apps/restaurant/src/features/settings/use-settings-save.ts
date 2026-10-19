@@ -48,5 +48,7 @@ export function useSettingsSave<T>({
     busy: mutation.isPending,
     notice,
     clearNotice: () => setNotice(undefined),
+    /** Says the form now shows the record as another editor left it. */
+    showReloaded: () => setNotice({ tone: 'warning', text: t('states.conflictReloaded') }),
   };
 }

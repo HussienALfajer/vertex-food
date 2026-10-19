@@ -49,6 +49,31 @@ export function connectOrigins(env: Readonly<Record<string, string | undefined>>
 }
 
 /**
+ * The file the build writes next to the renderer with the origins of `connectOrigins`: the main
+ * process and the E2E's preview read the API origin the renderer was built with, never their own
+ * environment, so the policy and the code always name the same API.
+ */
+export const CONNECT_ORIGINS_FILE = 'connect-origins.json';
+
+/**
+ * The origins in `CONNECT_ORIGINS_FILE`, each checked again as `connectOrigins` would; anything
+ * malformed is dropped, leaving only the app itself.
+ */
+export function readConnectOrigins(text: string | undefined): string[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(text ?? '[]');
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (origin): origin is string =>
+      typeof origin === 'string' && connectOrigins({ [API_URL_VARIABLE]: origin })[0] === origin,
+  );
+}
+
+/**
  * The file under `rootDir` that answers `requestUrl`, or `null` when the URL is not the app's or
  * would leave `rootDir`. A path without an extension is a client route and gets `index.html`.
  */

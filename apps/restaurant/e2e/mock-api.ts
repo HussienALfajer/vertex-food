@@ -155,13 +155,13 @@ export function branch(overrides: Partial<Branch> = {}): Branch {
   };
 }
 
-/** A branch with everything onboarding needs; synthetic numbers in the `+963 944 000 …` range. */
+/** A branch with everything onboarding needs; synthetic numbers in the `+963 900 000 …` range. */
 export function completeBranch(overrides: Partial<Branch> = {}): Branch {
   return branch({
     cityId: areas.azaz,
     addressDescription: 'شارع السوق، قرب الجامع الكبير',
     location: { latitudeE7: 365_866_000, longitudeE7: 370_469_000 },
-    contactPhones: [{ phone: '+963944000001', whatsapp: true }],
+    contactPhones: [{ phone: '+963900000001', whatsapp: true }],
     ...overrides,
   });
 }

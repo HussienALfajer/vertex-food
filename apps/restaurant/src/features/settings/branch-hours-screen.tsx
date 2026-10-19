@@ -132,7 +132,8 @@ function WeeklyHoursSection({ tenant, detail }: { tenant: Tenant; detail: Branch
             draft={form.draft}
             onChange={form.setDraft}
             errors={errors}
-            disabled={!allowed}
+            // Offline, the last loaded values stay read-only (S01).
+            disabled={!allowed || !online}
           />
         </FormFields>
         <SaveActions

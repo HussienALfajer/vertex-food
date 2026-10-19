@@ -77,6 +77,24 @@ test.describe('single-branch restaurant', () => {
     await screenshot(page, testInfo, 'settings-conflict');
   });
 
+  test('saves both sections of the same branch one after the other', async ({ page }) => {
+    const only = completeBranch();
+    const api = await mockApi(page, { tenant: active(), branches: [only] });
+    await page.goto('/settings/restaurant');
+    await page.getByLabel('وصف العنوان').fill('شارع المدرسة، بجانب الصيدلية');
+    await page.getByRole('button', { name: 'إضافة بند' }).click();
+    await page.getByLabel('الاسم على الإيصال').fill('خدمة');
+    await page.getByLabel('النسبة (%)').fill('10');
+    // The charge lines move the branch's updatedAt; the address card saves after them anyway.
+    await page.getByRole('button', { name: 'حفظ التغييرات' }).nth(2).click();
+    await expect(page.getByRole('button', { name: 'حفظ التغييرات' }).nth(2)).toBeDisabled();
+    await page.getByRole('button', { name: 'حفظ التغييرات' }).nth(1).click();
+    await expect(page.getByRole('button', { name: 'حفظ التغييرات' }).nth(1)).toBeDisabled();
+    await expect(page.getByText('غيّر شخص آخر هذه البيانات')).toHaveCount(0);
+    expect(api.branches[0]?.addressDescription).toBe('شارع المدرسة، بجانب الصيدلية');
+    expect(api.charges.get(only.id)).toHaveLength(1);
+  });
+
   test('edits the weekly hours and the upcoming exceptions', async ({ page }, testInfo) => {
     const only = completeBranch();
     const api = await mockApi(page, {
@@ -185,6 +203,9 @@ test.describe('offline', () => {
     await expect(page.getByText('يلزم الاتصال بالإنترنت').first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'حفظ التغييرات' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'رفع شعار' })).toBeDisabled();
+    await expect(page.getByLabel('وصف العنوان')).toBeDisabled();
+    await expect(page.getByLabel('اسم المطعم بالعربية')).toBeDisabled();
+    await expect(page.getByLabel('رقم التواصل 1', { exact: true })).toBeDisabled();
     await expect(page.getByLabel('وصف العنوان')).toHaveValue('شارع السوق، قرب الجامع الكبير');
     await screenshot(page, testInfo, 'offline-settings');
     await context.setOffline(false);

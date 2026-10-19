@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { QueryStates } from '../../components/query-states';
 import { branchQuery } from '../tenancy/queries';
 import { useTenant } from '../tenancy/tenant-gate';
-import { BranchLocationSection, BranchMissing, BranchMoneySection } from './branch-sections';
+import { BranchSections } from './branch-sections';
 
 /**
  * `/settings/branches/:id` (multi-branch restaurants): the branch's address and pin, phones,
@@ -43,9 +43,7 @@ export function BranchSettingsScreen({ branchId }: { branchId: string }) {
                 </Button>
               }
             />
-            <BranchMissing tenant={tenant} branchId={branchId} />
-            <BranchLocationSection tenant={tenant} detail={loaded} />
-            <BranchMoneySection tenant={tenant} detail={loaded} />
+            <BranchSections tenant={tenant} detail={loaded} />
           </section>
         );
       }}

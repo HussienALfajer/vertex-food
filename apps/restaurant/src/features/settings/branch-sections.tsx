@@ -12,6 +12,7 @@ import {
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from '../../lib/api';
 import { useOnline } from '../../lib/online';
 import { can, useStaffAccess } from '../../lib/staff-access';
 import {
@@ -24,6 +25,7 @@ import {
   locationUpdate,
   moneyDraft,
   moneyErrors,
+  onlyChargesMoved,
 } from '../tenancy/branch-draft';
 import { LocationFields } from '../tenancy/location-fields';
 import { MoneyFields } from '../tenancy/money-fields';
@@ -51,33 +53,70 @@ export function BranchMissing({ tenant, branchId }: { tenant: Tenant; branchId: 
   );
 }
 
+type SectionProps = {
+  tenant: Tenant;
+  /** The branch as both sections last saw it; it moves only with their own writes. */
+  base: BranchDetail;
+  onSaved: (next: BranchDetail) => void;
+  /** Another editor changed the branch: reload it and start both sections from it (rule 16). */
+  onConflict: () => Promise<void>;
+};
+
+/**
+ * The branch's location and money sections. Both write the same branch row, so they share one
+ * base: a save advances it from its own answer, and a conflict in either restarts both from the
+ * branch as saved now, so neither ever sends an `updatedAt` it has not seen the values of.
+ */
+export function BranchSections({ tenant, detail }: { tenant: Tenant; detail: BranchDetail }) {
+  const { t } = useTranslation('restaurant');
+  const cache = useSetupCache();
+  const [base, setBase] = useState(detail);
+  const [generation, setGeneration] = useState(0);
+  const [reloaded, setReloaded] = useState(false);
+  const props: SectionProps = {
+    tenant,
+    base,
+    onSaved: (next) => {
+      setBase(next);
+      setReloaded(false);
+    },
+    onConflict: async () => {
+      const fresh = await cache.reloadBranch(detail.branch.id);
+      setBase(fresh);
+      setGeneration((current) => current + 1);
+      setReloaded(true);
+    },
+  };
+  return (
+    <>
+      <BranchMissing tenant={tenant} branchId={detail.branch.id} />
+      {reloaded && <Callout role="alert" tone="warning" title={t('states.conflictReloaded')} />}
+      <BranchLocationSection key={`location-${generation}`} {...props} />
+      <BranchMoneySection key={`money-${generation}`} {...props} />
+    </>
+  );
+}
+
 /**
  * Address, city, pin and phones. The owner edits all of them; a manager of the branch edits the
  * phones alone (`branch.hours.edit`); the others read.
  */
-export function BranchLocationSection({
-  tenant,
-  detail,
-}: {
-  tenant: Tenant;
-  detail: BranchDetail;
-}) {
+function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionProps) {
   const { t } = useTranslation('restaurant');
   const access = useStaffAccess();
   const online = useOnline();
   const cache = useSetupCache();
-  const branchId = detail.branch.id;
+  const branchId = base.branch.id;
   const writable = isTenantWritable(tenant);
   const settings = writable && can(access, 'branch.settings.edit', branchId);
   const phones = writable && can(access, 'branch.hours.edit', branchId);
-  const [base, setBase] = useState(detail.branch);
-  const form = useDraft(() => locationDraft(detail.branch));
+  const form = useDraft(() => locationDraft(base.branch));
   const [checking, setChecking] = useState(false);
   const errors = checking ? locationErrors(form.draft) : {};
 
   const save = useSettingsSave({
     save: async () => {
-      const update: UpdateBranch = locationUpdate(form.draft, base);
+      const update: UpdateBranch = locationUpdate(form.draft, base.branch);
       // Only what the member may change is sent (the API checks it again).
       if (!settings) {
         delete update.cityId;
@@ -88,15 +127,11 @@ export function BranchLocationSection({
       if (!changesSomething(update)) return;
       const saved = await updateBranch(branchId, update);
       cache.branchSaved(saved);
-      setBase(saved);
+      onSaved({ ...base, branch: saved });
       form.reset(locationDraft(saved));
       setChecking(false);
     },
-    reload: async () => {
-      const fresh = await cache.reloadBranch(branchId);
-      setBase(fresh.branch);
-      form.reset(locationDraft(fresh.branch));
-    },
+    reload: onConflict,
   });
 
   return (
@@ -120,8 +155,9 @@ export function BranchLocationSection({
             draft={form.draft}
             onChange={(patch) => form.setDraft((current) => ({ ...current, ...patch }))}
             errors={errors}
-            disabled={!settings}
-            phonesDisabled={!phones}
+            // Offline, the last loaded values stay read-only (S01).
+            disabled={!settings || !online}
+            phonesDisabled={!phones || !online}
           />
         </FormFields>
         <SaveActions
@@ -144,15 +180,14 @@ export function BranchLocationSection({
  * Currencies and charge lines (owner, `branch.settings.edit`): the default currency is disabled
  * with an explanation once locked (rule 11).
  */
-export function BranchMoneySection({ tenant, detail }: { tenant: Tenant; detail: BranchDetail }) {
+function BranchMoneySection({ tenant, base, onSaved, onConflict }: SectionProps) {
   const { t } = useTranslation('restaurant');
   const access = useStaffAccess();
   const online = useOnline();
   const cache = useSetupCache();
-  const branchId = detail.branch.id;
+  const branchId = base.branch.id;
   const allowed = isTenantWritable(tenant) && can(access, 'branch.settings.edit', branchId);
-  const [base, setBase] = useState(detail);
-  const form = useDraft(() => moneyDraft(detail.branch, detail.charges));
+  const form = useDraft(() => moneyDraft(base.branch, base.charges));
   const [checking, setChecking] = useState(false);
   const errors = checking ? moneyErrors(form.draft) : {};
 
@@ -164,25 +199,24 @@ export function BranchMoneySection({ tenant, detail }: { tenant: Tenant; detail:
         const branch = await updateBranch(branchId, update);
         cache.branchSaved(branch);
         current = { ...current, branch };
-        setBase(current);
+        onSaved(current);
       }
       if (chargesChanged(form.draft, current.charges)) {
         await replaceCharges(branchId, {
           lines: chargeLines(form.draft),
           updatedAt: current.branch.updatedAt,
         });
-        // The lines moved the branch's `updatedAt` without returning it.
-        current = await cache.reloadBranch(branchId);
-        setBase(current);
+        // The lines moved the branch's `updatedAt` without returning it: read it back, and treat
+        // anything else that changed meanwhile as a conflict.
+        const fresh = await cache.reloadBranch(branchId);
+        if (!onlyChargesMoved(current, fresh)) throw new ApiError('CONFLICT');
+        current = fresh;
+        onSaved(current);
       }
       form.reset(moneyDraft(current.branch, current.charges));
       setChecking(false);
     },
-    reload: async () => {
-      const fresh = await cache.reloadBranch(branchId);
-      setBase(fresh);
-      form.reset(moneyDraft(fresh.branch, fresh.charges));
-    },
+    reload: onConflict,
   });
 
   return (
@@ -206,7 +240,7 @@ export function BranchMoneySection({ tenant, detail }: { tenant: Tenant; detail:
             draft={form.draft}
             onChange={form.setDraft}
             errors={errors}
-            disabled={!allowed}
+            disabled={!allowed || !online}
             currencyLocked={base.branch.currencyLockedAt !== null}
           />
         </FormFields>

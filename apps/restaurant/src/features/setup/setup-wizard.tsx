@@ -30,6 +30,7 @@ import {
   locationErrors,
   locationUpdate,
   moneyErrors,
+  onlyChargesMoved,
   sameHours,
 } from '../tenancy/branch-draft';
 import { HoursFields } from '../tenancy/hours-fields';
@@ -42,6 +43,7 @@ import {
   profileDraft,
   profileErrors,
   profileInput,
+  sameProfile,
 } from '../tenancy/profile-fields';
 import {
   completeOnboarding,
@@ -81,7 +83,8 @@ export function SetupWizard({
 
   const [step, setStep] = useState<SetupStep>(initialStep);
   const profileForm = useDraft<ProfileDraft>(() => profileDraft(tenant));
-  const [profileBase, setProfileBase] = useState(tenant.updatedAt);
+  /** The tenant the profile's values started from; its `updatedAt` goes with the next save. */
+  const [profileBase, setProfileBase] = useState(tenant);
   /** The branches as last saved: the base of every update and of what counts as a change. */
   const [saved, setSaved] = useState(details);
   const branchForm = useDraft<BranchDrafts>(() => branchDrafts(details));
@@ -111,7 +114,7 @@ export function SetupWizard({
   async function reloadAll() {
     const tenantNow = await cache.reloadTenant();
     profileForm.reset(profileDraft(tenantNow));
-    setProfileBase(tenantNow.updatedAt);
+    setProfileBase(tenantNow);
     const fresh = await Promise.all(saved.map((detail) => cache.reloadBranch(detail.branch.id)));
     setSaved(fresh);
     branchForm.reset(branchDrafts(fresh));
@@ -155,8 +158,11 @@ export function SetupWizard({
         lines: chargeLines(draft.money),
         updatedAt: current.branch.updatedAt,
       });
-      // The lines moved the branch's `updatedAt` without returning it.
-      current = await cache.reloadBranch(branch.id);
+      // The lines moved the branch's `updatedAt` without returning it: read it back, and treat
+      // anything else that changed meanwhile as a conflict (rule 16).
+      const fresh = await cache.reloadBranch(branch.id);
+      if (!onlyChargesMoved(current, fresh)) throw new ApiError('CONFLICT');
+      current = fresh;
     }
     return current;
   }
@@ -167,9 +173,9 @@ export function SetupWizard({
       if (sent === 'restaurant') {
         const profile = profileForm.draft;
         if (profileForm.dirty || tenant.updatedAt === tenant.createdAt) {
-          const next = await updateTenant(profileInput(profile, profileBase));
+          const next = await updateTenant(profileInput(profile, profileBase.updatedAt));
           cache.tenantSaved(next);
-          setProfileBase(next.updatedAt);
+          setProfileBase(next);
         }
         profileForm.reset(profile);
         return;
@@ -231,7 +237,8 @@ export function SetupWizard({
   }
 
   const busy = save.isPending;
-  const disabled = !editable;
+  // Offline, the last loaded values stay read-only (S01).
+  const disabled = !editable || !online;
   const setBranch = (id: string, patch: (draft: BranchDrafts[string]) => BranchDrafts[string]) =>
     branchForm.setDraft((current) => {
       const draft = current[id];
@@ -262,7 +269,16 @@ export function SetupWizard({
             purpose={purpose}
             fileId={purpose === 'logo' ? tenant.logoFileId : tenant.coverFileId}
             disabled={disabled || !online}
-            onChanged={async () => setProfileBase((await cache.reloadTenant()).updatedAt)}
+            // An image moves the tenant's `updatedAt`: adopted only when the profile is still the
+            // one the step started from, otherwise the step shows the current one (rule 16).
+            onChanged={async () => {
+              const fresh = await cache.reloadTenant();
+              if (!sameProfile(profileBase, fresh)) {
+                profileForm.reset(profileDraft(fresh));
+                setNotice({ tone: 'warning', text: t('states.conflictReloaded') });
+              }
+              setProfileBase(fresh);
+            }}
           />
         ))}
       </>
