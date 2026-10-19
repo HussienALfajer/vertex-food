@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { contrast } from './contrast.js';
 import { palette } from './palette.js';
-import { fontSize, radius } from './scale.js';
+import { fontFamily, fontSize, fontWeight, motion, radius, space } from './scale.js';
 import { darkColors, lightColors } from './semantic.js';
 
 const identity = readFileSync(new URL('../../../brand/identity.md', import.meta.url), 'utf8');
@@ -68,7 +68,47 @@ describe('palette', () => {
   });
 });
 
+/** The roles of identity §2 "Semantic roles" and the tokens they set: [background, text] for a pair. */
+const identityRoles: Record<string, (keyof typeof lightColors)[]> = {
+  'App background': ['background'],
+  'Surface (cards, panels)': ['surface'],
+  Text: ['foreground'],
+  'Muted text': ['mutedForeground'],
+  Border: ['border'],
+  'Primary action': ['primary', 'primaryForeground'],
+  Accent: ['accent'],
+  'Accent as text': ['accentText'],
+  'Focus ring': ['ring'],
+};
+
+/** `| Role | light | dark |` rows: the palette steps each cell names, in order (`white` included). */
+function identityRoleTable(): Record<string, [string[], string[]]> {
+  const section = identity.slice(identity.indexOf('### Semantic roles'));
+  const table = section.slice(0, section.indexOf('\n\n', section.indexOf('|')));
+  const steps = (cell = '') =>
+    [...cell.matchAll(/\b(white|[a-z]+-\d+)\b/g)].map(([, name = '']) =>
+      name === 'white' ? palette.white : (paletteColors[name] ?? name),
+    );
+  return Object.fromEntries(
+    table.split('\n').map((line) => {
+      const [, role = '', light, dark] = line.split('|').map((cell) => cell.trim());
+      return [role, [steps(light), steps(dark)]];
+    }),
+  );
+}
+
 describe('semantic colors', () => {
+  it('give each role of the identity table its colors, light and dark', () => {
+    const table = identityRoleTable();
+    for (const [role, tokens] of Object.entries(identityRoles)) {
+      const [light, dark] = table[role] ?? [[], []];
+      tokens.forEach((token, i) => {
+        expect(lightColors[token], `${role} light`).toBe(light[i]);
+        expect(darkColors[token], `${role} dark`).toBe(dark[i]);
+      });
+    }
+  });
+
   it('use only palette colors', () => {
     const known = new Set([...Object.values(paletteColors), palette.white]);
     for (const [role, hex] of [...Object.entries(lightColors), ...Object.entries(darkColors)]) {
@@ -99,6 +139,19 @@ describe('scales', () => {
     }
     expect(identity).toContain(
       `sm ${radius.sm} (badges, chips), md ${radius.md} (buttons, inputs), lg ${radius.lg} (cards), xl ${radius.xl} (dialogs, sheets)`,
+    );
+  });
+
+  it('follow the identity font stack, weights, spacing grid and motion', () => {
+    const generic = new Set(['system-ui', 'sans-serif']);
+    const stack = fontFamily.map((name) => (generic.has(name) ? name : `"${name}"`)).join(', ');
+    expect(identity).toContain(`- Stack: \`${stack}\`.`);
+    expect(identity).toContain(
+      `- Weights: ${fontWeight.regular} body, ${fontWeight.medium} labels and table headers, ${fontWeight.bold} headings.`,
+    );
+    expect(identity).toContain(`4 px grid (${Object.values(space).join(', ')}).`);
+    expect(identity).toContain(
+      `Motion: ${motion.press} ms (hover, press), ${motion.popover} ms (menus, popovers), ${motion.dialog} ms (dialogs, sheets)`,
     );
   });
 });

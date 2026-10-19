@@ -11,8 +11,8 @@ The Vertex design system for the web front ends (restaurant, console, web; ADR 0
 - `src/tenant/tenant-style.ts`: `tenantStyle(identity)`, the `--tenant-accent` variables a restaurant-branded surface sets on its root (ADR 0010, identity §10); `theme.css` defaults them to the theme's primary.
 
 ## Rules the tests enforce (`src/conventions.test.ts`, `src/theme.test.ts`)
-- Over `packages/ui/src` and the `src/` of restaurant, console and web: logical directions only, in Tailwind classes (no `ml-`/`mr-`/`pl-`/`pr-`/`left-`/`right-`/`text-left`…), stylesheets (no `margin-left`, `width`, `top`…, no physical 3- or 4-value shorthands) and inline styles; `@apply` in stylesheets too; no `translateX`, and `translate-x-*` only as an `ltr:`/`rtl:` pair. This replaces the apps' own logical-CSS tests.
-- No hex, `rgb()`, `hsl()`, `oklch()` or `color-mix()` values outside `theme.css`.
+- Over `packages/ui/src` and the `src/` of restaurant, console and web: logical directions only, in Tailwind classes (no `ml-`/`mr-`/`pl-`/`pr-`/`left-`/`right-`/`text-left`/`origin-left`/`bg-right`…, with or without `!`), stylesheets (no `margin-left`, `width`, `top`…, no physical 3- or 4-value shorthands) and inline styles; `@apply` in stylesheets too; no `translateX`, and `translate-x-*` only as an `ltr:`/`rtl:` pair. This replaces the apps' own logical-CSS tests.
+- No hex, `rgb()`, `hsl()`, `oklch()` or `color-mix()` values outside `theme.css`, and no named color (`bg-[red]`, `color: black`, `fill="red"`).
 - None of the patterns in `brand/identity.md` §8: gradients, backdrop blur, italic, letter spacing, uppercase, monospace.
 - Tailwind's default palette, fonts, radii and shadows are reset: only brand tokens generate utilities.
 

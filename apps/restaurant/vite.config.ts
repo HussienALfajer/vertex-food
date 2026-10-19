@@ -3,6 +3,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { vertexFoodWeb } from '@vertex-food/ui/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { CONTENT_SECURITY_POLICY } from './electron/app-protocol.ts';
 
 export default defineConfig({
   // The router plugin must run before the React plugin. `vertexFoodWeb` serves `theme-init.js`
@@ -14,6 +15,11 @@ export default defineConfig({
     vertexFoodWeb(),
   ],
   server: { port: 5273, strictPort: true },
-  preview: { port: 4273, strictPort: true },
+  // The E2E runs the built renderer under the CSP Electron sends with every response.
+  preview: {
+    port: 4273,
+    strictPort: true,
+    headers: { 'Content-Security-Policy': CONTENT_SECURITY_POLICY },
+  },
   build: { outDir: 'dist/renderer', emptyOutDir: true },
 });

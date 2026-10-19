@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { compile } from '@tailwindcss/node';
-import { darkColors, fontSize, lightColors, palette, radius } from '@vertex-food/tokens';
+import {
+  darkColors,
+  fontFamily,
+  fontSize,
+  lightColors,
+  palette,
+  radius,
+} from '@vertex-food/tokens';
 import { describe, expect, it } from 'vitest';
 
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
@@ -74,6 +81,12 @@ describe('scales', () => {
     for (const [token, px] of Object.entries(radius)) {
       expect(theme, token).toContain(`--radius-${token}: ${px}px;`);
     }
+  });
+
+  it('use the font stack of packages/tokens', () => {
+    const generic = new Set(['system-ui', 'sans-serif']);
+    const stack = fontFamily.map((name) => (generic.has(name) ? name : `"${name}"`)).join(', ');
+    expect(theme).toContain(`--font-sans: ${stack};`);
   });
 });
 

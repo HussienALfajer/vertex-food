@@ -35,9 +35,12 @@ function violations(pattern: RegExp, only: (file: string) => boolean = () => tru
 const css = (file: string) => file.endsWith('.css');
 const script = (file: string) => !css(file);
 
-/** A utility class: preceded by a quote, space, backtick or variant colon; followed by a boundary. */
+/**
+ * A utility class: preceded by a quote, space, backtick or variant colon; followed by a boundary.
+ * Tailwind's important modifier (`!ml-2`, `ml-2!`) does not hide it.
+ */
 const utility = (body: string) =>
-  new RegExp(String.raw`(?<=["'${'`'}\s:])-?(?:${body})(?=[\s"'${'`'}]|$)`);
+  new RegExp(String.raw`(?<=["'${'`'}\s:])!?-?(?:${body})!?(?=[\s"'${'`'};]|$)`);
 
 const value = String.raw`[\w./[\]-]+`;
 
@@ -49,6 +52,7 @@ const physicalUtility = utility(
     `(?:border|rounded)-[lr](?:-${value})?`,
     `rounded-[tb][lr](?:-${value})?`,
     'float-(?:left|right)',
+    '(?:origin|bg|object)-(?:[a-z]+-)?(?:left|right)',
   ].join('|'),
 );
 
@@ -91,8 +95,24 @@ function unpairedTranslate(line: string): boolean {
     .some((token) => /(?:^|:)-?translate-x-/.test(token) && !/(?:^|:)(?:ltr|rtl):/.test(token));
 }
 
-/** A color written as a value instead of a token. */
-const colorValue = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|oklch\(|color-mix\(/;
+/** CSS named colors (`transparent` and `currentColor` are not colors of their own). */
+const named =
+  'black|white|red|green|blue|gr[ae]y|yellow|orange|purple|pink|brown|navy|teal|maroon|olive|lime|aqua|cyan|magenta|silver|gold|fuchsia|indigo|violet|beige|tan|coral|salmon|crimson';
+
+/**
+ * A color written as a value instead of a token: hex and color functions anywhere, a named color
+ * as a Tailwind arbitrary value (`bg-[red]`), a stylesheet or style-object value (`color: red`,
+ * `color: 'black'`) or an SVG attribute (`fill="red"`).
+ */
+const colorValue = new RegExp(
+  [
+    String.raw`#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|oklch\(|color-mix\(`,
+    String.raw`-\[(?:${named})\]`,
+    String.raw`(?:^|[\s;{,])(?:color|background(?:-color)?|backgroundColor|border(?:-[a-z]+)*-color|borderColor|fill|stroke|outline-color)\s*:\s*['"]?(?:${named})\b`,
+    String.raw`\b(?:fill|stroke|color)=["'{]+(?:${named})\b`,
+  ].join('|'),
+  'i',
+);
 
 const anyOf = (rules: [RegExp, string][]) =>
   new RegExp(rules.map(([pattern]) => `(?:${pattern.source})`).join('|'), 'm');
@@ -114,11 +134,39 @@ describe('UI conventions', () => {
     }
     expect(physicalUtility.test('className="ml-2"')).toBe(true);
     expect(physicalUtility.test('  @apply ml-2 text-left;')).toBe(true);
+    for (const sample of [
+      '"!ml-2"',
+      '"ml-2!"',
+      '"origin-top-right"',
+      '"bg-left"',
+      '"object-right"',
+    ]) {
+      expect(physicalUtility.test(sample), sample).toBe(true);
+    }
+    for (const sample of ['"ms-2"', '"origin-center"', '"bg-surface"', '"object-cover"']) {
+      expect(physicalUtility.test(sample), sample).toBe(false);
+    }
     expect(unpairedTranslate('className="data-checked:translate-x-4"')).toBe(true);
     expect(unpairedTranslate('className="-translate-x-1/2"')).toBe(true);
     expect(unpairedTranslate("'ltr:-translate-x-1/2 rtl:data-open:translate-x-1/2'")).toBe(false);
     expect(colorValue.test('color: hsl(10 20% 30%);')).toBe(true);
     expect(colorValue.test('background: color-mix(in oklch, red, blue);')).toBe(true);
+    for (const sample of [
+      'className="bg-[red]"',
+      'color: red;',
+      "style={{ color: 'black' }}",
+      '<path fill="red" />',
+    ]) {
+      expect(colorValue.test(sample), sample).toBe(true);
+    }
+    for (const sample of [
+      'className="bg-surface text-gold-700"',
+      'fill="currentColor"',
+      'border-color: transparent;',
+      'className="bg-[var(--tenant-accent)]"',
+    ]) {
+      expect(colorValue.test(sample), sample).toBe(false);
+    }
     const logical = ['margin-inline: auto;', 'inset-inline-start: 0;', 'max-inline-size: 40rem;'];
     expect(logical.filter((line) => anyOf(physicalCss).test(line))).toEqual([]);
   });

@@ -11,10 +11,20 @@ async function screenshot(page: Page, testInfo: TestInfo, name: string): Promise
 const surface = (scheme: string) => (scheme === 'dark' ? 'rgb(11, 45, 40)' : 'rgb(255, 255, 255)');
 
 test.describe('restaurant shell', () => {
+  // `vite preview` sends Electron's CSP (vite.config.ts): nothing the renderer loads may break it.
+  test.beforeEach(({ page }) => {
+    page.on('console', (message) => {
+      if (message.text().includes('Content Security Policy')) {
+        throw new Error(`CSP violation: ${message.text()}`);
+      }
+    });
+  });
+
   test('renders in Arabic, right to left, with Vertex Food always visible', async ({
     page,
   }, testInfo) => {
-    await page.goto('/');
+    const response = await page.goto('/');
+    expect(response?.headers()['content-security-policy']).toContain("script-src 'self'");
 
     const html = page.locator('html');
     await expect(html).toHaveAttribute('lang', 'ar');

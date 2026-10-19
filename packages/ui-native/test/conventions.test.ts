@@ -84,6 +84,36 @@ describe('logical style rules', () => {
   });
 });
 
+/** CSS named colors (`transparent` is not a color of its own). */
+const named =
+  'black|white|red|green|blue|gr[ae]y|yellow|orange|purple|pink|brown|navy|teal|maroon|olive|lime|aqua|cyan|magenta|silver|gold|fuchsia|indigo|violet|beige|tan|coral|salmon|crimson';
+
+/** A color written as a value: hex, a color function, or a named color as a string or attribute. */
+const colorLiteral = new RegExp(
+  String.raw`['"\`]#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|['"\`](?:${named})['"\`]|\b(?:fill|stroke|color)=["'{]+(?:${named})\b`,
+  'i',
+);
+
+describe('color rule', () => {
+  it('catches every color sample and allows tokens', () => {
+    for (const sample of [
+      "color: '#fff',",
+      "backgroundColor: 'rgb(0 0 0)',",
+      "color: 'white',",
+      '<Path fill="red" />',
+    ]) {
+      expect(colorLiteral.test(sample), sample).toBe(true);
+    }
+    for (const sample of [
+      'color: colors.primary,',
+      "backgroundColor: 'transparent',",
+      'fill={color}',
+    ]) {
+      expect(colorLiteral.test(sample), sample).toBe(false);
+    }
+  });
+});
+
 describe('native UI conventions', () => {
   const sources = sourceDirs
     .flatMap((dir) => files(join(root, dir)))
@@ -110,7 +140,7 @@ describe('native UI conventions', () => {
       readFileSync(path, 'utf8')
         .split('\n')
         .flatMap((line, i) =>
-          /['"`]#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(line)
+          colorLiteral.test(line)
             ? [`${relative(root, path).split(sep).join('/')}:${i + 1}: ${line.trim()}`]
             : [],
         ),
