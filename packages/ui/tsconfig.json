@@ -1,0 +1,10 @@
+{
+  "extends": "@vertex-food/config/tsconfig/react.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // `src/vite.ts` runs in Node as TypeScript (Vite loads it with the config): its imports name
+    // `.ts` files.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"]
+}

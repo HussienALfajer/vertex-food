@@ -8,4 +8,8 @@ export const common = {
   errorDescription: 'لم تكتمل العملية. أعد المحاولة، وإن تكرر الخطأ فتواصل مع الدعم.',
   notFoundTitle: 'الصفحة غير موجودة',
   notFoundDescription: 'لا توجد صفحة بهذا العنوان.',
+  theme: {
+    toDark: 'فعّل الوضع الداكن',
+    toLight: 'فعّل الوضع الفاتح',
+  },
 };

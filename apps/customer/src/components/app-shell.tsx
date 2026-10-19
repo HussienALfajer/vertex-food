@@ -1,36 +1,66 @@
+import { PoweredBy, ThemeToggle, useTheme, VertexFoodMark } from '@vertex-food/ui-native';
+import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { space, useColors } from '../lib/theme';
 
-/** The frame of every screen. "Vertex Food" is always visible (ADR 0018). */
+/**
+ * The frame of every screen, in the Vertex Food identity (ADR 0010: the app's own frame never
+ * takes a restaurant's colors). "Powered by Vertex Food" is always visible (ADR 0018).
+ */
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const colors = useColors();
+  const { scheme, colors, space, fontSize, fontWeight } = useTheme();
   return (
     <SafeAreaView style={[styles.shell, { backgroundColor: colors.background }]}>
-      <View role="banner" style={[styles.header, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.product, { color: colors.text }]}>{t('productName')}</Text>
+      {/* The status bar follows the theme drawn, not only the system's setting. */}
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <View
+        role="banner"
+        style={[
+          styles.row,
+          {
+            gap: space[3],
+            paddingBlock: space[3],
+            paddingInline: space[6],
+            backgroundColor: colors.surface,
+          },
+        ]}
+      >
+        <VertexFoodMark color={colors.primary} width={28} />
+        <Text
+          style={[
+            styles.product,
+            {
+              color: colors.foreground,
+              fontSize: fontSize.lg.size,
+              lineHeight: fontSize.lg.lineHeight,
+              fontWeight: fontWeight.bold,
+            },
+          ]}
+        >
+          {t('productName')}
+        </Text>
+        <ThemeToggle labels={{ toDark: t('theme.toDark'), toLight: t('theme.toLight') }} />
       </View>
       <View style={[styles.divider, { backgroundColor: colors.border }]} />
-      <ScrollView role="main" contentContainerStyle={styles.main}>
+      <ScrollView role="main" contentContainerStyle={[styles.main, { padding: space[6] }]}>
         {children}
       </ScrollView>
+      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      <View role="contentinfo" style={{ paddingBlock: space[2], paddingInline: space[6] }}>
+        <PoweredBy label={t('poweredBy')} />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   shell: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: space[3],
-    paddingBlock: space[3],
-    paddingInline: space[6],
-  },
-  product: { fontSize: 18, fontWeight: '700' },
+  // The mark and the product name at the start, the theme button at the end.
+  row: { flexDirection: 'row', alignItems: 'center' },
+  product: { flex: 1 },
   divider: { height: StyleSheet.hairlineWidth },
-  main: { flexGrow: 1, padding: space[6] },
+  main: { flexGrow: 1 },
 });

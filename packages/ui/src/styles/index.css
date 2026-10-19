@@ -1,0 +1,12 @@
+/*
+ * The Vertex design system stylesheet. An app imports Tailwind, its typefaces, then this file:
+ *
+ *   @import "tailwindcss";
+ *   @import "@vertex-food/ui/fonts-desktop.css";   (restaurant, console; apps/web: fonts.css)
+ *   @import "@vertex-food/ui/styles.css";
+ */
+@import "./theme.css";
+@import "./base.css";
+
+/* Generate the utilities used by the components in this package. */
+@source "../";

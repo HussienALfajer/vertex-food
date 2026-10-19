@@ -1,6 +1,6 @@
 # Architecture
 
-The map of the system. Decisions and their reasons live in `docs/decisions/`; this file shows how the parts fit. The apps exist as skeletons (shells with a health check or an RTL home screen) and `packages/config`, `contracts`, `db` and `i18n` exist; the other paths below arrive with their roadmap items.
+The map of the system. Decisions and their reasons live in `docs/decisions/`; this file shows how the parts fit. The apps exist as skeletons (shells with a health check or an RTL home screen on the design system) and `brand/` and `packages/config`, `contracts`, `db`, `i18n`, `tokens`, `ui` and `ui-native` exist; the other paths below arrive with their roadmap items.
 
 ## Layers (ADR 0001)
 
@@ -49,8 +49,11 @@ packages/
   db/                 Drizzle schema, migrations, RLS policies, shared write paths
   sync/               command definitions, sync rules, hub protocol
   print/              receipt and ticket documents, Skia rendering to 1-bit pages, ESC/POS, network and spooler transports, print queue (ADR 0023)
-  tokens/ ui/ ui-native/ i18n/ config/
-brand/                identity, Vertex Food logo files
+  tokens/             design tokens (palette, semantic roles light and dark, scales, logo paths, restaurant identity slots), shared by web and native
+  ui/                 web design system: Tailwind v4 theme, fonts, Base UI components, theme toggle, PoweredBy (restaurant, console, web)
+  ui-native/          native design system: theme provider, toggle, components, mark (customer, driver)
+  i18n/ config/
+brand/                identity (brand/identity.md), the Vertex Food logo, favicon and app icons
 deploy/               server configuration and release scripts
 spikes/               throwaway spike code (A hub, B printing, C driver location)
 docs/                 product, decisions, specs, roadmap, workflow
