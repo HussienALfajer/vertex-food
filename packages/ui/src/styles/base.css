@@ -46,3 +46,16 @@
     transition-duration: 0.01ms;
   }
 }
+
+/*
+ * Base UI's own style elements are turned off (`CSPProvider disableStyleElements`): the desktop
+ * app's CSP allows stylesheets from 'self' only. This is the rule Base UI would inject for a
+ * select whose list scrolls without a scrollbar.
+ */
+.base-ui-disable-scrollbar {
+  scrollbar-width: none;
+}
+
+.base-ui-disable-scrollbar::-webkit-scrollbar {
+  display: none;
+}

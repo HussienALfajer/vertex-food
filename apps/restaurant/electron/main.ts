@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, net, protocol, session } from 'electron';
-import { APP_ORIGIN, APP_SCHEME, CONTENT_SECURITY_POLICY, resolveAppFile } from './app-protocol.js';
+import {
+  APP_ORIGIN,
+  APP_SCHEME,
+  CONNECT_ORIGINS_FILE,
+  contentSecurityPolicy,
+  readConnectOrigins,
+  resolveAppFile,
+} from './app-protocol.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
 
 // The main process will own the local database, the sync client, the branch hub server and printing
@@ -10,6 +19,15 @@ import { devServerUrl, isAllowedNavigation } from './navigation.js';
 const rendererDir = fileURLToPath(new URL('../renderer/', import.meta.url));
 const devServer = devServerUrl(process.argv, app.isPackaged);
 const rendererOrigin = devServer ?? APP_ORIGIN;
+// The API's origin is the one the renderer was built with, written next to it by the build.
+function builtConnectOrigins(): string[] {
+  try {
+    return readConnectOrigins(readFileSync(join(rendererDir, CONNECT_ORIGINS_FILE), 'utf8'));
+  } catch {
+    return [];
+  }
+}
+const contentSecurity = contentSecurityPolicy(builtConnectOrigins());
 
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -22,7 +40,7 @@ function serveRenderer(): void {
     const response = await net.fetch(pathToFileURL(file).toString()).catch(() => null);
     if (!response?.ok) return new Response(null, { status: 404 });
     const headers = new Headers(response.headers);
-    headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+    headers.set('Content-Security-Policy', contentSecurity);
     headers.set('X-Content-Type-Options', 'nosniff');
     return new Response(response.body, { status: 200, headers });
   });

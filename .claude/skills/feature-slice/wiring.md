@@ -41,7 +41,7 @@ Walk this list against the diff before a PR closes. Tick only what applies to th
 
 ## Patterns to copy
 
-From S01 (backend). For a need not listed here, Vertex Shifa's files (read only, through the `explorer` subagent).
+From S01. For a need not listed here, Vertex Shifa's files (read only, through the `explorer` subagent).
 
 | Need | File |
 |---|---|
@@ -52,3 +52,6 @@ From S01 (backend). For a need not listed here, Vertex Shifa's files (read only,
 | CLI commands | `apps/api/src/cli/commands.ts`, `apps/api/test/cli.test.ts` |
 | Scheduled worker job | `apps/worker/src/jobs/tenancy/apply-scheduled-status.job.ts`, `apps/worker/test/apply-scheduled-status.test.ts` |
 | Convention and architecture tests | `packages/db/test/conventions.test.ts`, `apps/api/test/architecture/rules.ts` |
+| Online-only restaurant screen (queries, drafts, forms, conflict reload, offline) | `apps/restaurant/src/features/tenancy/queries.ts`, `branch-draft.ts`, `apps/restaurant/src/features/settings/branch-sections.tsx` |
+| Wizard saving on Next | `apps/restaurant/src/features/setup/setup-wizard.tsx` |
+| E2E with a mocked API, offline, RTL screenshots | `apps/restaurant/e2e/mock-api.ts`, `apps/restaurant/e2e/settings.spec.ts` |

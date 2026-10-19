@@ -1,22 +1,20 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test';
-
-/** An RTL screenshot per color scheme, kept in test-results/ (uploaded by CI) and in the report. */
-async function screenshot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
-  const path = testInfo.outputPath(`${name}-${testInfo.project.name}.png`);
-  await page.screenshot({ path, fullPage: true });
-  await testInfo.attach(name, { path, contentType: 'image/png' });
-}
+import { expect, test } from '@playwright/test';
+import { completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
+import { failOnCspViolation, screenshot } from './screenshot.js';
 
 /** The surface token of a color scheme: white in light, green-900 in dark (packages/tokens). */
 const surface = (scheme: string) => (scheme === 'dark' ? 'rgb(11, 45, 40)' : 'rgb(255, 255, 255)');
 
 test.describe('restaurant shell', () => {
   // `vite preview` sends Electron's CSP (vite.config.ts): nothing the renderer loads may break it.
-  test.beforeEach(({ page }) => {
-    page.on('console', (message) => {
-      if (message.text().includes('Content Security Policy')) {
-        throw new Error(`CSP violation: ${message.text()}`);
-      }
+  // An active restaurant, so the home screen opens.
+  test.beforeEach(async ({ page }) => {
+    failOnCspViolation(page);
+    const only = completeBranch();
+    await mockApi(page, {
+      tenant: tenant({ status: 'active', onboardingCompletedAt: '2026-10-19T08:30:00.000Z' }),
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
     });
   });
 
