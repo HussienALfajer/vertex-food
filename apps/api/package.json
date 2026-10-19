@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start": "node --env-file-if-exists=../../.env dist/main.js"
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "cli": "node --env-file-if-exists=../../.env dist/cli/main.js"
   },
   "dependencies": {
     "@nestjs/common": "12.1.3",
