@@ -1,0 +1,7 @@
+{
+  "extends": "@vertex-food/config/tsconfig/react.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }]
+  },
+  "include": ["next-env.d.ts", "src", ".next/types/**/*.ts"]
+}

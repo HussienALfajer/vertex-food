@@ -36,5 +36,22 @@
         }
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/api/**", "apps/worker/**", "apps/whatsapp-gateway/**"],
+      "javascript": {
+        "parser": {
+          "unsafeParameterDecoratorsEnabled": true
+        }
+      },
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noStaticOnlyClass": "off"
+          }
+        }
+      }
+    }
+  ]
 }

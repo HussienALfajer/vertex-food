@@ -25,7 +25,7 @@ Read these on demand. For a feature, read its spec, the ADRs it lists, and its s
 
 ## Stack (ADR 0002, 0003)
 
-pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, `packages/config`, `packages/db`, `packages/contracts` and CI are scaffolded; other apps and packages arrive with their Phase 0 roadmap items.
+pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, the eight app skeletons, `packages/config`, `db`, `contracts`, `i18n` and CI are in place; `sync`, `print`, `tokens`, `ui` and `ui-native` arrive with their roadmap items.
 
 - `apps/api`, `apps/worker`, `apps/whatsapp-gateway` NestJS · `apps/restaurant` React + Vite in Electron, offline-first branch hub serving the kitchen display and waiter app · `apps/console` React + Vite · `apps/web` Next.js · `apps/customer`, `apps/driver` React Native + Expo
 - `packages/contracts` · `db` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
@@ -41,6 +41,8 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Typecheck | `pnpm typecheck` |
 | Test | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
 | Build | `pnpm build` |
+| E2E with RTL screenshots (restaurant, console, web; builds first) | `pnpm test:e2e` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
+| Run an app in development | `pnpm --filter @vertex-food/<app> dev` (`restaurant` in Electron: `dev:electron`); ports in each app's `CLAUDE.md` |
 | Local database (roles and `vertex_food`, from `.env`) | `pnpm db:setup-local` (`packages/db/CLAUDE.md`) |
 | Generate a migration from the schema | `pnpm db:generate` · custom SQL: `pnpm --filter @vertex-food/db exec drizzle-kit generate --custom --name=<name>` |
 | Apply migrations to the local database | `pnpm db:migrate` |

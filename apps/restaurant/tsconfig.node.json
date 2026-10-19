@@ -1,0 +1,14 @@
+{
+  "extends": "@vertex-food/config/tsconfig/node.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "electron",
+    "test",
+    "e2e",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
+}

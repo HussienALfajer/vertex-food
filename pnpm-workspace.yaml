@@ -12,3 +12,16 @@ allowBuilds:
   # Its install script only checks the platform binary, which the optional @esbuild/* package
   # already provides (used by Vitest through Vite).
   esbuild: false
+  # Downloads the Electron binary for apps/restaurant (dev:electron and start). CI typechecks, tests
+  # and builds without launching it and skips the download (ELECTRON_SKIP_BINARY_DOWNLOAD).
+  electron: true
+
+# Advisories `pnpm audit --prod` (CI) accepts, each with no patched version and reachable only through
+# build tools that Expo and React Native declare as runtime dependencies; none reaches an app bundle
+# or a server. Remove an entry when a patched version ships.
+auditConfig:
+  ignoreGhsas:
+    # node-forge signature verification: @expo/cli (developer and EAS machines, code signing of updates).
+    - GHSA-86w9-cpqp-85rv
+    # braces stack exhaustion on nested patterns: Metro's file map (bundling only; patterns are ours).
+    - GHSA-vfj7-8cjw-p6xm
