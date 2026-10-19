@@ -25,7 +25,7 @@ Two PRs, run one after the other (one front end only, so nothing runs in paralle
 - [x] status banners (scheduled, suspended, closed); i18n keys
 - [x] E2E with the API mocked: wizard steps, settings, banners, offline; RTL screenshots light and dark, looked at
 - [x] ROADMAP marks S01 done; docs
-- [ ] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
+- [x] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
 ## Follow-ups (not this spec)
 
