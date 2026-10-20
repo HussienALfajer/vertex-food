@@ -18,6 +18,7 @@ import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import type { StaffActor, SystemActor } from '../src/core/access/actor.js';
+import { toErrorResponse } from '../src/core/errors/error.filter.js';
 import { listRoutes } from '../src/core/routes.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
@@ -774,4 +775,48 @@ describe('the console list', () => {
     // A typed % matches itself, not everything.
     expect(none.items).toEqual([]);
   });
+});
+
+describe('database deadlines', () => {
+  it('ends a write waiting on a held row in time, retryable, with nothing written', async () => {
+    const { tenantId, owner, branchIds } = await newTenant();
+    const branchId = branchIds[0] ?? '';
+    const { branch } = await tenancy.getBranch(owner, branchId);
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let holding = () => {};
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    const holder = withTenant(db, tenantId, async (tx) => {
+      await tx.select().from(branchTable).where(eq(branchTable.id, branchId)).for('update');
+      holding();
+      await released;
+    });
+    await held;
+    const started = Date.now();
+    const error = await tenancy
+      .updateBranch(owner, branchId, {
+        addressDescription: 'شارع آخر',
+        updatedAt: branch.updatedAt,
+      })
+      .catch((caught: unknown) => caught);
+    const elapsed = Date.now() - started;
+    release();
+    await holder;
+
+    expect(toErrorResponse(error)).toEqual({
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Service unavailable',
+    });
+    expect(elapsed).toBeLessThan(7_000);
+    const after = await tenancy.getBranch(owner, branchId);
+    expect(after.branch.updatedAt).toBe(branch.updatedAt);
+    const audited = await withTenant(db, tenantId, (tx) =>
+      tx.select().from(auditEntries).where(eq(auditEntries.action, 'branch.updated')),
+    );
+    expect(audited).toEqual([]);
+  }, 10_000);
 });

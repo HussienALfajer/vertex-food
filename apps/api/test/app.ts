@@ -17,7 +17,7 @@ export async function createTestApp(
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],
   }).compile();
-  const app = configureApp(moduleRef.createNestApplication({ logger: false }));
+  const app = configureApp(moduleRef.createNestApplication({ logger: false }), config);
   await app.init();
   return app;
 }

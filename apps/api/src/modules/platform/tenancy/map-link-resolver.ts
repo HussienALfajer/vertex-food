@@ -152,6 +152,19 @@ export const httpsHop: HopRequest = (url, pinned, signal) =>
   });
 
 /**
+ * `work`, or a rejection as soon as `signal` aborts: a lookup that never settles cannot outlast
+ * the deadline. The abort listener is removed once either side settles.
+ */
+function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener('abort', abort, { once: true });
+    work.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort));
+  });
+}
+
+/**
  * Turns a pasted Google Maps or OpenStreetMap link into coordinates (spec S01 rule 20, ADR 0021).
  * A link that names a point is read without a request. A short link (`maps.app.goo.gl`) is
  * followed with bodiless `GET`s that never follow redirects themselves, up to `maxRedirects` hops,
@@ -179,10 +192,10 @@ export class MapLinkResolver {
   }
 
   /** The one address a hop may connect to: every answer for its name must be public. */
-  private async pinnedAddress(hostname: string): Promise<ResolvedAddress> {
+  private async pinnedAddress(hostname: string, signal: AbortSignal): Promise<ResolvedAddress> {
     let answers: ResolvedAddress[];
     try {
-      answers = await this.options.resolveHost(hostname);
+      answers = await untilAborted(this.options.resolveHost(hostname), signal);
     } catch {
       throw unrecognized();
     }
@@ -193,7 +206,9 @@ export class MapLinkResolver {
 
   /** Where a link redirects to, as an absolute URL. */
   private async redirectOf(url: URL, signal: AbortSignal): Promise<string> {
-    const address = await this.pinnedAddress(url.hostname);
+    if (signal.aborted) throw unrecognized();
+    const address = await this.pinnedAddress(url.hostname, signal);
+    if (signal.aborted) throw unrecognized();
     let response: HopResponse;
     try {
       response = await this.options.request(url, address, signal);
