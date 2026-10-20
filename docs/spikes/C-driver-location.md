@@ -142,3 +142,10 @@ Not tested at all:
 - Retention: locations reduced to the job's key points after 30 days (ADR 0009).
 - iOS: the driver app is Android first (ADR 0003).
 - Push notifications for new jobs (ADR 0012).
+
+## Known defects before reuse (full audit, 2026-10-20)
+
+The spike stays throwaway; S19 must not copy these (`docs/audits/2026-10-20-full-audit.md`):
+- PRIV-01: the server stores the fix attached to a job event without checking that the driver was on duty (`spikes/driver-location/server/server.mjs:127-130`), while location batches are checked (`applyPoints`). ADR 0024's "only while on duty" is then kept by the client alone. The delivery module applies the duty rule to every location it stores, event fixes included.
+- SYNC-02: the first batch after a restart can leave out the newest point. When the current run has no backlog, the batch is replaced by an older run's points (`spikes/driver-location/core/outbox.js:82-85`), against the "newest point first" rule. Older runs are sent only after the newest point, with a test across several runs.
+- TEST-04: an emulator phase whose retries ran out after a system restart is still recorded as a phase (`spikes/driver-location/emulator/run.mjs:159-165`); only the crash list shows it. S19's device tests record such a phase as invalid.

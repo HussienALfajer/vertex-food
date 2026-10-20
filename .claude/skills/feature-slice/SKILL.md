@@ -50,7 +50,7 @@ Layers a PR does not include are skipped. Helpers arrive with their first real u
 ## Stop and ask when
 - The spec is ambiguous in a way that changes the result, or the work needs an answer from `docs/open-questions.md`.
 - The migration review in `/db-migration` finds a destructive or non-backward-compatible change.
-- A command changes the owner's data (`pnpm db:migrate`), reaches a server, sends a real WhatsApp message, prints on a real printer the owner did not set up for tests, or publishes an app.
+- A command changes the owner's data (`pnpm db:migrate`), is destructive on a server (`AGENTS.md`, "How to work"; deploying `main` and other production changes are a standing approval), sends a real WhatsApp message, prints on a real printer the owner did not set up for tests, or publishes an app.
 - The work would go beyond the spec: record the idea as a follow-up instead.
 
 ## Keep this skill true

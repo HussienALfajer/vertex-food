@@ -11,7 +11,7 @@ The Vertex design tokens in TypeScript (ADR 0018), the single source shared by `
 - `src/tokens.test.ts`: the palette equals the identity's tables; brand colors in place; the measured contrast ratios; semantic roles use palette colors and keep text readable in both themes; the type scale and radii match. `src/tenant.test.ts`: the tenant tokens.
 
 ## Rules
-- Change the identity first (`brand/identity.md`, and Vertex Hub's when the change is shared), then these values, then `packages/ui/src/styles/theme.css`; the tests of this package and of `packages/ui` hold them together.
+- Change the identity first (`brand/identity.md`; a change to the shared identity is made in Vertex Hub first, as a separate task the owner authorises, never edited from here: `AGENTS.md`), then these values, then `packages/ui/src/styles/theme.css`; the tests of this package and of `packages/ui` hold them together.
 - Apps never import palette steps for UI: they use semantic roles (`colors.primary`, `bg-primary`).
 - Tenant tokens are read only where ADR 0010 allows (QR menu and restaurant pages, the restaurant's page in the customer app, receipts, the restaurant app's accent); the customer app's frame, the driver app and the console keep Vertex's.
 - Plain values only: no React, no platform code. Built to `dist/` like `packages/i18n`.
