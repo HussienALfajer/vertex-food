@@ -157,6 +157,39 @@ describe('tenancy/apply-scheduled-status', () => {
     expect(entries).toEqual([]);
   });
 
+  it('moves the version past one committed while the run waited for the row', async () => {
+    const id = await scheduled('suspended', new Date(Date.now() - 60_000));
+    // A barrier: another writer holds the row and commits an unrelated edit with a version ahead
+    // of the clock; the run has read the older version and waits for the row.
+    const ahead = new Date(Date.now() + 60_000);
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let holding = () => {};
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    const editor = app.transaction(async (tx) => {
+      await tx.select().from(tenants).where(eq(tenants.id, id)).for('update');
+      holding();
+      await released;
+      await tx
+        .update(tenants)
+        .set({ nameLatin: 'Test Restaurant', updatedAt: ahead })
+        .where(eq(tenants.id, id));
+    });
+    await held;
+    const run = job.run(new Date());
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    release();
+    await editor;
+    await run;
+    const row = await read(id);
+    expect(row).toMatchObject({ status: 'suspended', nameLatin: 'Test Restaurant' });
+    expect(row?.updatedAt.getTime()).toBeGreaterThan(ahead.getTime());
+  });
+
   it('applies a change once when two runs race for it', async () => {
     const id = await scheduled('closed', new Date(Date.now() - 60_000));
     const now = new Date();

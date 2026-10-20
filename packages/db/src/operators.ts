@@ -4,4 +4,4 @@
  * different peer set there, and operators of one copy do not type against tables of the other.
  * Apps that resolve the same copy (the API) import drizzle-orm directly.
  */
-export { and, asc, eq, inArray, isNotNull, lte } from 'drizzle-orm';
+export { and, asc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';

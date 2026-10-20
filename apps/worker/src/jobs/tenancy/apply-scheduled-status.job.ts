@@ -9,6 +9,7 @@ import {
   isNotNull,
   lte,
   outboxEvents,
+  sql,
   tenants,
   withTenant,
 } from '@vertex-food/db';
@@ -42,7 +43,6 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
         scheduledStatus: tenants.scheduledStatus,
         scheduledStatusReason: tenants.scheduledStatusReason,
         scheduledStatusAt: tenants.scheduledStatusAt,
-        updatedAt: tenants.updatedAt,
       })
       .from(tenants)
       .where(and(isNotNull(tenants.scheduledStatus), lte(tenants.scheduledStatusAt, now)))
@@ -64,8 +64,10 @@ export class ApplyScheduledStatusJob implements ScheduledJob {
             scheduledStatusReason: null,
             scheduledStatusAt: null,
             ...(closing ? { closedAt: scheduledStatusAt, archivedAt: scheduledStatusAt } : {}),
-            // Moves the version forward, as every change does (spec S01 rule 16).
-            updatedAt: new Date(Math.max(Date.now(), tenant.updatedAt.getTime() + 1)),
+            // Moves the version forward, as every change does (spec S01 rule 16), from the row as
+            // it is once locked: a version read before a lock wait could be older than one
+            // another writer committed meanwhile.
+            updatedAt: sql`greatest(clock_timestamp(), ${tenants.updatedAt} + interval '1 millisecond')`,
           })
           // Every status field it read: any change since (a replaced, moved or cancelled schedule,
           // a status written by the API or by another run) leaves the row alone. A run that waits

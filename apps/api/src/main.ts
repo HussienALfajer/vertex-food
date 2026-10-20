@@ -5,5 +5,5 @@ import { AppModule } from './app.module.js';
 import { loadConfig } from './core/config/config.js';
 
 const config = loadConfig(process.env);
-const app = configureApp(await NestFactory.create(AppModule.forRoot(config)));
+const app = configureApp(await NestFactory.create(AppModule.forRoot(config)), config);
 await app.listen(config.port, config.host);

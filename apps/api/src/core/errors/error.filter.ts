@@ -14,6 +14,7 @@ import {
   errorStatus,
 } from '@vertex-food/contracts';
 import { describeForLog } from '@vertex-food/db';
+import { isDeadlineExceeded } from '../database/deadline.js';
 
 /** The code of an HTTP error Nest or Express raised before a handler ran (no route, bad JSON). */
 function codeForStatus(status: number): ErrorCode {
@@ -58,6 +59,10 @@ export function toErrorResponse(error: unknown): ErrorResponse {
       ? { code: error.code, message: error.message, details: error.details }
       : { code: error.code, message: error.message };
   }
+  // A statement or lock deadline rolled the transaction back: the client may retry.
+  if (isDeadlineExceeded(error)) {
+    return { code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' };
+  }
   const http =
     error instanceof HttpException
       ? { status: error.getStatus(), message: error.message }
@@ -82,7 +87,8 @@ const fixedMessage: Partial<Record<ErrorCode, string>> = {
 /**
  * Every error leaves the API as `{ code, message }` with the status of its code (ADR 0020).
  * Unexpected errors answer `INTERNAL_ERROR` with a generic message and are logged without their
- * data (ADR 0016); refusals are not logged.
+ * data (ADR 0016); a database deadline answers `SERVICE_UNAVAILABLE` and is logged the same way;
+ * refusals are not logged.
  */
 @Catch()
 export class ErrorFilter implements ExceptionFilter {
@@ -92,7 +98,9 @@ export class ErrorFilter implements ExceptionFilter {
 
   catch(error: unknown, host: ArgumentsHost) {
     const body = toErrorResponse(error);
-    if (body.code === 'INTERNAL_ERROR') this.logger.error(describeForLog(error));
+    if (body.code === 'INTERNAL_ERROR' || isDeadlineExceeded(error)) {
+      this.logger.error(describeForLog(error));
+    }
     const { httpAdapter } = this.adapterHost;
     httpAdapter.reply(host.switchToHttp().getResponse(), body, errorStatus[body.code]);
   }

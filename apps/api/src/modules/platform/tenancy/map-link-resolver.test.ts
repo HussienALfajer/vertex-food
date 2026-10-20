@@ -163,4 +163,19 @@ describe('MapLinkResolver', () => {
       'no coordinates',
     );
   });
+
+  it('bounds a lookup that never answers by the same deadline', async () => {
+    const network = fakeNetwork({});
+    const stalledDns = () => new Promise<ResolvedAddress[]>(() => {});
+    const started = Date.now();
+    const result = new MapLinkResolver({
+      ...network,
+      resolveHost: stalledDns,
+      timeoutMs: 50,
+      maxRedirects: 3,
+    }).resolve('https://maps.app.goo.gl/x');
+    await expect(result).rejects.toMatchObject({ code: 'MAP_LINK_UNRECOGNIZED' });
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(network.calls).toEqual([]);
+  });
 });
