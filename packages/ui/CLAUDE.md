@@ -17,8 +17,8 @@ The Vertex design system for the web front ends (restaurant, console, web; ADR 0
 - Tailwind's default palette, fonts, radii and shadows are reset: only brand tokens generate utilities.
 
 ## Theme
-- Vertex Hub's toggle, copied as is: light or dark, the system's setting until the user presses the button, then the choice in `localStorage` (`vertex-theme`, the key the Expo apps use too). `theme-init.js` puts the `dark` class on `<html>` before the first paint; the dark tokens (`.dark` in `theme.css`) and the `dark:` variant (`@custom-variant dark`) key on it.
-- Vite apps add `vertexFoodWeb()` to their plugins; `apps/web` serves the script from `src/app/theme-init.js/route.ts` and loads it in `layout.tsx` (`<html suppressHydrationWarning>`). Never inline the script: the restaurant app's CSP allows scripts from `'self'` only.
+- Vertex Hub's toggle, copied as is: light or dark, the system's setting until the user presses the button, then the choice in `localStorage` (`vertex-theme`, the key the Expo apps use too; only `light` or `dark` counts). While nothing is chosen, an open page follows system changes; unavailable storage falls back to the system setting. `theme-init.js` puts the `dark` class on `<html>` before the first paint; the dark tokens (`.dark` in `theme.css`) and the `dark:` variant (`@custom-variant dark`) key on it.
+- Vite apps add `vertexFoodWeb()` to their plugins; `apps/web` serves the script from `src/app/theme-init.js/route.ts` and loads it in `src/app/root-document.tsx` (`<html suppressHydrationWarning>`), shared by `layout.tsx` and `global-error.tsx`. Never inline the script: the restaurant app's CSP allows scripts from `'self'` only.
 - `ThemeToggle` (`labels={{ toDark, toLight }}`): one ghost icon button, a moon in light and a sun in dark, with a tooltip naming the theme it switches to; at the inline end of every app header.
 
 ## Restaurant identity (ADR 0010, ADR 0018)

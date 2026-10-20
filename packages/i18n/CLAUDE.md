@@ -4,7 +4,7 @@ The Arabic text of every front end (ADR 0018, ADR 0020): plain catalogs and loca
 
 ## Layout
 - `src/ar/<namespace>.ts`, collected in `src/ar/index.ts` (`ar`, `Catalog`): `common` (shared by every product), `errors` (the text of each error code of `packages/contracts`), and one namespace per app: `restaurant`, `console`, `web`, `customer`, `driver`. A new app or area adds a namespace file.
-- `src/locale.ts`: `defaultLanguage` (`ar`), `textDirection` (`rtl`), `formatLocale` (`ar-u-nu-latn`, Arabic with Latin digits) for every `Intl` formatter, `displayTimeZone` (`Asia/Damascus`).
+- `src/locale.ts`: `defaultLanguage` (`ar`), `textDirection` (`rtl`), `formatLocale` (`ar-SY-u-nu-latn`, Syrian Arabic month names with Latin digits; pinned by `locale.test.ts`) for every `Intl` formatter, `displayTimeZone` (`Asia/Damascus`).
 - `src/catalog.test.ts`: no empty text, no Arabic-Indic digit, a text for every error code.
 
 ## Rules

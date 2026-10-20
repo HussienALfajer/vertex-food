@@ -11,6 +11,7 @@ import {
   resolveAppFile,
 } from './app-protocol.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
+import { windowOptions } from './window-options.js';
 
 // The main process will own the local database, the sync client, the branch hub server and printing
 // (ADR 0008, 0022, 0023); the renderer reaches them only through IPC. Today it opens one
@@ -54,21 +55,7 @@ function lockDownSession(): void {
 }
 
 function createWindow(): BrowserWindow {
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 960,
-    minHeight: 600,
-    show: false,
-    autoHideMenuBar: true,
-    webPreferences: {
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      webSecurity: true,
-      spellcheck: false,
-    },
-  });
+  const window = new BrowserWindow(windowOptions);
 
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {

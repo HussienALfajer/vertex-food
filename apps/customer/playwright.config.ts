@@ -5,11 +5,13 @@ import { defineConfig, devices } from '@playwright/test';
 // (ADR 0003). Screenshots are attached to each test's results (test-results/), which CI uploads.
 export default defineConfig({
   testDir: 'e2e',
+  // e2e/web-server.test.ts is a Vitest test of the server.
+  testMatch: '**/*.spec.ts',
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:4276',
+    baseURL: 'http://127.0.0.1:4276',
     locale: 'ar',
     timezoneId: 'Asia/Damascus',
     trace: 'retain-on-failure',
@@ -20,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'node e2e/web-server.ts',
-    url: 'http://localhost:4276',
+    url: 'http://127.0.0.1:4276',
     reuseExistingServer: !process.env.CI,
   },
 });
