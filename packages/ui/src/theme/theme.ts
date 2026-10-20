@@ -8,16 +8,28 @@ export type Theme = 'light' | 'dark';
 /** The `localStorage` key of the choice (Vertex Hub's; the customer and driver apps use it too). */
 export const themeStorageKey = 'vertex-theme';
 
+/** The media query of the system's dark setting. */
+export const systemDarkQuery = '(prefers-color-scheme: dark)';
+
 /**
  * Runs synchronously from `<head>`, before the body is painted: a file the app serves from
- * `'self'` (`theme-init.js`), since the restaurant app's CSP forbids inline scripts. Storage may be
- * unavailable (blocked, private mode): the system setting applies then.
+ * `'self'` (`theme-init.js`), since the restaurant app's CSP forbids inline scripts. Only `light`
+ * or `dark` counts as a saved choice; without one, or when storage is unavailable (blocked,
+ * private mode), the system setting applies. The two reads fail separately.
  */
-export const themeInitScript = `try {
-  var saved = localStorage.getItem(${JSON.stringify(themeStorageKey)});
-  var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-  document.documentElement.classList.toggle('dark', dark);
+export const themeInitScript = `var saved = null;
+try {
+  saved = localStorage.getItem(${JSON.stringify(themeStorageKey)});
 } catch (error) {}
+var dark = false;
+if (saved === 'light' || saved === 'dark') {
+  dark = saved === 'dark';
+} else {
+  try {
+    dark = matchMedia(${JSON.stringify(systemDarkQuery)}).matches;
+  } catch (error) {}
+}
+document.documentElement.classList.toggle('dark', dark);
 `;
 
 /** The path apps serve `themeInitScript` at. */

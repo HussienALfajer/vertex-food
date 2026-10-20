@@ -37,6 +37,8 @@ test('shows a scheduled suspension with the time it takes effect', async ({ page
   await page.goto('/');
   const banner = page.getByRole('status').filter({ hasText: 'سيُوقف حساب المطعم' });
   await expect(banner).toContainText('4:00');
+  // Syrian month names (brand/identity.md), from `formatLocale` in Chromium's ICU data.
+  await expect(banner).toContainText('20 تشرين الأول 2026');
   await expect(banner).toContainText('مستحقات غير مدفوعة');
   await expect(page.locator('body')).not.toHaveText(/[٠-٩]/);
   await screenshot(page, testInfo, 'banner-scheduled');

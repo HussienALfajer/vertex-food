@@ -10,7 +10,8 @@ const config: ExpoConfig = {
   slug: 'vertex-food-driver',
   scheme: 'vertexfooddriver',
   version: '0.0.0',
-  orientation: 'portrait',
+  // The device's orientation: every screen works on phones and tablets both ways (AGENTS.md).
+  orientation: 'default',
   userInterfaceStyle: 'automatic',
   platforms: ['android', 'web'],
   web: { output: 'static', bundler: 'metro' },
