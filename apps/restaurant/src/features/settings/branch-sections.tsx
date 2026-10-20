@@ -12,7 +12,6 @@ import {
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError } from '../../lib/api';
 import { useOnline } from '../../lib/online';
 import { can, useStaffAccess } from '../../lib/staff-access';
 import {
@@ -24,11 +23,10 @@ import {
   locationUpdate,
   moneyDraft,
   moneyErrors,
-  onlyChargesMoved,
   updateErrors,
 } from '../tenancy/branch-draft';
 
-import { LocationFields } from '../tenancy/location-fields';
+import { LocationFields, usePinStates } from '../tenancy/location-fields';
 import { MoneyFields } from '../tenancy/money-fields';
 import { replaceCharges, updateBranch, useSetupCache } from '../tenancy/queries';
 import { isTenantWritable } from '../tenancy/tenant-status';
@@ -113,6 +111,8 @@ function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionPro
   const phones = writable && can(access, 'branch.hours.edit', branchId);
   const form = useDraft(() => locationDraft(base.branch));
   const [checking, setChecking] = useState(false);
+  // A pin still resolving, failed or awaiting confirmation holds the save (FE-01).
+  const pins = usePinStates();
 
   /** What the member may change and changed; only this is sent (the API checks it again). */
   const allowedUpdate = (): UpdateBranch => {
@@ -151,7 +151,7 @@ function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionPro
       <Form
         onSubmit={() => {
           setChecking(true);
-          if (Object.keys(errorsNow()).length > 0) return false;
+          if (Object.keys(errorsNow()).length > 0 || pins.blocked()) return false;
           save.run();
           return true;
         }}
@@ -166,12 +166,14 @@ function BranchLocationSection({ tenant, base, onSaved, onConflict }: SectionPro
             // Offline, the last loaded values stay read-only (S01).
             disabled={!settings || !online}
             phonesDisabled={!phones || !online}
+            onPinState={(state) => pins.report(branchId, state)}
           />
         </FormFields>
         <SaveActions
           dirty={form.dirty}
           canSave={online && (settings || phones)}
           busy={save.busy}
+          waiting={pins.resolving}
           onDiscard={() => {
             form.discard();
             setChecking(false);
@@ -210,15 +212,17 @@ function BranchMoneySection({ tenant, base, onSaved, onConflict }: SectionProps)
         onSaved(current);
       }
       if (chargesChanged(form.draft, current.charges)) {
-        await replaceCharges(branchId, {
+        const replaced = await replaceCharges(branchId, {
           lines: chargeLines(form.draft),
           updatedAt: current.branch.updatedAt,
         });
-        // The lines moved the branch's `updatedAt` without returning it: read it back, and treat
-        // anything else that changed meanwhile as a conflict.
-        const fresh = await cache.reloadBranch(branchId);
-        if (!onlyChargesMoved(current, fresh)) throw new ApiError('CONFLICT');
-        current = fresh;
+        // The answer carries the branch's new `updatedAt`: kept at once, no read back (CONC-01).
+        current = {
+          ...current,
+          charges: replaced.lines,
+          branch: { ...current.branch, updatedAt: replaced.updatedAt },
+        };
+        cache.detailSaved(current);
         onSaved(current);
       }
       form.reset(moneyDraft(current.branch, current.charges));

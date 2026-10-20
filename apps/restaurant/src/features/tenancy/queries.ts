@@ -1,7 +1,7 @@
 import { queryOptions, useQueryClient } from '@tanstack/react-query';
 import type {
   Branch,
-  BranchCharge,
+  BranchCharges,
   BranchDetail,
   BranchHours,
   Coordinates,
@@ -109,7 +109,8 @@ export function replaceHours(id: string, input: ReplaceBranchHours): Promise<Bra
   return unwrap(api.PUT('/api/branches/{id}/hours', { params: { path: { id } }, body: input }));
 }
 
-export function replaceCharges(id: string, input: ReplaceBranchCharges): Promise<BranchCharge[]> {
+/** The new lines with the branch's new `updatedAt`, the base of its next write (rule 16). */
+export function replaceCharges(id: string, input: ReplaceBranchCharges): Promise<BranchCharges> {
   return unwrap(
     api.PUT('/api/branches/{id}/charges', {
       params: { path: { id } },
@@ -153,7 +154,7 @@ export function resolveMapLink(url: string): Promise<Coordinates> {
  * What a screen does around a write: answers replace the cached records; a refusal because the
  * restaurant was suspended or closed meanwhile reloads the tenant, so its banner shows; `reload*`
  * read the current record from the server now, after a `CONFLICT` (rule 16) or a write that
- * changed the record's `updatedAt` without returning it (images, charge lines).
+ * changed the record's `updatedAt` without returning it (images).
  */
 export function useSetupCache() {
   const queryClient = useQueryClient();
@@ -188,6 +189,21 @@ export function useSetupCache() {
     },
     reloadTenant: () => fetchNow(queryClient, tenantQuery.queryKey, readTenant),
     reloadBranches: () => fetchNow(queryClient, branchesQuery.queryKey, readBranches),
+    /**
+     * Every branch in use with its detail, the list read again (a branch added or archived
+     * meanwhile). The details are cached before the list, so a screen built from the list never
+     * meets a branch it has no detail for.
+     */
+    reloadBranchDetails: async () => {
+      const list = await readBranches();
+      const details = await Promise.all(
+        list.map((branch) =>
+          fetchNow(queryClient, branchQuery(branch.id).queryKey, () => readBranch(branch.id)),
+        ),
+      );
+      queryClient.setQueryData(branchesQuery.queryKey, list);
+      return details;
+    },
     reloadBranch: (id: string) =>
       fetchNow(queryClient, branchQuery(id).queryKey, () => readBranch(id)),
   };

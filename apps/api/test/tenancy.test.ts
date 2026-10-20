@@ -7,6 +7,7 @@ import {
 } from '@vertex-food/contracts';
 import {
   auditEntries,
+  branchHourExceptions,
   branches as branchTable,
   createDatabase,
   outboxEvents,
@@ -16,7 +17,7 @@ import {
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import { v7 as uuidv7 } from 'uuid';
-import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, inject, it, vi } from 'vitest';
 import type { StaffActor, SystemActor } from '../src/core/access/actor.js';
 import { toErrorResponse } from '../src/core/errors/error.filter.js';
 import { listRoutes } from '../src/core/routes.js';
@@ -666,6 +667,64 @@ describe('hours', () => {
     // The date is free again.
     await tenancy.createHourException(owner, branchId, { date: future, closed: true, periods: [] });
   });
+
+  describe('a later business day end (TIME-01, owner 2026-10-20)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /**
+     * A branch ending its day at 04:00 with an exception on 19 October from 05:00 to 07:00, made
+     * on the 19th; then the clock moves to `at` on the 20th.
+     */
+    async function withYesterdaysException(at: string) {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-19T12:00:00.000Z') });
+      const { owner, branchIds } = await newTenant();
+      const [branchId = ''] = branchIds;
+      const hours = await completeBranch(owner, branchId);
+      const exception = await tenancy.createHourException(owner, branchId, {
+        date: '2026-10-19',
+        closed: false,
+        periods: [{ opensAt: '05:00', closesAt: '07:00' }],
+      });
+      vi.setSystemTime(new Date(at));
+      const move = () =>
+        tenancy.replaceHours(owner, branchId, {
+          businessDayEndsAt: '06:00',
+          periods: hours.periods,
+          updatedAt: hours.updatedAt,
+        });
+      return { owner, branchId, exception, move };
+    }
+
+    it('refuses the move when it would make an earlier exception current and invalid', async () => {
+      // 05:00 in Damascus: the 20th under the old end, still the 19th under the new one.
+      const { owner, branchId, exception, move } = await withYesterdaysException(
+        '2026-10-20T02:00:00.000Z',
+      );
+      const refused = await move().catch((error: unknown) => error);
+      expect(refused).toBeInstanceOf(DomainError);
+      expect(refused).toMatchObject({
+        code: 'INVALID_HOURS',
+        details: { exceptionId: exception.id, date: '2026-10-19' },
+      });
+      // Nothing moved; the exception was not rewritten.
+      const detail = await tenancy.getBranch(owner, branchId);
+      expect(detail.branch.businessDayEndsAt).toBe('04:00');
+      const [row] = await withTenant(db, owner.tenantId, (tx) =>
+        tx.select().from(branchHourExceptions).where(eq(branchHourExceptions.id, exception.id)),
+      );
+      expect(row).toMatchObject({ periods: exception.periods, archivedAt: null });
+    });
+
+    it('moves the end once that business date is past under both ends', async () => {
+      // 07:00 in Damascus: the 20th under either end, so the 19th's exception is history.
+      const { owner, branchId, move } = await withYesterdaysException('2026-10-20T04:00:00.000Z');
+      await move();
+      const detail = await tenancy.getBranch(owner, branchId);
+      expect(detail.branch.businessDayEndsAt).toBe('06:00');
+    });
+  });
 });
 
 describe('charge lines', () => {
@@ -680,27 +739,31 @@ describe('charge lines', () => {
   it('are edited in place, extra lines archived, positions from the list', async () => {
     const { owner, branchIds } = await newTenant();
     const [branchId = ''] = branchIds;
-    let { branch } = await tenancy.getBranch(owner, branchId);
+    const { branch } = await tenancy.getBranch(owner, branchId);
     const three = await tenancy.replaceCharges(owner, branchId, {
       lines: [line(1000), line(500), line(250)],
       updatedAt: branch.updatedAt,
     });
-    expect(three.map((c) => [c.position, c.rateBp])).toEqual([
+    expect(three.lines.map((c) => [c.position, c.rateBp])).toEqual([
       [1, 1000],
       [2, 500],
       [3, 250],
     ]);
-    branch = (await tenancy.getBranch(owner, branchId)).branch;
+    // The answer carries the branch's new version: the next write needs no read back (CONC-01).
+    expect(three.updatedAt).not.toBe(branch.updatedAt);
+    expect((await tenancy.getBranch(owner, branchId)).branch.updatedAt).toBe(three.updatedAt);
     const one = await tenancy.replaceCharges(owner, branchId, {
       lines: [line(1500)],
-      updatedAt: branch.updatedAt,
+      updatedAt: three.updatedAt,
     });
-    expect(one).toEqual([expect.objectContaining({ id: three[0]?.id, rateBp: 1500, position: 1 })]);
+    expect(one.lines).toEqual([
+      expect.objectContaining({ id: three.lines[0]?.id, rateBp: 1500, position: 1 }),
+    ]);
     expect((await tenancy.getBranch(owner, branchId)).charges).toHaveLength(1);
     // The stale branch updatedAt of the first write is refused.
     expect(
       await codeOf(
-        tenancy.replaceCharges(owner, branchId, { lines: [], updatedAt: branch.updatedAt }),
+        tenancy.replaceCharges(owner, branchId, { lines: [], updatedAt: three.updatedAt }),
       ),
     ).toBe('CONFLICT');
   });

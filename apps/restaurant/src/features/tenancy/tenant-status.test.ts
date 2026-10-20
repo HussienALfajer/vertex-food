@@ -1,7 +1,12 @@
 import type { Tenant } from '@vertex-food/contracts';
 import { describe, expect, it } from 'vitest';
 import { ownerAccess, type StaffAccess } from '../../lib/staff-access';
-import { isTenantWritable, onboardingView, statusBanner } from './tenant-status';
+import {
+  isTenantWritable,
+  onboardingView,
+  scheduledRecheckDelay,
+  statusBanner,
+} from './tenant-status';
 
 const tenant: Tenant = {
   id: '0199f000-0000-7000-8000-000000000001',
@@ -102,5 +107,27 @@ describe('status banner', () => {
     const complete = { ...tenant, onboardingCompletedAt: '2026-10-19T10:00:00.000Z' };
     expect(statusBanner(complete, now)).toEqual({ kind: 'awaiting-activation' });
     expect(isTenantWritable(complete)).toBe(true);
+  });
+});
+
+describe('reading the tenant again at its scheduled change (UX-03)', () => {
+  const at = '2026-10-20T01:00:00.000Z';
+  const time = (iso: string) => Date.parse(iso);
+
+  it('waits until the deadline', () => {
+    const read = time('2026-10-20T00:59:00.000Z');
+    expect(scheduledRecheckDelay(at, read, read)).toBe(60_000);
+  });
+
+  it('clamps a far deadline to what a timer can wait', () => {
+    const read = time('2026-09-01T00:00:00.000Z');
+    expect(scheduledRecheckDelay(at, read, read)).toBe(2_147_483_647);
+  });
+
+  it('asks a server whose clock is behind again a second after its answer, never in a loop', () => {
+    const read = time('2026-10-20T01:00:05.000Z');
+    expect(scheduledRecheckDelay(at, read, read)).toBe(1000);
+    expect(scheduledRecheckDelay(at, read + 400, read)).toBe(600);
+    expect(scheduledRecheckDelay(at, read + 5000, read)).toBe(0);
   });
 });

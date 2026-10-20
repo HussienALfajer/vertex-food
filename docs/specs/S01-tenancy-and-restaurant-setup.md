@@ -209,7 +209,7 @@ All restaurant routes are `@StaffRoute(permission)` with the tenant from the ses
 | `POST /api/branches/:id/hour-exceptions` | `branch.hours.edit` | `createHourExceptionSchema` | `hourExceptionSchema` | `INVALID_HOURS`, `CONFLICT` (date taken), `NOT_FOUND`, `TENANT_SUSPENDED`, `TENANT_CLOSED` |
 | `PATCH /api/branches/:id/hour-exceptions/:exceptionId` | `branch.hours.edit` | `updateHourExceptionSchema` with `updatedAt` | `hourExceptionSchema` | as above |
 | `DELETE /api/branches/:id/hour-exceptions/:exceptionId` | `branch.hours.edit` | — | 204 (archives) | `NOT_FOUND`, `TENANT_SUSPENDED`, `TENANT_CLOSED` |
-| `PUT /api/branches/:id/charges` | `branch.settings.edit` | `replaceBranchChargesSchema` (0–3 lines, `updatedAt` of the branch) | `branchChargeSchema[]` | `VALIDATION_FAILED`, `CONFLICT`, `NOT_FOUND`, `TENANT_SUSPENDED`, `TENANT_CLOSED` |
+| `PUT /api/branches/:id/charges` | `branch.settings.edit` | `replaceBranchChargesSchema` (0–3 lines, `updatedAt` of the branch) | `branchChargesSchema` (the lines with the branch's new `updatedAt`) | `VALIDATION_FAILED`, `CONFLICT`, `NOT_FOUND`, `TENANT_SUSPENDED`, `TENANT_CLOSED` |
 | `GET /api/cities` | `tenant.view` | — | `citySchema[]` grouped by governorate, non-archived | — |
 | `POST /api/maps/resolve-link` | `tenant.view` | `{ url }` | `{ latitudeE7, longitudeE7 }` | `MAP_LINK_UNRECOGNIZED`, `RATE_LIMITED` |
 | `GET /api/console/tenants` | `console.tenants.manage` | list params, filters `status`, `q` (name or slug) | page of `consoleTenantSchema` | — |
@@ -280,6 +280,7 @@ In the same transaction as the change, ids and codes only: tenant created; profi
 15. A slug changed twice: both old slugs stay aliases of the same tenant.
 16. A branch's business day end moves from 04:00 to 06:00 while a suspension is scheduled for 04:00: the suspension moves to 06:00, audited.
 17. Saturday 01:00–03:00 with the day ending at 04:00: Sunday early morning on the calendar, Saturday's business day; an exception for Saturday decides it too.
+18. A branch's business day end moves later, 04:00 to 06:00, at 05:00: yesterday's business date is current again under the new end, so its exceptions are validated too, from the earlier of the two business dates. An exception that would not fit the new end (19 October 05:00–07:00 contains 06:00) refuses the move with `INVALID_HOURS` naming the exception; the exception is never rewritten. At 07:00 that date is past under both ends and the move is accepted (owner, 2026-10-20).
 
 ## Open questions
 - Q10 (taxes and fees in Azaz) stays open for S10: S01 stores lines of any rate up to 50 %; the values are entered by the restaurant.

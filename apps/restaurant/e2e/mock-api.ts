@@ -6,10 +6,12 @@ import {
   createHourExceptionSchema,
   DomainError,
   type ErrorCode,
+  effectiveStatusState,
   errorStatus,
   type Governorate,
   type HourException,
   onboardingCompleteness,
+  ownerReadAccessEndsAt,
   replaceBranchChargesSchema,
   replaceBranchHoursSchema,
   type StoredFile,
@@ -38,6 +40,15 @@ export type MockApi = {
   writes: string[];
   /** Every write waits this long before it is answered. */
   writeDelayMs: number;
+  /** The map-link resolver waits this long before it answers. */
+  resolveDelayMs: number;
+  /** The next write to this `METHOD path` is applied, then its answer is lost (a dropped link). */
+  dropAnswerOnce: string | undefined;
+  /**
+   * The server's clock, which decides the status in force (rule 7) like the API's
+   * `effectiveStatusState`. Real time by default; a test with `page.clock` reads the page's.
+   */
+  clock: () => Date | Promise<Date>;
   /** The next write to this `METHOD path` is refused once with this code, changing nothing. */
   refuseOnce: { write: string; code: ErrorCode } | undefined;
   /** Another editor's change: the record changes on the server behind the screen's back. */
@@ -219,15 +230,50 @@ export async function mockApi(
     charges: new Map(Object.entries(seed.charges ?? {})),
     writes: [],
     writeDelayMs: 0,
+    resolveDelayMs: 0,
+    dropAnswerOnce: undefined,
+    clock: () => new Date(),
     refuseOnce: undefined,
     editBehind: (change) => change(state),
     now,
   };
 
   const inUse = () => state.branches.filter((item) => item.archivedAt === null);
-  /** The tenant as `GET /api/tenant` answers it: completeness and branch count computed. */
-  const tenantView = (): Tenant => ({
-    ...state.tenant,
+  /**
+   * The tenant's status in force at `at` on the server's clock, as the API answers it: a due scheduled
+   * change has taken effect whether or not the job wrote it (rule 7).
+   */
+  const statusNow = (at: Date): Tenant => {
+    const { tenant: row } = state;
+    const scheduled = row.scheduledChange;
+    const current = effectiveStatusState(
+      {
+        status: row.status,
+        statusReason: row.statusReason,
+        scheduledStatus: scheduled?.status ?? null,
+        scheduledStatusReason: scheduled?.reason ?? null,
+        scheduledStatusAt: scheduled ? new Date(scheduled.at) : null,
+      },
+      at,
+    );
+    if (current.status === row.status || !scheduled) return row;
+    const closedAt = current.status === 'closed' ? (row.closedAt ?? scheduled.at) : row.closedAt;
+    return {
+      ...row,
+      status: current.status,
+      statusReason: current.statusReason,
+      statusChangedAt: scheduled.at,
+      scheduledChange: null,
+      closedAt,
+      ownerReadUntil:
+        current.status === 'closed' && closedAt
+          ? ownerReadAccessEndsAt(new Date(closedAt)).toISOString()
+          : null,
+    };
+  };
+  /** The tenant as `GET /api/tenant` answers it: status in force, completeness, branch count. */
+  const tenantView = (at: Date): Tenant => ({
+    ...statusNow(at),
     branchCount: inUse().length,
     onboarding: onboardingCompleteness(
       state.tenant,
@@ -246,9 +292,10 @@ export async function mockApi(
 
   const refuse = (route: Route, code: ErrorCode, details?: Record<string, unknown>) =>
     route.fulfill({ status: errorStatus[code], json: { code, message: code, details } });
-  const writable = (route: Route) => {
-    if (state.tenant.status === 'suspended') return refuse(route, 'TENANT_SUSPENDED');
-    if (state.tenant.status === 'closed') return refuse(route, 'TENANT_CLOSED');
+  const writable = (route: Route, at: Date) => {
+    const { status } = statusNow(at);
+    if (status === 'suspended') return refuse(route, 'TENANT_SUSPENDED');
+    if (status === 'closed') return refuse(route, 'TENANT_CLOSED');
   };
   const touchTenant = (changes: Partial<Tenant> = {}) => {
     state.tenant = { ...state.tenant, ...changes, updatedAt: now() };
@@ -266,6 +313,8 @@ export async function mockApi(
     const path = url.pathname;
     const method = request.method();
     const body = () => request.postDataJSON() as unknown;
+    // Every request reads the status in force at its own time, as the API does.
+    const at = await state.clock();
     if (method !== 'GET') {
       state.writes.push(`${method} ${path}`);
       if (state.writeDelayMs) await new Promise((done) => setTimeout(done, state.writeDelayMs));
@@ -277,23 +326,23 @@ export async function mockApi(
     }
 
     if (path === '/api/tenant') {
-      if (method === 'GET') return route.fulfill({ json: tenantView() });
+      if (method === 'GET') return route.fulfill({ json: tenantView(at) });
       if (method === 'PATCH') {
         const parsed = updateTenantSchema.safeParse(body());
         if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
-        const refused = writable(route);
+        const refused = writable(route, at);
         if (refused) return refused;
         if (parsed.data.updatedAt !== state.tenant.updatedAt) return refuse(route, 'CONFLICT');
         const { updatedAt: _, ...fields } = parsed.data;
         touchTenant(fields);
-        return route.fulfill({ json: tenantView() });
+        return route.fulfill({ json: tenantView(at) });
       }
     }
 
     const image = /^\/api\/tenant\/(logo|cover)$/.exec(path);
     if (image) {
       const purpose = image[1] as 'logo' | 'cover';
-      const refused = writable(route);
+      const refused = writable(route, at);
       if (refused) return refused;
       const field = purpose === 'logo' ? 'logoFileId' : 'coverFileId';
       if (method === 'PUT') {
@@ -328,14 +377,14 @@ export async function mockApi(
     }
 
     if (path === '/api/tenant/onboarding/complete' && method === 'POST') {
-      if (state.tenant.status === 'closed') return refuse(route, 'TENANT_CLOSED');
-      if (state.tenant.onboardingCompletedAt) return route.fulfill({ json: tenantView() });
-      const view = tenantView();
+      if (statusNow(at).status === 'closed') return refuse(route, 'TENANT_CLOSED');
+      if (state.tenant.onboardingCompletedAt) return route.fulfill({ json: tenantView(at) });
+      const view = tenantView(at);
       if (!view.onboarding.complete) {
         return refuse(route, 'ONBOARDING_INCOMPLETE', { missing: view.onboarding.missing });
       }
       touchTenant({ onboardingCompletedAt: now() });
-      return route.fulfill({ json: tenantView() });
+      return route.fulfill({ json: tenantView(at) });
     }
 
     if (path === '/api/branches' && method === 'GET') return route.fulfill({ json: inUse() });
@@ -347,7 +396,7 @@ export async function mockApi(
       const current = inUse().find((item) => item.id === id);
       if (!current) return refuse(route, 'NOT_FOUND');
       if (method === 'GET' && !part) return route.fulfill({ json: detail(current) });
-      const refused = writable(route);
+      const refused = writable(route, at);
       if (refused) return refused;
 
       if (method === 'PATCH' && !part) {
@@ -401,8 +450,12 @@ export async function mockApi(
           position: index + 1,
         }));
         state.charges.set(id, lines);
-        touchBranch(id);
-        return route.fulfill({ json: lines });
+        const next = touchBranch(id);
+        if (state.dropAnswerOnce === `${method} ${path}`) {
+          state.dropAnswerOnce = undefined;
+          return route.abort('connectionreset');
+        }
+        return route.fulfill({ json: { lines, updatedAt: next.updatedAt } });
       }
 
       if (part === 'hour-exceptions') {
@@ -460,6 +513,9 @@ export async function mockApi(
 
     if (path === '/api/maps/resolve-link' && method === 'POST') {
       const { url: link } = body() as { url: string };
+      if (state.resolveDelayMs) {
+        await new Promise((done) => setTimeout(done, state.resolveDelayMs));
+      }
       return link === shortLink
         ? route.fulfill({ json: { latitudeE7: 365_870_000, longitudeE7: 370_450_000 } })
         : refuse(route, 'MAP_LINK_UNRECOGNIZED');

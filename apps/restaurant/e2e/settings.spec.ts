@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { branch, completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
+import { branch, completeBranch, everyDay, mockApi, shortLink, tenant } from './mock-api.js';
 import { failOnCspViolation, preloadOnHover, screenshot } from './screenshot.js';
 
 // Restaurant and branch settings (S01 screens) against the mocked API, the owner's view until S02.
@@ -54,6 +54,32 @@ test.describe('single-branch restaurant', () => {
       { kind: 'tax', rateBp: 250, mode: 'inclusive' },
     ]);
     await screenshot(page, testInfo, 'settings-restaurant-charges');
+  });
+
+  test('waits for a map link being resolved before saving the location (FE-01)', async ({
+    page,
+  }) => {
+    const only = completeBranch();
+    const api = await mockApi(page, {
+      tenant: active(),
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/settings/restaurant');
+    const save = page.getByRole('button', { name: 'حفظ التغييرات' }).nth(1);
+    await page.getByLabel('وصف العنوان').fill('شارع السوق الجديد');
+    api.resolveDelayMs = 1500;
+    await page.getByLabel('الموقع').fill(shortLink);
+    await save.click();
+    await expect(save).toBeDisabled();
+    await expect(page.getByLabel('الموقع')).toHaveValue('36.587, 37.045');
+    expect(api.writes).toEqual(['POST /api/maps/resolve-link']);
+    await save.click();
+    await expect(page.getByText('تم الحفظ')).toBeVisible();
+    expect(api.branches[0]).toMatchObject({
+      addressDescription: 'شارع السوق الجديد',
+      location: { latitudeE7: 365_870_000, longitudeE7: 370_450_000 },
+    });
   });
 
   test('reloads a record another editor changed instead of overwriting it', async ({

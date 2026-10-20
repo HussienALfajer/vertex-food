@@ -25,6 +25,23 @@ export function onboardingView(
   return undefined;
 }
 
+/** The longest a browser timer waits (2³¹ − 1 ms, about 24.8 days); a later one re-arms. */
+const MAX_TIMER_MS = 2_147_483_647;
+/** A server clock a little behind the device's is asked again after this long. */
+const RECHECK_MIN_MS = 1000;
+
+/**
+ * How long until the tenant is read again for its scheduled change at `at` (UX-03): until the
+ * deadline, clamped to what a timer can wait; at least a second, so an answer that still shows
+ * the change pending is asked again soon, never in a loop. `readAt`: when the tenant was read.
+ */
+export function scheduledRecheckDelay(at: string, now: number, readAt: number): number {
+  const due = Date.parse(at) - now;
+  const sinceRead = now - readAt;
+  const floor = Math.max(0, RECHECK_MIN_MS - sinceRead);
+  return Math.min(MAX_TIMER_MS, Math.max(floor, due));
+}
+
 export type StatusBanner =
   | { kind: 'scheduled'; status: 'suspended' | 'closed'; at: string; reason: TenantStatusReason }
   | { kind: 'suspended'; reason: TenantStatusReason }

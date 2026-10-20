@@ -28,7 +28,7 @@ describe('contractJsonSchemas', () => {
         'Branch',
         'BranchCharge',
         'BranchChargeInput',
-        'BranchChargeList',
+        'BranchCharges',
         'BranchList',
         'BranchCode',
         'BranchDetail',

@@ -45,6 +45,7 @@ export function HoursFields({
   disabled: boolean;
 }) {
   const { t } = useTranslation('restaurant');
+  const daysErrorId = useId();
   const setDay = (index: number, periods: PeriodDraft[]) =>
     onChange((current) => ({
       ...current,
@@ -78,6 +79,8 @@ export function HoursFields({
       </Field>
       <fieldset
         disabled={disabled}
+        aria-describedby={errors.days ? daysErrorId : undefined}
+        aria-invalid={errors.days ? true : undefined}
         data-form-invalid={errors.days ? '' : undefined}
         className="flex min-w-0 flex-col gap-2"
       >
@@ -98,8 +101,11 @@ export function HoursFields({
           ))}
         </ul>
         <p className="text-sm text-muted-foreground">{t('fields.hours.description')}</p>
+        {/* Announced when it appears; the fieldset names it as its description. */}
         {errors.days && (
-          <p className="text-sm text-destructive-text">{t(`validation.${errors.days}`)}</p>
+          <p id={daysErrorId} role="alert" className="text-sm text-destructive-text">
+            {t(`validation.${errors.days}`)}
+          </p>
         )}
       </fieldset>
     </div>

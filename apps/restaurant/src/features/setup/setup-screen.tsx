@@ -47,6 +47,15 @@ function SetupLoader() {
   const cities = useQuery(citiesQuery);
   // The step as first loaded: a later save must not move the owner.
   const start = useRef(resumeStep(tenant));
+  // Once loaded, the wizard stays mounted: a branch added meanwhile (a refetch of the list) must
+  // not rebuild it and drop unsent drafts. The wizard reads branches again itself (FE-02).
+  const loaded = useRef<BranchDetail[]>(undefined);
+  if (!loaded.current && cities.data && branches.data && details.every((detail) => detail.data)) {
+    loaded.current = details.map((detail) => detail.data as BranchDetail);
+  }
+  if (loaded.current) {
+    return <SetupWizard tenant={tenant} details={loaded.current} initialStep={start.current} />;
+  }
   return (
     <QueryStates queries={[branches, cities, ...details]}>
       {() => (

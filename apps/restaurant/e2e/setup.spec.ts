@@ -80,7 +80,12 @@ test.describe('onboarding wizard', () => {
     // Step 3: the week starts on Saturday; one day copied to all, Friday runs past midnight.
     await expect(page.getByText('الخطوة 3 من 5')).toBeVisible();
     await page.getByRole('button', { name: 'التالي' }).click();
-    await expect(page.getByText('أضف فترة عمل واحدة على الأقل.')).toBeVisible();
+    // The week's error is announced and describes the week's group (UX-02).
+    const noDay = page.getByRole('alert').filter({ hasText: 'أضف فترة عمل واحدة على الأقل.' });
+    await expect(noDay).toBeVisible();
+    const week = page.getByRole('group', { name: 'أيام الأسبوع' });
+    await expect(week).toHaveAttribute('aria-invalid', 'true');
+    await expect(week).toHaveAccessibleDescription(/أضف فترة عمل واحدة على الأقل\./);
     await page.getByRole('button', { name: 'إضافة فترة' }).first().click();
     await expect(page.getByLabel('السبت: بداية الفترة 1')).toHaveValue('10:00');
     await page.getByRole('button', { name: 'نسخ أوقات السبت إلى كل الأيام' }).click();
@@ -212,7 +217,11 @@ test.describe('onboarding wizard', () => {
     await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
     // Another device removes the phone meanwhile: finishing is refused with what is missing.
     api.editBehind((state) => {
-      state.branches = state.branches.map((item) => ({ ...item, contactPhones: [] }));
+      state.branches = state.branches.map((item) => ({
+        ...item,
+        contactPhones: [],
+        updatedAt: state.now(),
+      }));
     });
     await page.getByRole('button', { name: 'إنهاء الإعداد' }).click();
     await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
@@ -274,6 +283,132 @@ test.describe('onboarding wizard', () => {
     expect(api.branches.map((item) => item.addressDescription)).toEqual([
       'شارع السوق الجديد',
       'قرب الجامعة، البوابة الشمالية',
+    ]);
+  });
+
+  test('waits for a map link being resolved, and never saves the old pin (FE-01)', async ({
+    page,
+  }, testInfo) => {
+    const only = completeBranch();
+    const api = await mockApi(page, {
+      tenant: tenant({ updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await page.getByRole('button', { name: '2. العنوان والتواصل' }).click();
+    const pin = page.getByLabel('الموقع');
+    const next = page.getByRole('button', { name: 'التالي' });
+
+    // A link the server cannot resolve holds the step with its message; nothing is saved.
+    await pin.fill('https://maps.app.goo.gl/NotASyntheticLink');
+    await next.click();
+    await expect(page.getByText('لم نتعرّف على رابط الخريطة.', { exact: false })).toBeVisible();
+    await next.click();
+    await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
+    await expect(pin).toHaveAttribute('aria-invalid', 'true');
+
+    // A slow link: pressing Next at once leaves the step until the pin is in the draft.
+    api.resolveDelayMs = 1500;
+    await pin.fill(shortLink);
+    await next.click();
+    await expect(next).toBeDisabled();
+    await expect(page.getByLabel('جارٍ قراءة الرابط…')).toBeVisible();
+    await screenshot(page, testInfo, 'setup-2-pin-resolving');
+    await expect(pin).toHaveValue('36.587, 37.045');
+    await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
+    expect(api.writes).toEqual(['POST /api/maps/resolve-link', 'POST /api/maps/resolve-link']);
+    await next.click();
+    await expect(page.getByText('الخطوة 3 من 5')).toBeVisible();
+    expect(api.branches[0]?.location).toEqual({
+      latitudeE7: 365_870_000,
+      longitudeE7: 370_450_000,
+    });
+  });
+
+  test('shows a branch Vertex staff added meanwhile when finishing is refused (FE-02)', async ({
+    page,
+  }, testInfo) => {
+    const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+    const api = await mockApi(page, {
+      tenant: tenant({ updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [souq],
+      hours: { [souq.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
+    api.editBehind((state) => {
+      state.branches = [...state.branches, branch({ nameAr: 'فرع الجامعة', code: 'campus' })];
+    });
+    await page.getByRole('button', { name: 'إنهاء الإعداد' }).click();
+    await expect(page.getByText('الخطوة 2 من 5')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'فرع السوق' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'فرع الجامعة' })).toBeVisible();
+    await expect(page.getByLabel('وصف العنوان')).toHaveCount(2);
+    await expect(page.getByLabel('وصف العنوان').nth(0)).toHaveValue(
+      'شارع السوق، قرب الجامع الكبير',
+    );
+    await expect(page.getByLabel('وصف العنوان').nth(1)).toHaveValue('');
+    await expect(page.getByLabel('الموقع').nth(1)).toHaveValue('');
+    await screenshot(page, testInfo, 'setup-2-branch-added');
+  });
+
+  test('stays at its step when a branch is added while a step saves', async ({ page }) => {
+    const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+    const api = await mockApi(page, {
+      tenant: tenant({ updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [souq],
+      hours: { [souq.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await page.getByRole('button', { name: '2. العنوان والتواصل' }).click();
+    await page.getByLabel('وصف العنوان').fill('شارع السوق الجديد');
+    api.editBehind((state) => {
+      state.branches = [...state.branches, branch({ nameAr: 'فرع الجامعة', code: 'campus' })];
+    });
+    // The step's save reads the branch list again; the wizard is not rebuilt at its first step.
+    await page.getByRole('button', { name: 'التالي' }).click();
+    await expect(page.getByText('الخطوة 3 من 5')).toBeVisible();
+    expect(api.branches[0]?.addressDescription).toBe('شارع السوق الجديد');
+  });
+
+  test("keeps another branch's unsent charges when a lost answer ends in a conflict (CONC-01)", async ({
+    page,
+  }) => {
+    const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+    const campus = completeBranch({ nameAr: 'فرع الجامعة', code: 'campus' });
+    const api = await mockApi(page, {
+      tenant: tenant({ branchCount: 2, updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [souq, campus],
+      hours: { [souq.id]: everyDay('10:00', '23:00'), [campus.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await page.getByRole('button', { name: '4. العملات والرسوم' }).click();
+    for (const [index, rate] of ['10', '20'].entries()) {
+      await page.getByRole('button', { name: 'إضافة بند' }).nth(index).click();
+      await page.getByLabel('الاسم على الإيصال').nth(index).fill('خدمة');
+      await page.getByLabel('النسبة (%)').nth(index).fill(rate);
+    }
+    // The first branch's lines are saved, but the answer never arrives.
+    api.dropAnswerOnce = `PUT /api/branches/${souq.id}/charges`;
+    const next = page.getByRole('button', { name: 'التالي' });
+    await next.click();
+    await expect(page.locator('[data-slot="callout"][role="alert"]')).toBeVisible();
+    // The retry meets the first branch's new version: only that branch is read again.
+    await next.click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'غيّر شخص آخر هذه البيانات' }),
+    ).toBeVisible();
+    await expect(page.getByLabel('النسبة (%)').nth(0)).toHaveValue('10');
+    await expect(page.getByLabel('النسبة (%)').nth(1)).toHaveValue('20');
+    await next.click();
+    await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
+    expect(api.charges.get(souq.id)).toMatchObject([{ rateBp: 1000 }]);
+    expect(api.charges.get(campus.id)).toMatchObject([{ rateBp: 2000 }]);
+    expect(api.writes.filter((write) => write.endsWith('/charges'))).toEqual([
+      `PUT /api/branches/${souq.id}/charges`,
+      `PUT /api/branches/${souq.id}/charges`,
+      `PUT /api/branches/${campus.id}/charges`,
     ]);
   });
 });

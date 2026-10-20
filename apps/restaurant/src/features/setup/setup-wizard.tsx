@@ -30,11 +30,11 @@ import {
   locationErrors,
   locationUpdate,
   moneyErrors,
-  onlyChargesMoved,
+  reconcileDrafts,
   sameHours,
 } from '../tenancy/branch-draft';
 import { HoursFields } from '../tenancy/hours-fields';
-import { LocationFields } from '../tenancy/location-fields';
+import { LocationFields, usePinStates } from '../tenancy/location-fields';
 import { MoneyFields } from '../tenancy/money-fields';
 import {
   ImageField,
@@ -91,6 +91,8 @@ export function SetupWizard({
   // Errors show once the owner tried to move on, and follow every change after that.
   const [checking, setChecking] = useState(false);
   const [notice, setNotice] = useState<Notice>();
+  // A pin still resolving, failed or awaiting confirmation holds the location step (FE-01).
+  const pins = usePinStates();
   const several = saved.length > 1;
 
   const errorsOf = (current: SetupStep, id: string): FieldErrors => {
@@ -110,14 +112,18 @@ export function SetupWizard({
     setStep(next);
   };
 
-  /** The current records after a `CONFLICT` (rule 16): the step shows them, to be saved again. */
+  /**
+   * The current records after a `CONFLICT` (rule 16) or a refused finish: the branch list is read
+   * again, so a branch Vertex staff added meanwhile appears and an archived one leaves. Only a
+   * record the server changed starts again from it; every other unsent draft stays as typed.
+   */
   async function reloadAll() {
     const tenantNow = await cache.reloadTenant();
-    profileForm.reset(profileDraft(tenantNow));
+    if (!sameProfile(profileBase, tenantNow)) profileForm.reset(profileDraft(tenantNow));
     setProfileBase(tenantNow);
-    const fresh = await Promise.all(saved.map((detail) => cache.reloadBranch(detail.branch.id)));
+    const fresh = await cache.reloadBranchDetails();
+    branchForm.reset(reconcileDrafts(saved, branchForm.draft, fresh));
     setSaved(fresh);
-    branchForm.reset(branchDrafts(fresh));
     return tenantNow;
   }
 
@@ -165,15 +171,16 @@ export function SetupWizard({
       commit(current);
     }
     if (chargesChanged(draft.money, current.charges)) {
-      await replaceCharges(branch.id, {
+      const replaced = await replaceCharges(branch.id, {
         lines: chargeLines(draft.money),
         updatedAt: current.branch.updatedAt,
       });
-      // The lines moved the branch's `updatedAt` without returning it: read it back, and treat
-      // anything else that changed meanwhile as a conflict (rule 16).
-      const fresh = await cache.reloadBranch(branch.id);
-      if (!onlyChargesMoved(current, fresh)) throw new ApiError('CONFLICT');
-      commit(fresh);
+      // The answer carries the branch's new `updatedAt`: kept at once, no read back (CONC-01).
+      commit({
+        ...current,
+        charges: replaced.lines,
+        branch: { ...current.branch, updatedAt: replaced.updatedAt },
+      });
     }
   }
 
@@ -199,13 +206,14 @@ export function SetupWizard({
       branchForm.reset(branchForm.draft);
       // The completeness list on the review follows the saved branches.
       await cache.reloadTenant();
-      await cache.reloadBranches();
+      await cache.reloadBranchDetails();
     },
     onSuccess: (_, sent) => {
       if (sent !== 'review') goTo(setupSteps[setupSteps.indexOf(sent) + 1] ?? 'review');
     },
     onError: async (error, sent) => {
-      if (error instanceof ApiError && error.code === 'CONFLICT') {
+      // A record changed, or a branch was archived meanwhile (`NOT_FOUND`): show what is saved.
+      if (error instanceof ApiError && (error.code === 'CONFLICT' || error.code === 'NOT_FOUND')) {
         try {
           await reloadAll();
           setNotice({ tone: 'warning', text: t('states.conflictReloaded') });
@@ -235,6 +243,8 @@ export function SetupWizard({
     if (step === 'restaurant') {
       if (Object.keys(profileErrors(profileForm.draft)).length > 0) return false;
     } else if (saved.some((detail) => Object.keys(errorsOf(step, detail.branch.id)).length > 0)) {
+      return false;
+    } else if (step === 'location' && pins.blocked()) {
       return false;
     }
     save.mutate(step);
@@ -303,6 +313,7 @@ export function SetupWizard({
             errors={shownErrors(detail.branch.id)}
             disabled={disabled}
             phonesDisabled={disabled}
+            onPinState={(state) => pins.report(detail.branch.id, state)}
           />
         )
       );
@@ -385,7 +396,7 @@ export function SetupWizard({
           ) : (
             <span />
           )}
-          <Button type="submit" loading={busy} disabled={!editable || !online}>
+          <Button type="submit" loading={busy} disabled={!editable || !online || pins.resolving}>
             {step === 'review' ? t('setup.finish') : t('setup.next')}
           </Button>
         </FormActions>

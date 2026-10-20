@@ -512,14 +512,22 @@ export function exceptionInput(
 }
 
 /**
- * Whether a branch read back after replacing its charge lines holds only that change: the same
- * fields and hours as expected, with a newer `updatedAt` and the new lines. Anything else was
- * changed by another editor in between, and adopting its `updatedAt` would hide that (rule 16).
+ * The drafts after the branches were read again (a `CONFLICT`, rule 16, or a refused finish): a
+ * branch the server still holds as last saved keeps the owner's unsent draft; one that changed
+ * starts again from the server; a branch added meanwhile gets its draft; an archived one is gone.
  */
-export function onlyChargesMoved(expected: BranchDetail, fresh: BranchDetail): boolean {
-  const fields = ({ updatedAt: _, ...rest }: BranchDetail['branch']) => JSON.stringify(rest);
-  return (
-    fields(expected.branch) === fields(fresh.branch) &&
-    JSON.stringify(expected.hours) === JSON.stringify(fresh.hours)
+export function reconcileDrafts(
+  saved: readonly BranchDetail[],
+  drafts: BranchDrafts,
+  fresh: readonly BranchDetail[],
+): BranchDrafts {
+  return Object.fromEntries(
+    fresh.map((detail) => {
+      const id = detail.branch.id;
+      const known = saved.find((item) => item.branch.id === id);
+      const draft = drafts[id];
+      const unchanged = known?.branch.updatedAt === detail.branch.updatedAt;
+      return [id, unchanged && draft ? draft : branchDraft(detail)];
+    }),
   );
 }

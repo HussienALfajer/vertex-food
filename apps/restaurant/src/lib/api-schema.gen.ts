@@ -366,7 +366,10 @@ export interface components {
             mode: components["schemas"]["ChargeMode"];
             orderTypes: components["schemas"]["OrderType"][];
         };
-        BranchChargeList: components["schemas"]["BranchCharge"][];
+        BranchCharges: {
+            lines: components["schemas"]["BranchCharge"][];
+            updatedAt: components["schemas"]["Instant"];
+        };
         BranchCode: string;
         BranchDetail: {
             branch: components["schemas"]["Branch"];
@@ -781,7 +784,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BranchChargeList"];
+                    "application/json": components["schemas"]["BranchCharges"];
                 };
             };
             /** @description Error */
