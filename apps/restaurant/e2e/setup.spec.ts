@@ -349,7 +349,27 @@ test.describe('onboarding wizard', () => {
       'شارع السوق، قرب الجامع الكبير',
     );
     await expect(page.getByLabel('وصف العنوان').nth(1)).toHaveValue('');
+    await expect(page.getByLabel('الموقع').nth(1)).toHaveValue('');
     await screenshot(page, testInfo, 'setup-2-branch-added');
+  });
+
+  test('stays at its step when a branch is added while a step saves', async ({ page }) => {
+    const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+    const api = await mockApi(page, {
+      tenant: tenant({ updatedAt: '2026-10-19T08:10:00.000Z' }),
+      branches: [souq],
+      hours: { [souq.id]: everyDay('10:00', '23:00') },
+    });
+    await page.goto('/setup');
+    await page.getByRole('button', { name: '2. العنوان والتواصل' }).click();
+    await page.getByLabel('وصف العنوان').fill('شارع السوق الجديد');
+    api.editBehind((state) => {
+      state.branches = [...state.branches, branch({ nameAr: 'فرع الجامعة', code: 'campus' })];
+    });
+    // The step's save reads the branch list again; the wizard is not rebuilt at its first step.
+    await page.getByRole('button', { name: 'التالي' }).click();
+    await expect(page.getByText('الخطوة 3 من 5')).toBeVisible();
+    expect(api.branches[0]?.addressDescription).toBe('شارع السوق الجديد');
   });
 
   test("keeps another branch's unsent charges when a lost answer ends in a conflict (CONC-01)", async ({

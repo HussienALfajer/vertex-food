@@ -206,13 +206,14 @@ export function SetupWizard({
       branchForm.reset(branchForm.draft);
       // The completeness list on the review follows the saved branches.
       await cache.reloadTenant();
-      await cache.reloadBranches();
+      await cache.reloadBranchDetails();
     },
     onSuccess: (_, sent) => {
       if (sent !== 'review') goTo(setupSteps[setupSteps.indexOf(sent) + 1] ?? 'review');
     },
     onError: async (error, sent) => {
-      if (error instanceof ApiError && error.code === 'CONFLICT') {
+      // A record changed, or a branch was archived meanwhile (`NOT_FOUND`): show what is saved.
+      if (error instanceof ApiError && (error.code === 'CONFLICT' || error.code === 'NOT_FOUND')) {
         try {
           await reloadAll();
           setNotice({ tone: 'warning', text: t('states.conflictReloaded') });
