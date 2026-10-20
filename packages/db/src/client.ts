@@ -22,12 +22,19 @@ export const DATABASE_DEADLINES = {
  */
 export function createDatabase(connectionString: string) {
   const pool = new pg.Pool({ connectionString, ...DATABASE_DEADLINES });
-  // An idle client that loses its connection (a server restart, an administrator's termination)
-  // emits `error` on the pool; unheard, it would end the process. The pool drops that client and
-  // opens a new one for the next query. The message can quote values, so only its code is logged.
-  pool.on('error', (error) => {
-    console.error(`Idle database connection lost: ${describeForLog(error)}`);
+  // A connection can be lost while idle in the pool or while checked out between two queries of
+  // a transaction (a server restart, an administrator's termination, the idle-in-transaction
+  // deadline). Either way the client emits `error`; unheard, it would end the process. So every
+  // client gets a listener for its whole life: a held client's next query then fails, which rolls
+  // its transaction back, and the pool drops it and opens a new one. The message can quote
+  // values, so only its code is logged.
+  pool.on('connect', (client) => {
+    client.on('error', (error) => {
+      console.error(`Database connection lost: ${describeForLog(error)}`);
+    });
   });
+  // The pool re-emits an idle client's error, already logged by the client's own listener.
+  pool.on('error', () => {});
   return drizzle({ client: pool, schema, casing: 'snake_case' });
 }
 

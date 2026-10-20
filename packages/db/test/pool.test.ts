@@ -28,13 +28,42 @@ describe('a lost idle connection', () => {
       } finally {
         await killer.end();
       }
-      // Only the pool's own listener hears it: an unheard `error` would end this process.
-      expect(app.$client.listenerCount('error')).toBe(1);
       await vi.waitFor(() =>
-        expect(logged).toHaveBeenCalledWith(
-          expect.stringMatching(/^Idle database connection lost: /),
-        ),
+        expect(logged).toHaveBeenCalledWith(expect.stringMatching(/^Database connection lost: /)),
       );
+      const next = await app.$client.query<{ pid: number }>('select pg_backend_pid() as pid');
+      expect(next.rows[0]?.pid).not.toBe(pid);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+});
+
+describe('a connection lost inside a transaction', () => {
+  it('fails the transaction, not the process, and the next query opens a new one', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      let pid: unknown;
+      const error = await withTenant(app, uuidv7(), async (tx) => {
+        const { rows } = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
+        pid = rows[0]?.pid;
+        const killer = new pg.Client({ connectionString: inject('appUrl') });
+        await killer.connect();
+        try {
+          await killer.query('select pg_terminate_backend($1)', [pid]);
+        } finally {
+          await killer.end();
+        }
+        // The server's notice reaches the held client between two queries.
+        await vi.waitFor(() =>
+          expect(logged).toHaveBeenCalledWith(
+            expect.stringMatching(/^Database connection lost: /),
+          ),
+        );
+        await tx.execute(sql`select 1`);
+      }).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(Error);
       const next = await app.$client.query<{ pid: number }>('select pg_backend_pid() as pid');
       expect(next.rows[0]?.pid).not.toBe(pid);
     } finally {
