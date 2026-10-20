@@ -56,9 +56,7 @@ describe('a connection lost inside a transaction', () => {
         }
         // The server's notice reaches the held client between two queries.
         await vi.waitFor(() =>
-          expect(logged).toHaveBeenCalledWith(
-            expect.stringMatching(/^Database connection lost: /),
-          ),
+          expect(logged).toHaveBeenCalledWith(expect.stringMatching(/^Database connection lost: /)),
         );
         await tx.execute(sql`select 1`);
       }).catch((caught: unknown) => caught);
