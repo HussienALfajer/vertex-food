@@ -5,6 +5,7 @@ import {
   assertTenantWritable,
   type Branch,
   type BranchCharge,
+  type BranchCharges,
   type BranchDetail,
   type BranchHours,
   branchHoursFields,
@@ -361,9 +362,22 @@ export class TenancyService {
       assertCurrent(row, input.updatedAt);
       const previousEnd = timeOf(row.businessDayEndsAt);
       if (input.businessDayEndsAt !== previousEnd) {
-        // The upcoming exceptions must still fit the new business day.
-        for (const exception of await this.upcomingExceptions(tx, row, now)) {
-          validateHourException(exception, input.businessDayEndsAt);
+        // The upcoming exceptions must still fit the new business day, from the earlier of the
+        // two business dates: a later end can make yesterday's date current again. One that would
+        // not fit refuses the move; the exception is never rewritten (owner, 2026-10-20).
+        const before = businessDateOf(now, previousEnd);
+        const after = businessDateOf(now, input.businessDayEndsAt);
+        const from = before < after ? before : after;
+        for (const exception of await this.exceptionsFrom(tx, row.id, from)) {
+          try {
+            validateHourException(exception, input.businessDayEndsAt);
+          } catch (error) {
+            if (!(error instanceof DomainError)) throw error;
+            throw new DomainError('INVALID_HOURS', 'An exception does not fit the new day end', {
+              exceptionId: exception.id,
+              date: exception.date,
+            });
+          }
         }
       }
       const before = sortPeriods(
@@ -520,13 +534,14 @@ export class TenancyService {
 
   /**
    * Replaces the charge lines (rule 15): lines are edited in place by position, extra ones
-   * archived, new ones added; orders keep their own snapshot (ADR 0007).
+   * archived, new ones added; orders keep their own snapshot (ADR 0007). The answer carries the
+   * branch's new `updatedAt`, so the client's next write needs no read back (S01 rule 16).
    */
   async replaceCharges(
     actor: StaffActor,
     branchId: string,
     input: ReplaceBranchCharges,
-  ): Promise<BranchCharge[]> {
+  ): Promise<BranchCharges> {
     return withTenant(this.db, actor.tenantId, async (tx) => {
       const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
       const row = await this.lockBranch(tx, branchId);
@@ -565,10 +580,8 @@ export class TenancyService {
           .set({ archivedAt: now, updatedAt: nextUpdatedAt(extra, now) })
           .where(eq(branchCharges.id, extra.id));
       }
-      await tx
-        .update(branches)
-        .set({ updatedAt: nextUpdatedAt(row, now) })
-        .where(eq(branches.id, row.id));
+      const updatedAt = nextUpdatedAt(row, now);
+      await tx.update(branches).set({ updatedAt }).where(eq(branches.id, row.id));
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_charges.replaced',
         entityType: 'branch',
@@ -580,7 +593,7 @@ export class TenancyService {
         branchId: row.id,
         part: 'charges',
       });
-      return result;
+      return { lines: result, updatedAt: updatedAt.toISOString() };
     });
   }
 
@@ -897,14 +910,19 @@ export class TenancyService {
   }
 
   private upcomingExceptions(tx: Transaction, row: BranchRow, now: Date) {
+    return this.exceptionsFrom(tx, row.id, businessDateOf(now, timeOf(row.businessDayEndsAt)));
+  }
+
+  /** The branch's exceptions in use from the business date `from` on. */
+  private exceptionsFrom(tx: Transaction, branchId: string, from: string) {
     return tx
       .select()
       .from(branchHourExceptions)
       .where(
         and(
-          eq(branchHourExceptions.branchId, row.id),
+          eq(branchHourExceptions.branchId, branchId),
           isNull(branchHourExceptions.archivedAt),
-          gte(branchHourExceptions.date, businessDateOf(now, timeOf(row.businessDayEndsAt))),
+          gte(branchHourExceptions.date, from),
         ),
       )
       .orderBy(asc(branchHourExceptions.date))

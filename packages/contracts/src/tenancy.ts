@@ -549,7 +549,16 @@ export const branchChargeSchema = z
 
 export type BranchCharge = z.infer<typeof branchChargeSchema>;
 
-export const branchChargeListSchema = z.array(branchChargeSchema).meta({ id: 'BranchChargeList' });
+/** The lines after `PUT /api/branches/:id/charges`, with the branch's new `updatedAt`. */
+export const branchChargesSchema = z
+  .object({
+    lines: z.array(branchChargeSchema),
+    /** The branch's `updatedAt` after the change, for the next write. */
+    updatedAt: instantSchema,
+  })
+  .meta({ id: 'BranchCharges' });
+
+export type BranchCharges = z.infer<typeof branchChargesSchema>;
 
 /** The lines in order; their position is their place in the list. */
 export const replaceBranchChargesSchema = z

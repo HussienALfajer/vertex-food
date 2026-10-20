@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 
 import {
-  branchChargeListSchema,
+  branchChargesSchema,
   branchDetailSchema,
   branchHoursSchema,
   branchListSchema,
@@ -187,7 +187,7 @@ export class BranchesController {
 
   @Put(':id/charges')
   @StaffRoute('branch.settings.edit')
-  @SerializeOptions({ schema: branchChargeListSchema })
+  @SerializeOptions({ schema: branchChargesSchema })
   replaceCharges(
     @CurrentStaff() staff: StaffActor,
     @Param('id', idParam) id: string,
