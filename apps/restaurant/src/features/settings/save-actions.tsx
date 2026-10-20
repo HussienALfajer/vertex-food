@@ -12,12 +12,15 @@ export function SaveActions({
   dirty,
   canSave,
   busy,
+  waiting = false,
   onDiscard,
   notice,
 }: {
   dirty: boolean;
   canSave: boolean;
   busy: boolean;
+  /** Something the save needs is still on its way (a map link resolving): Save waits for it. */
+  waiting?: boolean;
   onDiscard: () => void;
   notice: Notice | undefined;
 }) {
@@ -27,7 +30,7 @@ export function SaveActions({
     <>
       {canSave && (
         <FormActions>
-          <Button type="submit" loading={busy} disabled={!dirty}>
+          <Button type="submit" loading={busy} disabled={!dirty || waiting}>
             {t('settings.save')}
           </Button>
           {dirty && (

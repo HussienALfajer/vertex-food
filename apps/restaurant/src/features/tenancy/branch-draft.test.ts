@@ -1,6 +1,7 @@
 import type { Branch, BranchCharge } from '@vertex-food/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  branchDraft,
   chargeLines,
   chargesChanged,
   copyDayToAll,
@@ -19,8 +20,8 @@ import {
   moneyErrors,
   newCharge,
   normalizeTime,
-  onlyChargesMoved,
   parseRate,
+  reconcileDrafts,
   updateErrors,
 } from './branch-draft';
 
@@ -274,19 +275,35 @@ describe('exception draft (rule 13)', () => {
   });
 });
 
-describe('reading a branch back after its charge lines', () => {
-  const detail = { branch, hours: [], exceptions: [], charges: [] };
+describe('drafts after the branches were read again (rule 16)', () => {
+  const at = (minute: number) => `2026-10-19T10:${String(minute).padStart(2, '0')}:00.000Z`;
+  const detail = (id: string, updatedAt: string) => ({
+    branch: { ...branch, id, updatedAt },
+    hours: [],
+    exceptions: [],
+    charges: [],
+  });
+  const a = detail('0199f000-0000-7000-8000-00000000000a', at(1));
+  const b = detail('0199f000-0000-7000-8000-00000000000b', at(1));
+  const typed = (base: typeof a) => {
+    const draft = branchDraft(base);
+    return { ...draft, money: { ...draft.money, charges: [{ ...newCharge(), rate: '20' }] } };
+  };
 
-  it('accepts the newer updatedAt and lines of the change just made', () => {
-    const fresh = { ...detail, branch: { ...branch, updatedAt: '2026-10-19T10:00:00.000Z' } };
-    expect(onlyChargesMoved(detail, fresh)).toBe(true);
+  it('keeps the unsent draft of a branch the server still holds as saved', () => {
+    const drafts = { [a.branch.id]: typed(a), [b.branch.id]: typed(b) };
+    const changedA = detail(a.branch.id, at(2));
+    const next = reconcileDrafts([a, b], drafts, [changedA, b]);
+    expect(next[a.branch.id]).toEqual(branchDraft(changedA));
+    expect(next[b.branch.id]).toBe(drafts[b.branch.id]);
   });
 
-  it('notices a change another editor made in between', () => {
-    const fresh = {
-      ...detail,
-      branch: { ...branch, addressDescription: 'عنوان آخر', updatedAt: '2026-10-19T10:00:00.000Z' },
-    };
-    expect(onlyChargesMoved(detail, fresh)).toBe(false);
+  it('adds a branch added meanwhile and drops an archived one', () => {
+    const c = detail('0199f000-0000-7000-8000-00000000000c', at(3));
+    const drafts = { [a.branch.id]: typed(a), [b.branch.id]: typed(b) };
+    const next = reconcileDrafts([a, b], drafts, [a, c]);
+    expect(Object.keys(next)).toEqual([a.branch.id, c.branch.id]);
+    expect(next[a.branch.id]).toBe(drafts[a.branch.id]);
+    expect(next[c.branch.id]).toEqual(branchDraft(c));
   });
 });

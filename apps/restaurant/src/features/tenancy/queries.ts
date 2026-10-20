@@ -189,6 +189,21 @@ export function useSetupCache() {
     },
     reloadTenant: () => fetchNow(queryClient, tenantQuery.queryKey, readTenant),
     reloadBranches: () => fetchNow(queryClient, branchesQuery.queryKey, readBranches),
+    /**
+     * Every branch in use with its detail, the list read again (a branch added or archived
+     * meanwhile). The details are cached before the list, so a screen built from the list never
+     * meets a branch it has no detail for.
+     */
+    reloadBranchDetails: async () => {
+      const list = await readBranches();
+      const details = await Promise.all(
+        list.map((branch) =>
+          fetchNow(queryClient, branchQuery(branch.id).queryKey, () => readBranch(branch.id)),
+        ),
+      );
+      queryClient.setQueryData(branchesQuery.queryKey, list);
+      return details;
+    },
     reloadBranch: (id: string) =>
       fetchNow(queryClient, branchQuery(id).queryKey, () => readBranch(id)),
   };

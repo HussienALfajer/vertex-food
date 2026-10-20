@@ -1,7 +1,7 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { Navigate, useRouterState } from '@tanstack/react-router';
 import type { Tenant } from '@vertex-food/contracts';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OfflineNotice } from '../../components/offline-notice';
 import { QueryStates } from '../../components/query-states';
@@ -9,7 +9,7 @@ import { StateCard } from '../../components/state-card';
 import { useStaffAccess } from '../../lib/staff-access';
 import { tenantQuery } from './queries';
 import { StatusBanner } from './status-banner';
-import { onboardingView } from './tenant-status';
+import { onboardingView, scheduledRecheckDelay } from './tenant-status';
 
 /** The restaurant's tenant, for every screen inside the gate (which loaded it first). */
 export function useTenant(): Tenant {
@@ -25,6 +25,7 @@ export function useTenant(): Tenant {
 export function TenantGate({ children }: { children: ReactNode }) {
   const tenant = useQuery(tenantQuery);
   const access = useStaffAccess();
+  useScheduledRecheck(tenant.data, tenant.dataUpdatedAt);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <QueryStates queries={[tenant]}>
@@ -46,6 +47,24 @@ export function TenantGate({ children }: { children: ReactNode }) {
       }}
     </QueryStates>
   );
+}
+
+/**
+ * A scheduled suspension or closure takes effect at a known time (rule 7): the tenant is read
+ * again then, so the banner and the read-only screens follow without a focus or a refused write.
+ * Each answer re-arms it, so a server whose clock is behind is asked again a moment later.
+ */
+function useScheduledRecheck(tenant: Tenant | undefined, readAt: number) {
+  const queryClient = useQueryClient();
+  const at = tenant?.scheduledChange?.at;
+  useEffect(() => {
+    if (!at) return;
+    const timer = setTimeout(
+      () => void queryClient.invalidateQueries({ queryKey: tenantQuery.queryKey, exact: true }),
+      scheduledRecheckDelay(at, Date.now(), readAt),
+    );
+    return () => clearTimeout(timer);
+  }, [queryClient, at, readAt]);
 }
 
 /** Any staff member but the owner while the restaurant is onboarding: no actions (rule 5). */

@@ -24,7 +24,7 @@ import {
   Textarea,
 } from '@vertex-food/ui';
 import { Loader2, Plus, Trash2, TriangleAlert } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldGroup } from '../../components/field-group';
 import { useErrorText } from '../../lib/error-text';
@@ -45,7 +45,32 @@ type FieldsProps = {
   disabled: boolean;
   /** The phones need `branch.hours.edit`: a branch manager edits them alone. */
   phonesDisabled: boolean;
+  /** Follows the pin field: the form waits or refuses while it is not `ready` (FE-01). */
+  onPinState?: (state: PinState) => void;
 };
+
+/**
+ * Where the pin field stands. `resolving`: a map link is with the server; `unresolved`: the text
+ * typed is not a pin (a link that failed, or not a pin at all); `unconfirmed`: a point outside
+ * Syria and Turkey awaits confirmation. In each of them the draft still holds the previous pin,
+ * so the form must not save as if the owner's input were in it.
+ */
+export type PinState = 'ready' | 'resolving' | 'unresolved' | 'unconfirmed';
+
+/**
+ * The pin fields of a form, by key (a branch id): `resolving` while any map link resolves, for
+ * the submit button; `blocked()` reads the latest states at submit, even before a render.
+ */
+export function usePinStates() {
+  const states = useRef(new Map<string, PinState>());
+  const [resolving, setResolving] = useState(false);
+  const report = useCallback((key: string, state: PinState) => {
+    if (state === 'ready') states.current.delete(key);
+    else states.current.set(key, state);
+    setResolving([...states.current.values()].includes('resolving'));
+  }, []);
+  return { report, resolving, blocked: () => states.current.size > 0 };
+}
 
 /**
  * Where the restaurant is and how to reach it (wizard step 2, branch settings): governorate and
@@ -54,7 +79,7 @@ type FieldsProps = {
  */
 export function LocationFields(props: FieldsProps) {
   const { t } = useTranslation('restaurant');
-  const { draft, onChange, errors, disabled } = props;
+  const { draft, onChange, errors, disabled, onPinState } = props;
   const addressId = useId();
   return (
     <>
@@ -81,6 +106,7 @@ export function LocationFields(props: FieldsProps) {
         onChange={(location) => onChange({ location })}
         invalid={errors.location !== undefined}
         disabled={disabled}
+        onState={onPinState}
       />
       <PhoneFields
         phones={draft.phones}
@@ -215,11 +241,13 @@ function PinField({
   onChange,
   invalid,
   disabled,
+  onState,
 }: {
   value: Coordinates | null;
   onChange: (location: Coordinates) => void;
   invalid: boolean;
   disabled: boolean;
+  onState: ((state: PinState) => void) | undefined;
 }) {
   const { t } = useTranslation(['restaurant', 'errors']);
   const errorText = useErrorText();
@@ -228,6 +256,27 @@ function PinField({
   const [problem, setProblem] = useState<string>();
   const [outside, setOutside] = useState<Coordinates>();
   const [resolving, setResolving] = useState(false);
+  // A link still resolving when the field leaves (another step, a reload) changes nothing.
+  const mounted = useRef(true);
+  const state: PinState = resolving
+    ? 'resolving'
+    : problem
+      ? 'unresolved'
+      : outside
+        ? 'unconfirmed'
+        : 'ready';
+  const report = useRef(onState);
+  report.current = onState;
+  useEffect(() => {
+    report.current?.(state);
+  }, [state]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      report.current?.('ready');
+    };
+  }, []);
 
   function place(point: Coordinates) {
     setText(formatCoordinates(point));
@@ -241,8 +290,12 @@ function PinField({
 
   async function read() {
     const typed = text.trim();
-    if (!typed || (value && typed === formatCoordinates(value))) return;
     setProblem(undefined);
+    // Emptied, or back to the saved pin: the draft's pin stands.
+    if (!typed || (value && typed === formatCoordinates(value))) {
+      setOutside(undefined);
+      return;
+    }
     const point = parseCoordinatesText(typed);
     if (point) {
       place(point);
@@ -252,13 +305,16 @@ function PinField({
       setProblem(t('errors:MAP_LINK_UNRECOGNIZED'));
       return;
     }
+    // Said at once, before any render: a submit in the same gesture already sees it.
+    report.current?.('resolving');
     setResolving(true);
     try {
-      place(await resolveMapLink(typed));
+      const point = await resolveMapLink(typed);
+      if (mounted.current) place(point);
     } catch (error) {
-      setProblem(errorText(error));
+      if (mounted.current) setProblem(errorText(error));
     } finally {
-      setResolving(false);
+      if (mounted.current) setResolving(false);
     }
   }
 
