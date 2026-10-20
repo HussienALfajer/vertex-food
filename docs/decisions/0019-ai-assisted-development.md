@@ -19,7 +19,7 @@ The whole system is built by the owner working with Claude Code (Opus 5.5). The 
 - **Model and effort:** Opus 5.5 at `medium` by default, `high` for specs and the sensitive areas listed in `CLAUDE.md`, `xhigh` for the sync and hub core, `low` for mechanical work; Fable 5.1 only for a problem that failed twice at `xhigh`.
 - **Parallel sessions:** after a feature's contracts and database layers merge, independent front ends (restaurant, customer, driver, console) may be built in parallel sessions, each in its own worktree and branch; two sessions never edit the same files.
 - **Spikes first:** the three highest technical risks (restaurant hub, Arabic thermal printing, driver background location) are tested in throwaway spikes before the code they shape.
-- **Safety:** agents never read secrets or real data; destructive, outward-facing and production actions need the owner's approval in the conversation.
+- **Safety:** agents never read secrets or real data; destructive and outward-facing actions need the owner's approval in the conversation. Deploying `main` to production and changing production through the server or an admin panel are a standing approval (owner, 2026-10-18; `AGENTS.md`, "How to work"): the agent does them when the task calls for them and reports what changed.
 
 ## Consequences
 - Switching sessions, accounts or tools costs little.

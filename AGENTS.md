@@ -88,8 +88,8 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## Git
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
-- One branch per change, named by type (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`, `refactor/<topic>`, `spike/<topic>`). Never commit to or push `main` directly (a hook refuses it).
-- Stage files by path; never `git add -A` or `git add .` (a hook refuses it).
+- One branch per change, named by type (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`, `refactor/<topic>`, `spike/<topic>`). Never commit to or push `main` directly (a hook refuses both, `.claude/hooks/git-guard.mjs`).
+- Stage files by path; never `git add -A`, `-u`, `.` or `:/` (a hook refuses them).
 - Merge commits only: never squash or rebase-merge.
 
 ## Finishing a task: open the PR at once

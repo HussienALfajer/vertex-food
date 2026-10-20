@@ -140,3 +140,8 @@ Run: `docker compose up -d`, `pnpm server`, then `pnpm scenarios` (Node) and `pn
   - Windows firewall rules and the installer;
   - volume: a full day of a busy branch, and snapshot size.
 - **Printing:** Spike B.
+
+## Known defects before reuse (full audit, 2026-10-20)
+
+The spike stays throwaway; S04 and S09 must not copy these (`docs/audits/2026-10-20-full-audit.md`):
+- SYNC-01: a command rejected part-way keeps what it already wrote. `addLines` inserts the first lines, then returns `rejected` on an invalid one; `sendToKitchen` writes the first tickets, then returns `invalid_ticket` (`spikes/restaurant-hub/server/server.mjs:159-198`). The savepoint is rolled back only on a thrown error, so the partial lines or tickets commit with the command log. The real executor validates the whole command before writing, or rolls back to the command's savepoint on every rejection, and tests a command with mixed valid and invalid parts.

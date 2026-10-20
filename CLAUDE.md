@@ -25,7 +25,7 @@
 ## Hooks
 
 - Biome formats and lint-fixes every edited file; remaining problems come back to fix.
-- A git guard refuses `git commit` on `main` and `git add -A` / `git add .`.
+- A git guard refuses `git commit` on `main`, pushes to `main`, and broad staging (`git add -A`, `-u`, `.`, `:/`), however `git` is called (`.claude/hooks/git-guard.mjs`, tested in `packages/config`).
 - At session start, a note shows the branch, uncommitted files and the open items of `TASKS.md`: continue from them.
 
 ## Context hygiene

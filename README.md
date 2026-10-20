@@ -8,7 +8,7 @@ First market: Azaz, northern Aleppo. Arabic-first.
 
 ## Status
 
-Phase 0 — Foundation. The repository holds the product scope, the architecture decisions, the working method, the spikes and the monorepo scaffold (pnpm, Turborepo, Biome, CI); apps and packages come next. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Phase 0 (foundation) is done: the product scope, the architecture decisions, the three spikes, the monorepo with its eight app skeletons, the design system and CI. Phase 1 has started: S01 (tenancy and restaurant setup) is done, S02 (identity, access and devices) comes next. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Documents
 

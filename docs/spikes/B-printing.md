@@ -99,7 +99,7 @@ The right-hand pages show the emulator's simulation of a code-page printer: each
 
 3. **The code page is rejected.** See the table above. It would also need a maintained shaper and bidi implementation, a per-model table number, and a separate fixed-width layout. Its only advantage, a smaller job, does not matter on USB or Ethernet.
 
-4. **The mechanism sets the speed.** Rendering and encoding take under 8 ms. A cheap 58 mm printer at 90 mm/s takes 1.4 s for a receipt; an 80 mm printer at 150 mm/s takes 0.9 s. A kitchen ticket reaches the paper in about 3 ms plus the LAN round trip.
+4. **The mechanism sets the speed.** Rendering and encoding take under 8 ms. A cheap 58 mm printer at 90 mm/s takes 1.4 s for a receipt; an 80 mm printer at 150 mm/s takes 0.9 s. A kitchen ticket is rendered and encoded in about 3 ms; with the LAN round trip and the modelled mechanism it is printed in about 0.45 s on an 80 mm printer and 0.67 s on a 58 mm one (table above).
 
 5. **A network printer can say whether it can print and when it has printed.**
    - Before sending, the transport asks the real-time status (`DLE EOT`). It refuses to send into a printer that is offline, has its cover open or is out of paper, and the alert names the reason.
@@ -158,3 +158,8 @@ Not tested at all (no hub in the spike):
 - A manager's "open drawer" without a sale (a permission plus an audit entry).
 - Routing a station's tickets to a backup printer (new open question Q18).
 - Bluetooth and serial printers.
+
+## Known defects before reuse (full audit, 2026-10-20)
+
+The spike stays throwaway; S10 and S11 must not copy these (`docs/audits/2026-10-20-full-audit.md`):
+- RES-04: a render failure ends the printer's loop with no alert. `render` is awaited outside the `try` of the send (`spikes/printing/lib/queue.mjs:74`), so a rejected render rejects the loop, which `start()` never handles, and ADR 0023's alert on every failed attempt is not raised. `packages/print` renders inside the attempt, raises the alert and keeps the queue running.

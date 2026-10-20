@@ -21,7 +21,7 @@ The unit of work is a spec from `docs/ROADMAP.md` (`S01`…`S24`). Each session 
 | 1 | Spec | Opus 5.5, `high` | `/spec <id>` | Answers the interview; approves the spec | The spec's PR (`docs/<id>-spec`) |
 | 2 | Backend PR | Opus 5.5, `high` for sync and hub, tenancy, access, orders, money and ledger, agreements, dispatch, the WhatsApp gateway; else `medium` | `/feature-slice <id>` | Approves the PR split and `TASKS.md`; may try endpoints at `/api/docs` | PR 1 (contracts, db, sync commands, api, worker) |
 | 3 | Front-end PR | Opus 5.5, `medium` | `/feature-slice <id>` | Runs the acceptance steps in the app | PR 2 (screens and E2E); `docs/ROADMAP.md` updated |
-| 4 | Phase deploy (once per phase) | Opus 5.5, `low` | `Deploy phase <n> to production` | Approves the deploy; checks the live system | Deploy done, ticked in `docs/ROADMAP.md` |
+| 4 | Phase deploy (once per phase) | Opus 5.5, `low` | `Deploy phase <n> to production` | Checks the live system after the deploy (deploys are a standing approval, `AGENTS.md`) | Deploy done, ticked in `docs/ROADMAP.md` |
 
 - A large spec needs more than two PRs; a small spec does sessions 2 and 3 in one PR.
 - `/feature-slice` reads `TASKS.md` and continues from the first open PR, so a session can stop between PRs.
