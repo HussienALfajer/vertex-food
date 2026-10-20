@@ -35,6 +35,15 @@ Two PRs, run one after the other (one front end only, so nothing runs in paralle
 - [x] Owner decisions: rule 16 wording, rule 12 clarified, rule 6 reschedule on a day end change (audited, tested), early-morning periods (contract tests, "(next day)" E2E)
 - [x] Checks through `checker` (lint, typecheck, test with PostgreSQL, build, E2E of all five front ends, migration drift), `reviewer`, PR with auto-merge
 
+## Full audit fixes (`docs/audits/2026-10-20-full-audit.md`)
+
+Four PRs on separate files; each records its findings' status in the audit file once merged.
+
+- [x] `fix/audit-tooling-docs`: the audit record; TOOL-01 git guard (commit, add and push forms, table test in `packages/config`); DOC-01 to DOC-05; TEST-03 in the printing spike; spike defects recorded in `docs/spikes/` (SYNC-01, SYNC-02, RES-04, PRIV-01, TEST-04)
+- [ ] `fix/audit-api-runtime`: READY-01, RES-01, RES-02, RES-03, CONC-02
+- [ ] `fix/audit-restaurant-drafts`: FE-01, FE-02, CONC-01, TIME-01, TEST-02, UX-03, UX-02
+- [ ] `fix/audit-ui-responsive`: UX-01, UX-05, AR-01, TEST-01, TOOL-02, FE-03, FE-04, CQ-01
+
 ## Follow-ups (not this spec)
 
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC

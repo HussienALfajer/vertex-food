@@ -1,6 +1,6 @@
 # Vertex Food — Visual Identity
 
-The single reference for how every Vertex Food product looks (ADR 0018). It is the Vertex identity of Vertex Hub (`D:\vertex-hub\brand\identity.md`), copied and adapted; changes to the shared identity are made in Vertex Hub first and copied, so the Vertex systems do not drift apart. Derived from the Vertex logo (`brand/logo/`). `packages/tokens` implements these values and `packages/ui` (web) and `packages/ui-native` (customer and driver apps) use them; if they disagree, this file wins until it is changed deliberately, and the token tests fail.
+The single reference for how every Vertex Food product looks (ADR 0018). It is the Vertex identity of Vertex Hub (`D:\vertex-hub\brand\identity.md`), copied and adapted; changes to the shared identity are made in Vertex Hub first and copied, so the Vertex systems do not drift apart. This repository only reads Vertex Hub (`AGENTS.md`): a shared change is a separate task in Vertex Hub that the owner authorises, then copied here. Derived from the Vertex logo (`brand/logo/`). `packages/tokens` implements these values and `packages/ui` (web) and `packages/ui-native` (customer and driver apps) use them; if they disagree, this file wins until it is changed deliberately, and the token tests fail.
 
 ## 1. What the logo says
 

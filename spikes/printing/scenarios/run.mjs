@@ -291,8 +291,14 @@ async function main() {
       const child = spawn(process.execPath, args, { env: { ...process.env, QUEUE_CONFIG: JSON.stringify(cfg) }, stdio: ['ignore', 'pipe', 'inherit'] });
       child.events = [];
       const t0 = Date.now();
-      // Electron writes a blank line to stdout at start; keep only the queue's JSON lines.
-      const lines = (d) => d.toString().split('\n').map((l) => l.trim()).filter((l) => l.startsWith('{'));
+      // Electron writes a blank line to stdout at start; keep only the queue's JSON lines. A chunk
+      // can end in the middle of a line, so the unfinished tail waits for the next chunk.
+      let pending = '';
+      const lines = (d) => {
+        const all = (pending + d.toString()).split('\n');
+        pending = all.pop() ?? '';
+        return all.map((l) => l.trim()).filter((l) => l.startsWith('{'));
+      };
       child.stdout.on('data', (d) => child.events.push(...lines(d).map((l) => ({ ...JSON.parse(l), afterMs: Date.now() - t0 }))));
       child.exited = new Promise((r) => child.on('exit', r));
       return child;
