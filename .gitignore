@@ -39,6 +39,7 @@ apps/restaurant/release/
 test-results/
 playwright-report/
 blob-report/
+.verify/
 
 # Local data (sync replicas, WhatsApp session state, uploads, spike output)
 .data/

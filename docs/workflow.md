@@ -42,8 +42,8 @@ After a spec's contracts and database layers are merged, its independent front e
 | Folder rules | `<app or package>/CLAUDE.md` | When the agent reads a file in that folder |
 | Product and decisions | `docs/product/`, `docs/decisions/`, `docs/specs/`, `docs/glossary.md` | On demand |
 | Workflows | `.claude/skills/`: `spec`, `feature-slice`, `db-migration` | When invoked |
-| Subagents | `.claude/agents/`: `checker` (Haiku 5.5), `reviewer` (Opus 5.5), `explorer` (Sonnet 5.5) | In their own context; only their summary returns |
-| Enforcement | Hooks (Biome, git guard, session start), architecture and convention tests, CI, gitleaks | Always, without costing context |
+| Subagents | `.claude/agents/`: `checker` (Haiku 5.5, runs `pnpm verify` and returns its summary), `reviewer` (Opus 5.5), `explorer` (Sonnet 5.5) | In their own context; only their summary returns |
+| Enforcement | Hooks (Biome, git guard, test guard, session start), architecture and convention tests, CI, gitleaks | Always, without costing context |
 | Guard rails | `.claude/settings.json`: model and effort, permissions, denied reads | Always |
 
 A rule a machine can check belongs in a test, lint rule or hook, not in prose.
@@ -63,7 +63,7 @@ A rule a machine can check belongs in a test, lint rule or hook, not in prose.
 | A clearly specified feature outside those areas, screens | Opus 5.5 | `medium` |
 | Phase deploys, mechanical edits | Opus 5.5 | `low` |
 | Searching code, docs or the web | `explorer` (Sonnet 5.5) | — |
-| Running checks, reading logs and test output | `checker` (Haiku 5.5) | — |
+| A long `pnpm verify` run while something else goes on (the reviewer) | `checker` (Haiku 5.5) | — |
 | A problem that failed twice at `xhigh` | Fable 5.1, for that problem only | — |
 
 Sonnet and Haiku never write code. Avoid `max` unless a gain is measured.
@@ -82,7 +82,7 @@ Sonnet and Haiku never write code. Avoid `max` unless a gain is measured.
 5. After two failed corrections on the same issue, `/clear` and start again with a better request.
 6. Side questions: `/btw`.
 7. Disconnect connectors the task doesn't need (Hostinger only for DNS or hosting work).
-8. Let `checker` run long checks.
+8. Run checks with `pnpm verify` (`docs/testing.md`): it prints a short summary and keeps the whole output in `.verify/`, so long output never enters the context. Delegate a long run to the `checker` when something else can go on meanwhile (the reviewer), never edits.
 9. Check `/usage` after each feature.
 10. Prune the instruction files once per phase.
 

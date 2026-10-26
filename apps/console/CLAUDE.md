@@ -17,4 +17,4 @@ The Vertex staff console (ADR 0002, layout ADR 0020): a React + Vite + TanStack 
 - No `X-Powered-By`; security headers (CSP and the rest) are set by the host at the first deploy.
 - UI changes add or update the E2E RTL screenshots (light and dark) and are looked at before the PR. Every screen is checked at the `viewports` in `e2e/shell.spec.ts` (phone, tablet both ways, desktop) for sideways scrolling.
 
-Run: `pnpm --filter @vertex-food/console test` · E2E (after `build`): `pnpm --filter @vertex-food/console test:e2e` · dev: `pnpm --filter @vertex-food/console dev`.
+Run: `pnpm --filter @vertex-food/console test` · E2E: `pnpm verify apps/console/e2e/<file>.spec.ts` (builds first; every suite runs in CI, `docs/testing.md`) · dev: `pnpm --filter @vertex-food/console dev`.

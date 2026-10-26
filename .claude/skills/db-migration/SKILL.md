@@ -19,7 +19,7 @@ Schema change: **$ARGUMENTS**. Rules: `packages/db/CLAUDE.md`, ADR 0020 (Data), 
    - anything that changes or deletes payment, order event, ledger, agreement term or audit rows;
    - a tenant table without a forced RLS policy.
    Contract steps ship in a later release. Data backfills go in a custom migration and never touch append-only rows.
-6. **Test:** the `db` package tests (migrations, the convention test with RLS checks, triggers as app role and owner), then the tests of every package that uses the tables, through the `checker` subagent.
+6. **Test:** `pnpm verify packages/db/test/conventions.test.ts` with the db test files for the change (migrations, the convention test with RLS checks, triggers as app role and owner), then the test files of the packages that use the tables, with `pnpm verify <files>`. Rerun only the files that failed.
 7. **Confirm no drift:** running `pnpm db:generate` again reports nothing to migrate.
 8. **Dev database:** `pnpm db:migrate` changes the owner's local data, so ask before running it.
 

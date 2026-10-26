@@ -19,4 +19,4 @@ The Vertex Food customer app for Android and iOS (ADR 0003, layout ADR 0020): Re
 - Versions of Expo packages come from `pnpm exec expo install <package>`, which matches the SDK; pin them exactly. On each SDK upgrade, recheck `src/lib/native-error-reports.ts` (no supported API replaces `ExceptionsManager.unstable_setExceptionDecorator`): `native-error-reports.test.ts` fails until the new React Native version is checked on a development build and set there.
 - UI changes add or update the E2E RTL screenshots (light and dark) and are looked at before the PR; native-only behaviour (status bar, safe areas, forced RTL on a device) is still checked on a development build.
 
-Run: `pnpm --filter @vertex-food/customer test` · build: `pnpm --filter @vertex-food/customer build` · E2E (after `build`): `pnpm --filter @vertex-food/customer test:e2e` · dev: `pnpm --filter @vertex-food/customer dev`.
+Run: `pnpm --filter @vertex-food/customer test` · build: `pnpm --filter @vertex-food/customer build` · E2E: `pnpm verify apps/customer/e2e/<file>.spec.ts` (builds first; every suite runs in CI, `docs/testing.md`) · dev: `pnpm --filter @vertex-food/customer dev`.

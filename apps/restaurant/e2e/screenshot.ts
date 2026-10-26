@@ -70,9 +70,13 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
  * Hovers a link and waits until the screen's code it preloads has arrived. The router preloads
  * after a short delay, so `waitForLoadState('networkidle')` (already reached) would not wait for
  * it; a test that then cuts the connection would lose the code, which the desktop app ships. Only
- * scripts count: an API call still running from the page's load is not the preload.
+ * scripts count: an API call still running from the page's load is not the preload. The page's
+ * own code loads first: hovered while its route chunks still load, the helper took one of them
+ * for the preload and returned before the preload began (without a trace's slowdown, 19 runs in
+ * 20).
  */
 export async function preloadOnHover(page: Page, link: Locator): Promise<void> {
+  await page.waitForLoadState('networkidle');
   const pending = new Set<Request>();
   let started = false;
   const onRequest = (request: Request) => {

@@ -19,6 +19,7 @@ This project is independent. Do not read or reuse other folders on this machine 
 | `docs/specs/<id>-<name>.md` | Detailed spec per feature group, written before implementation |
 | `docs/open-questions.md` | Unresolved decisions. Never guess an answer to one: ask. |
 | `docs/workflow.md` | How work is run with Claude Code |
+| `docs/testing.md` | How checks run: `pnpm verify`, what runs locally and what in CI, the test databases, the E2E rules, the CI jobs, the local machine |
 | `<app or package>/CLAUDE.md` | Local rules and the pattern to copy; each arrives with its folder |
 
 Read these on demand. For a feature, read its spec, the ADRs it lists, and its section of `v1-scope.md`.
@@ -39,9 +40,10 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Install | `pnpm install` |
 | Lint (Biome) | `pnpm lint` · fix: `pnpm lint:fix` |
 | Typecheck | `pnpm typecheck` |
-| Test | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
+| Check a change, each check once: lint; typecheck, test and build (Turborepo replays unchanged packages); migration drift; the changed E2E specs of each app. Summary on the console, logs in `.verify/` (`docs/testing.md`) · only some test files (paths from the root; `--grep <title>` for part of a spec) | `pnpm verify` · `pnpm verify <file>...` |
+| Test (every package; each run migrates a throwaway database) | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
 | Build | `pnpm build` |
-| E2E with RTL screenshots (restaurant, console, web, customer, driver; builds first) | `pnpm test:e2e` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
+| E2E with RTL screenshots (restaurant, console, web, customer, driver; builds first): the changed specs run in `pnpm verify`; every suite runs in CI on three shards (here only on purpose: `pnpm verify --e2e-all`) | `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
 | Run an app in development | `pnpm --filter @vertex-food/<app> dev` (`restaurant` in Electron: `dev:electron`); ports in each app's `CLAUDE.md` |
 | Local database (roles and `vertex_food`, from `.env`) | `pnpm db:setup-local` (`packages/db/CLAUDE.md`) |
 | Generate a migration from the schema | `pnpm db:generate` · custom SQL: `pnpm --filter @vertex-food/db exec drizzle-kit generate --custom --name=<name>` |
@@ -72,7 +74,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 
 - Continue without asking when the next step needs no input from the owner. Put brief status notes in the same message as the next action.
 - Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or outward-facing action (deleting data, dropping tables, restoring a database snapshot, force-push, sending real WhatsApp messages, publishing an app). Deploying `main` to production and changing production through the server or an admin panel need no approval (owner, 2026-10-18): do them when the task calls for them and report what changed.
-- A task is done only when its checks pass and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence instead of asserting success.
+- A task is done only when `pnpm verify` passes on its final state, CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
 - Fix root causes. Never silence a failing test, type error or lint rule.
 - For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes.
 - Mark anything you could not confirm and say where you looked.
@@ -82,7 +84,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 
 - Search before reading, then read only the relevant range. For `v1-scope.md`, read the feature's section.
 - Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`.
-- Run the narrowest check first and the full set once before the PR.
+- Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a whole E2E suite and `timeout` around tests. CI runs everything.
 - In replies, point to `path:line` instead of pasting files or diffs.
 
 ## Git
@@ -99,10 +101,10 @@ When a task's work is done, finish it in the same turn. Stop and report at the f
 1. **Branch:** not `main`. `TASKS.md` has no open items for this PR.
 2. **Docs:** update `docs/ROADMAP.md` and every doc the change made stale (`docs/architecture.md`, a folder `CLAUDE.md`, `docs/open-questions.md`, the commands table above).
 3. **Secrets and data:** `git status` and `git diff --stat` show no `.env`, key, session file, real phone number or real data.
-4. **Checks:** lint, typecheck, test and build, plus E2E when a front end or `packages/ui*` changed and migration drift when `packages/db` changed, through the `checker` subagent. Documentation-only changes run no checks.
+4. **Checks:** `pnpm verify` passes on the final tree (lint, typecheck, test, build, migration drift when its sources changed, the changed E2E specs), run yourself or through the `checker`. A green run on the same tree counts; after a fix run it again, and Turborepo replays what the fix did not touch. Documentation-only changes run no checks (CI skips them too). CI runs everything, every E2E suite on three shards.
 5. **Review:** for feature, sync, money, security and dispatch work, the `reviewer` subagent has run and its blocking findings are fixed.
 6. **Commit:** intended files only; Conventional Commit subject, a body with what and why, ending with the session's attribution line.
-7. **Pull request:** `git push -u origin <branch>`, `gh pr create --base main` with `## Summary` and `## Test plan`, ending with the session's attribution line; then `gh pr merge <number> --auto --merge`. Exception: a PR that changes `v1-scope.md` or adds or changes an ADR waits for the owner's approval before auto-merge.
+7. **Pull request:** `git push -u origin <branch>`, `gh pr create --base main` with `## Summary` and `## Test plan`, ending with the session's attribution line; then `gh pr merge <number> --auto --merge`. If CI fails, read `gh run view <run-id> --log-failed`, fix the cause on the branch and push: auto-merge waits for green. Exception: a PR that changes `v1-scope.md` or adds or changes an ADR waits for the owner's approval before auto-merge.
 8. **Report** in the format below.
 
 ## Reporting

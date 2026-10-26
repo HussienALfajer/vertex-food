@@ -16,4 +16,4 @@ Vertex Food Driver, for restaurant and Vertex drivers (ADR 0003, 0009, 0024, lay
 - Versions of Expo packages come from `pnpm exec expo install <package>`, pinned exactly; ADR 0024 lists the S19 additions. On each SDK upgrade, recheck `src/lib/native-error-reports.ts` (React Native's internal `ExceptionsManager`), as in `apps/customer`; `native-error-reports.test.ts` fails until it is.
 - UI changes add or update the E2E RTL screenshots (light and dark) and are looked at before the PR; location, the foreground service and native behaviour are checked on a development build or a real phone (Q19).
 
-Run: `pnpm --filter @vertex-food/driver test` · build: `pnpm --filter @vertex-food/driver build` · E2E (after `build`): `pnpm --filter @vertex-food/driver test:e2e` · dev: `pnpm --filter @vertex-food/driver dev`.
+Run: `pnpm --filter @vertex-food/driver test` · build: `pnpm --filter @vertex-food/driver build` · E2E: `pnpm verify apps/driver/e2e/<file>.spec.ts` (builds first; every suite runs in CI, `docs/testing.md`) · dev: `pnpm --filter @vertex-food/driver dev`.
