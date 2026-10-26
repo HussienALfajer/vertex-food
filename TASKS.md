@@ -49,3 +49,20 @@ Four PRs on separate files, all merged 2026-10-20 (#16 to #19); statuses in the 
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
 - Store icons wired into `app.config.ts` with the first store build (Q3); the files are in `brand/logo/png/`
 - Madani Arabic: provisioned only when its licence is bought (outside the repository)
+
+## Faster checks (`chore/test-speed`, `docs/testing.md`)
+
+The Vertex Hub model (#172) adapted: each check once, the session checks what it changed, CI checks everything.
+
+- [x] Baseline with no dev server: db, worker and api suites (wall and Vitest's Duration); each app's whole E2E suite
+- [x] Vitest: `isolate: false` measured (passes normal and shuffled, saves under 1 s: isolation kept, so no `process.env` restore); api workers measured (peak 5 connections, no cap); stale test databases dropped by `createTestDatabase`
+- [x] Playwright: `trace: 'on-first-retry'`, `fullyParallel`, `failOnFlakyTests` on CI in the five apps
+- [x] Timeouts fixed at their cause: the wizard tour (trace per action, 5.7 s now); two flaky tests found by the faster runs fixed (`preloadOnHover` race, Expo hydration in the layout check)
+- [x] turbo.json: `test:e2e` cached (outputs `test-results/**`), `brand/**` in build and test inputs, `remoteCache.signature`
+- [x] `pnpm verify` (`scripts/verify.mjs`), `.verify/` ignored
+- [x] Test guard hook and its test; `pnpm verify` permissions
+- [x] Agent rules and docs: checker, feature-slice, db-migration, AGENTS.md, CLAUDE.md, workflow, folder CLAUDE.md files, ROADMAP
+- [x] `docs/testing.md` with this repository's numbers
+- [x] CI: E2E on three shards behind the same gate, TURBO_* env on the turbo jobs, cache comment corrected, `.github/CLAUDE.md`
+- [x] Measure again, `pnpm verify`, reviewer (4 blocking findings fixed: cross-package test inputs, `timeout` options, quoted text and here-strings in the guard, `CI` in the test hash)
+- [x] PR with auto-merge and Auto-fix

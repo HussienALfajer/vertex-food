@@ -10,7 +10,7 @@ Drizzle schema, migrations, RLS policies, the database roles and the tenant cont
 - `src/client.ts`: `createDatabase(url)`, a pool with `DATABASE_DEADLINES` (connect 5 s; per session `statement_timeout` 10 s, `lock_timeout` 5 s, `idle_in_transaction_session_timeout` 30 s, sent at connection start so they bind every role and need no role grant; a job that needs longer sets `SET LOCAL statement_timeout` in its transaction) and an `error` listener on every client, so a connection lost while idle or inside a transaction is logged through `describeForLog`, fails only that transaction and is replaced instead of ending the process (`test/pool.test.ts`). `src/tenant-context.ts`: `withTenant(db, tenantId, work)` and `enterTenant(tx, tenantId)`. `src/describe-for-log.ts`: `describeForLog(error)`, what an unexpected error may write to the log (no values, ADR 0016), used by the apps.
 - `migrations/`: generated SQL plus custom migrations (RLS, triggers, grants, backfills, reference seeds with fixed UUIDv7 ids). The pattern for a custom migration: `0001_tenant-isolation-and-roles.sql`. Never read or edit `migrations/meta/`.
 - `scripts/setup-local.ts`: the local PostgreSQL setup (`pnpm db:setup-local`).
-- `src/testing.ts` (`@vertex-food/db/testing`): `createTestDatabase()`, a fresh migrated database for one test run, used by this package's and the apps' test global setups.
+- `src/testing.ts` (`@vertex-food/db/testing`): `createTestDatabase()`, a fresh migrated database for one test run, used by this package's and the apps' test global setups. It first drops the test databases that killed runs left behind (older than 6 hours, nobody connected; `test/testing.test.ts`).
 - `test/`: run against a fresh database per run (`test/global-setup.ts`). `conventions.test.ts` reads the rules below from the migrated database; `tenant-isolation.test.ts`, `append-only.test.ts`, `platform-jobs.test.ts` and `roles.test.ts` try them as each role.
 
 ## Roles
@@ -39,6 +39,6 @@ Drizzle schema, migrations, RLS policies, the database roles and the tenant cont
 2. Copy `.env.example` to `.env` at the repository root and set the six URLs: a superuser of your server for `DATABASE_ADMIN_URL`, passwords of your choice for the five roles.
 3. `pnpm db:setup-local` (creates or updates the roles and the `vertex_food` database; never drops anything), then `pnpm db:migrate`.
 
-The tests need the owner, app, jobs, queue and sync URLs: each run creates `food_test_<time>_<random>`, migrates it and drops it. Turborepo passes only the URLs listed in `passThroughEnv` of the `test` task in `turbo.json`.
+The tests need the owner, app, jobs, queue and sync URLs: each run creates `food_test_<time>_<random>`, migrates it and drops it; a run killed before that leaves its database, which a run 6 hours later drops. Turborepo passes only the URLs listed in `passThroughEnv` of the `test` task in `turbo.json`.
 
 Run: `pnpm --filter @vertex-food/db test`.

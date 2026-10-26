@@ -169,6 +169,11 @@ test('the layout checks catch cut-off content and small controls inside the scre
 }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // The static export's HTML shows before React hydrates it, and hydration replaces nodes added
+  // meanwhile (the small control was gone in 1 run of 16): add them once React owns the screen.
+  await page.waitForFunction(
+    `Object.keys(document.querySelector('[role="main"] div')).some((key) => key.startsWith('__reactFiber'))`,
+  );
   // A string: this tsconfig has no DOM types. A row wider than the window, inside the ScrollView.
   await page.evaluate(`(() => {
     const row = document.createElement('div');

@@ -25,3 +25,14 @@ auditConfig:
     - GHSA-86w9-cpqp-85rv
     # braces stack exhaustion on nested patterns: Metro's file map (bundling only; patterns are ours).
     - GHSA-vfj7-8cjw-p6xm
+    # zod 3 memory exhaustion on oversized constrained collections: @expo/cli (developer and EAS
+    # machines; the apps and servers use zod 4.6.7, patched). No patched zod 3.
+    - GHSA-mrhx-c7xc-m3w5
+
+# Patched versions of transitive dependencies whose parents still pin a vulnerable one. Remove an
+# entry once the parent's own range picks up the patched version.
+overrides:
+  # @nestjs/platform-express 12.2.0 still pins multer 2.4.0 (GHSA-q7qp-rjg7-q26m).
+  multer@2: 2.5.0
+  # express 5's ^2.3.0, locked at a vulnerable 2.x (GHSA-27r3-jxmh-p828).
+  body-parser@2: 2.4.0

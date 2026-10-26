@@ -4,9 +4,11 @@
   "agentGuidance": false,
   "globalDependencies": [".node-version"],
   "globalPassThroughEnv": ["CI", "NEXT_TELEMETRY_DISABLED"],
+  "remoteCache": { "signature": true },
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/brand/**"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "typecheck": {
@@ -14,7 +16,9 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/brand/**"],
       "outputs": [],
+      "env": ["CI"],
       "passThroughEnv": [
         "DATABASE_OWNER_URL",
         "DATABASE_APP_URL",
@@ -25,8 +29,8 @@
     },
     "test:e2e": {
       "dependsOn": ["build"],
-      "cache": false,
-      "outputs": []
+      "outputs": ["test-results/**"],
+      "env": ["CI"]
     }
   }
 }

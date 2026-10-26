@@ -20,10 +20,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Turborepo's remote cache (docs/testing.md, "CI") is on once the repository has the TURBO_TOKEN and
+# TURBO_REMOTE_CACHE_SIGNATURE_KEY secrets and the TURBO_TEAM variable (TURBO_API for a cache other
+# than Vercel's). Only the jobs that run turbo get them. Until then, and for pull requests without
+# secrets, each job keeps its own cache (actions/cache).
 # Third-party actions are pinned to full commit SHAs (the tag in the comment); Dependabot proposes
 # updates (.github/dependabot.yml). The gate job names are the checks main will require: renaming
 # one means updating the branch protection too. Steps arrive with their first subject (.github/CLAUDE.md).
-# E2E runs the built web front ends in Playwright's Chromium and uploads their RTL screenshots.
+# E2E runs the built web front ends in Playwright's Chromium on three shards and uploads their RTL
+# screenshots.
 jobs:
   # Pull requests that change only Markdown skip the checks; the gate job below still reports, so
   # branch protection and auto-merge work.
@@ -57,6 +62,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+      TURBO_API: ${{ vars.TURBO_API || 'https://vercel.com/api' }}
+      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -65,8 +75,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Turborepo's cache across runs: tasks whose inputs did not change are replayed, not rerun
-      # (a merge to main replays its pull request's tasks).
+      # Turborepo's cache: tasks whose inputs did not change are replayed, not rerun. A pull request
+      # reads its own runs' cache and main's; main cannot read a pull request's (GitHub keeps caches
+      # per branch), so after a merge main runs what the pull request changed once more.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
@@ -117,6 +128,10 @@ jobs:
       DATABASE_JOBS_URL: postgres://food_jobs:ci-only-jobs-password@localhost:5432/vertex_food
       DATABASE_QUEUE_URL: postgres://food_queue:ci-only-queue-password@localhost:5432/vertex_food
       DATABASE_SYNC_URL: postgres://food_sync:ci-only-sync-password@localhost:5432/vertex_food
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+      TURBO_API: ${{ vars.TURBO_API || 'https://vercel.com/api' }}
+      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -125,8 +140,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Turborepo's cache across runs: tasks whose inputs did not change are replayed, not rerun
-      # (a merge to main replays its pull request's tasks).
+      # Turborepo's cache: tasks whose inputs did not change are replayed, not rerun. A pull request
+      # reads its own runs' cache and main's; main cannot read a pull request's (GitHub keeps caches
+      # per branch), so after a merge main runs what the pull request changed once more.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
@@ -143,12 +159,23 @@ jobs:
         run: |
           if [ -d .turbo/cache ] && [ "$(du -sm .turbo/cache | cut -f1)" -gt 1500 ]; then rm -rf .turbo/cache; fi
 
+  # Every app's suite split over three runners by test (Playwright --shard; the configs set
+  # fullyParallel). Each shard builds what it tests, or replays the build from its cache.
   e2e:
-    name: E2E
+    name: E2E shard ${{ matrix.shard }}
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+      TURBO_API: ${{ vars.TURBO_API || 'https://vercel.com/api' }}
+      TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -157,25 +184,28 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Turborepo's cache, as in the jobs above; each shard keeps its own. A shard whose apps did
+      # not change replays its E2E results (turbo.json: test:e2e is cached, with test-results/).
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
-          key: turbo-${{ github.job }}-${{ github.sha }}
-          restore-keys: turbo-${{ github.job }}-
+          key: turbo-${{ github.job }}-${{ matrix.shard }}-${{ github.sha }}
+          restore-keys: turbo-${{ github.job }}-${{ matrix.shard }}-
       - name: Playwright browser
         run: pnpm --filter @vertex-food/web exec playwright install --with-deps chromium
-      # Builds what each front end needs (turbo.json: test:e2e depends on build), then runs the
-      # restaurant renderer, the console, the web app and the customer and driver web exports, light
-      # and dark.
-      - run: pnpm test:e2e
+      # Builds what each front end needs (turbo.json: test:e2e depends on build), then runs this
+      # shard of the restaurant renderer, the console, the web app and the customer and driver web
+      # exports, light and dark.
+      - run: pnpm turbo run test:e2e -- --shard=${{ matrix.shard }}/3
       - name: E2E screenshots and traces
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-results
+          name: e2e-results-${{ matrix.shard }}
           path: apps/*/test-results/
           if-no-files-found: ignore
           retention-days: 14
+      # The cache only grows (each run adds its new task results): start over past 1.5 GB.
       - name: Keep the Turborepo cache small
         if: always()
         run: |
