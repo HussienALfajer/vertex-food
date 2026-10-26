@@ -1,6 +1,6 @@
 # 0011 — Marketplace: listing by agreement, discovery by area, ratings per order
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (listing condition superseded by [0028](0028-order-intake-mode-and-listing.md)) · Date: 2026-10-18
 
 ## Context
 The customer app shows restaurants that bought the system and whose agreement lists them (owner, 2026-10-18). It launches now, with a customer acquisition plan the owner holds, starting in Azaz. The marketplace must never show a restaurant that cannot receive the order.

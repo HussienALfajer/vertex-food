@@ -28,12 +28,26 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | رمز PIN | PIN | A staff member's short code on a registered device |
 | المنيو | menu | A branch's categories and items |
 | الصنف | menu item | Something sold, with sizes and modifiers |
+| عنصر البيع | catalog item | The platform's generic name for something a tenant sells; in the food domain, a menu item (ADR 0025) |
+| السعر الأساسي | base price | An item's price in USD, from which its SYP and TRY prices are derived (ADR 0031) |
+| قاعدة التقريب | rounding rule | A branch's step and direction for rounding a derived price in one currency |
+| تكلفة الصنف | item cost | The cost of an item entered by hand, seen and edited by the owner only, for menu engineering |
+| نفس سعر المحل | same price as in-store | A badge shown when every item's app price equals its dine-in price, for branches running the POS (ADR 0029) |
+| طلب ضائع | lost demand | A tap on a sold-out item, recorded without the customer's identity |
 | الحجم / النوع | variant | A size or kind of an item with its own price |
 | الإضافات | modifier group / modifier | A group of options added to an item (required or optional, min and max) |
 | نفد | sold out | An item unavailable for now |
 | الطلب | order | One customer's order, whatever the channel |
 | قناة الطلب | channel | `pos`, `waiter`, `phone`, `qr`, `restaurant_web`, `marketplace` |
 | نوع الطلب | order type | `dine_in` (صالة), `takeaway` (سفري), `delivery` (توصيل), `pickup` (استلام) |
+| وضع استقبال الطلبات | order-intake mode | A mode of the restaurant app, online only, for a restaurant that keeps its own cashier system (ADR 0028) |
+| الوقت الموعود | promised time | The ready or delivery time given to the customer at acceptance |
+| الاستلام السريع | express pickup | An online pickup order with a pickup code and a "ready" notification, paid at pickup |
+| رمز الاستلام | pickup code | A short code the customer shows to collect an express pickup order |
+| طلب الطاولة | table request | A call for the waiter or for the bill from a table's QR menu |
+| اتصال ضعيف | weak connection | A branch's connectivity state between online and offline, shown to customers before ordering (ADR 0030) |
+| تعديل الطلب | order adjustment | A discount, charge, tax, service or fee on an order, with its kind, source and funding |
+| جهة التمويل | funding source | Who pays a discount: `restaurant`, `vertex` or `co_funded` with each party's share |
 | بند الطلب | order line | An item in an order with its modifiers, notes and price snapshot |
 | حدث الطلب | order event | An append-only record of a change to an order |
 | الطاولة | table | A dine-in table of a branch |
@@ -64,8 +78,8 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | العهدة النقدية | cash on hand | Cash a driver holds and on whose behalf |
 | التسليم | handover | A driver giving collected cash to the restaurant or Vertex |
 | الإسناد اليدوي | dispatch | Assigning a delivery job to a driver |
-| الكتالوج | catalog | All features and limits Vertex sells |
-| الباقة | package | A preset of catalog items for agreements |
+| كتالوج الميزات | feature catalog | All features and limits Vertex sells (ADR 0013; named so by ADR 0025) |
+| الباقة | package | A preset of feature catalog entries for agreements |
 | الاتفاقية | agreement | The commercial terms between Vertex and a tenant |
 | البند التجاري | agreement term | One effective-dated term: subscription, commission, listing fee, waiver… |
 | الإعفاء | waiver | A free period on a term |
@@ -78,5 +92,25 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | الحقل المخصص | custom field | A bounded field a tenant adds to items or orders |
 | الظهور في التطبيق | listing | A branch shown in the customer app |
 | التقييم | rating | A customer's 1–5 score for one order |
+| الحملة | campaign | An offer or a coupon with its rules, budget, validity and funding, changed by new versions (ADR 0026) |
+| العرض | offer | A campaign applied automatically when its conditions hold |
+| القسيمة / الكوبون | coupon | A campaign applied with a code |
+| حملة المنصة | platform campaign | A campaign Vertex runs from the console; a restaurant can opt out of them |
+| عرض مشترك التمويل | co-funded offer | A campaign whose cost is shared between Vertex and a restaurant that accepted its share |
+| محفظة الخصومات | discount wallet | The coupons, rewards and point balances a customer can use |
+| برنامج الولاء | loyalty program | A restaurant's points or stamp card, or Vertex's platform points |
+| النقاط | points | Loyalty units, append-only entries, a liability with an expiry |
+| بطاقة الأختام | stamp card | A reward after a number of qualifying orders |
+| متجر المكافآت | rewards store | Where a customer spends platform points on Vertex-funded rewards |
+| الإحالة | referral | A customer's code that rewards them and a new customer after the new customer's first completed order |
+| ربط هوية الزبون | customer link | A POS customer joined to their platform account after confirming by WhatsApp, with consent (F48) |
+| سياسة الثقة | trust policy | Vertex's versioned rules for the late guarantee, no-shows and reliability (ADR 0027) |
+| ضمان التأخير | late guarantee | Compensation for an order later than its promised time, paid by the party at fault |
+| عدم الحضور | no-show | A delivery not received or a pickup not collected, with the policy's evidence |
+| دين الزبون | customer debt | A no-show penalty carried by the customer's next order; the account is suspended until it is paid |
+| مستوى الموثوقية | reliability level | The level of a customer's platform reliability score, the only part restaurants see |
+| هندسة المنيو | menu engineering | Classifying items by sales and margin from the item cost |
+| الإيراد الضائع | lost revenue | Sales missed through rejections, cancellations, auto-rejections and sold-out taps |
+| نهائي بعد المزامنة | final after sync | A figure that may still change until every device of the branch has synced, shown with its last update time |
 | الوكيل | field agent | A Vertex seller who signs restaurants |
 | وصول الدعم | support access | Vertex staff opening a tenant's data with its permission |

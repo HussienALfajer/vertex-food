@@ -1,6 +1,6 @@
 # 0007 — Orders: one model for every channel, a state table, append-only events and snapshots
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (adjustments, promised times and express pickup amended by [0029](0029-orders-funding-pickup-and-promised-times.md)) · Date: 2026-10-18
 
 ## Context
 Orders arrive from the cashier, waiters, the phone, the QR menu, the restaurant's web page and the customer app. If each channel has its own order shape, kitchens, reports and money drift apart. Menu items and prices change while orders are open and after they close.

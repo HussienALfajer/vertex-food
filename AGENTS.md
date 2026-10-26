@@ -11,7 +11,7 @@ This project is independent. Do not read or reuse other folders on this machine 
 | File | Purpose |
 |---|---|
 | `docs/product/vision.md` | The platform, its products, the business, principles |
-| `docs/product/v1-scope.md` | What V1 includes and excludes (F01–F40). Anything not in it is out of scope: ask before adding. |
+| `docs/product/v1-scope.md` | What V1 includes and excludes (F01–F48). Anything not in it is out of scope: ask before adding. |
 | `docs/decisions/` | ADRs. Follow them; propose a new ADR to change one. ADR 0020 is the code shape. |
 | `docs/architecture.md` | Layers, repository layout, module map, key flows |
 | `docs/glossary.md` | Domain terms in Arabic and English. Name code after the English term. |
@@ -54,11 +54,12 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 
 ## Non-negotiable conventions
 
+- **Build for extension (ADR 0025):** the platform layer assumes no business type: generic names (tenant, branch, catalog item); food specifics stay in the food domain; an architecture test forbids platform → food imports; no speculative fields or tables.
 - **Tenant isolation (ADR 0004):** every tenant-owned table has `tenant_id` and a forced row-level security policy; apps connect as a role that cannot bypass RLS; tenant context is set per transaction from the session. Customers, the Vertex fleet and agreements are platform data reached only through their modules. A cross-tenant read is a security incident.
 - **Fleet visibility (ADR 0009):** a restaurant driver sees only its restaurant's jobs; a driver sees customer details only while the job is active; location only while on duty.
 - **Orders (ADR 0007):** one model for every channel; append-only order events; line snapshots; totals recomputed by the server, never trusted from a client.
 - **Offline-first (ADR 0008):** the restaurant app reads and writes its local database; changes travel as commands the server re-executes and may accept, adjust or reject; UUIDv7 ids from the device; numbers from pre-allocated ranges; nothing is resolved or dropped silently.
-- **Money (ADR 0014):** integer minor units, always with a currency; no floats; the exchange rate stored on every conversion; payments, refunds, ledger entries and agreement terms are append-only and corrected by new rows.
+- **Money (ADR 0014, 0031):** integer minor units, always with a currency; no floats; the exchange rate stored on every conversion; every discount carries its funding source; payments, refunds, ledger entries and agreement terms are append-only and corrected by new rows.
 - **Agreements (ADR 0013):** terms are effective-dated; a change never rewrites the past; the code never checks a package name; one codebase, no per-restaurant branches.
 - **Customer data (ADR 0006):** attribution on every order, set by the server; no restaurant sees another's customers; customer phones, addresses and driver locations never in logs, errors, analytics or URLs.
 - **One validation source:** Zod schemas in `packages/contracts`, reused by every app.

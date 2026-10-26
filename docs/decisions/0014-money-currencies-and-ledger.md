@@ -1,6 +1,6 @@
 # 0014 — Money: integer units per currency, stored rates, an append-only ledger between restaurant, Vertex and drivers
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (funding and liability accounts and base-currency prices amended by [0031](0031-money-funding-liabilities-and-base-currency-prices.md)) · Date: 2026-10-18
 
 ## Context
 Restaurants in Azaz price and take payments in US dollars, Turkish lira and Syrian pounds (new notes since 2026-01-01), mostly in cash. Drivers collect cash for restaurants and for Vertex. Vertex earns commissions, fees and subscriptions under terms that change over time (ADR 0013). Floating-point money and in-place balances are not acceptable.

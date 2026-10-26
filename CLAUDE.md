@@ -4,7 +4,7 @@
 
 ## Model and effort
 
-- Default: Opus 5.5 at `medium` (`.claude/settings.json`). Use `high` for specs, spikes, and for tenancy and RLS, access, orders, money and the ledger, agreements and entitlements, dispatch and the WhatsApp gateway; `xhigh` for the sync protocol and branch hub core; `low` for mechanical edits.
+- Default: Opus 5.5 at `medium` (`.claude/settings.json`). Use `high` for specs, spikes, and for tenancy and RLS, access, orders, money and the ledger, agreements and entitlements, promotions, loyalty and trust policies, dispatch and the WhatsApp gateway; `xhigh` for the sync protocol and branch hub core; `low` for mechanical edits.
 - Set model and effort at session start. Don't switch models mid-session: it drops the prompt cache.
 - If the same problem fails twice at `xhigh`, say so and suggest Fable 5.1 for that problem only.
 - Don't write "think hard" or "step by step" in prompts or skills: effort controls depth.

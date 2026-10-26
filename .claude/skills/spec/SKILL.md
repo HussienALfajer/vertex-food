@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Interview the owner about a spec from docs/ROADMAP.md (S01–S24) and write it to docs/specs/. First step of the feature cycle, before any plan or code.
+description: Interview the owner about a spec from docs/ROADMAP.md (S01–S29) and write it to docs/specs/. First step of the feature cycle, before any plan or code.
 argument-hint: <spec id, e.g. S09>
 disable-model-invocation: true
 effort: high
