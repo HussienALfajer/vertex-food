@@ -1,6 +1,6 @@
 # 0013 — Commercial model: catalog, packages as presets, an effective-dated agreement per restaurant, derived entitlements
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (the catalog named the feature catalog by [0025](0025-build-for-extension.md); the commission base on discounts set by [0031](0031-money-funding-liabilities-and-base-currency-prices.md)) · Date: 2026-10-18
 
 ## Context
 The owner wants revenue terms that differ per restaurant and change over time: a commission per order, a free listing with the subscription, a monthly fee for listing, free months, free for good, all editable from the console (owner, 2026-10-18). A feature requested by one restaurant may run only for it, be sold to others later, and be paid for or not (owner, 2026-10-18). Fixed plans do not fit; free-form terms without structure become billing disputes. Vertex Shifa ADR 0013 solved the entitlement side.

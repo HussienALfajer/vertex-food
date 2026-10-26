@@ -1,6 +1,6 @@
 # Vertex Food — Vision
 
-Status: Approved by the owner on 2026-10-18 (analysis sessions of 2026-10-18).
+Status: Approved by the owner on 2026-10-18 (analysis sessions of 2026-10-18); business model and extension principle amended on 2026-10-27.
 
 ## The platform
 
@@ -8,7 +8,7 @@ Vertex Food is a restaurant platform, not a single cashier program. One platform
 
 | Product | Who it serves | Status |
 |---|---|---|
-| **Vertex Food Restaurant** — POS, kitchen display, waiter app, back office, QR menu | Restaurants, cafés, chains with several branches | V1 |
+| **Vertex Food Restaurant** — POS, kitchen display, waiter app, back office, QR menu; order-intake mode for restaurants that keep their own cashier system | Restaurants, cafés, chains with several branches | V1 |
 | **Vertex Food** customer app (Android, iOS, web) | People ordering food from listed restaurants | V1 |
 | **Vertex Food Driver** app (Android) | Restaurant drivers and Vertex drivers, in one app | V1 |
 | **Vertex Food Console** | Vertex staff: restaurants, agreements, fleet, money, support | V1 |
@@ -18,6 +18,10 @@ Vertex Food is a restaurant platform, not a single cashier program. One platform
 ## The business
 
 Vertex earns from restaurants in any mix agreed per restaurant: a subscription to the system, a commission per order, a fee for listing in the customer app, setup and hardware, delivery by Vertex drivers, or nothing for a time (free months, or free for good). No term is fixed in code: every restaurant has its own agreement, edited by Vertex staff, effective from a date and never rewriting the past (ADR 0013).
+
+A restaurant that keeps its own cashier system can still sell through the customer app in order-intake mode (ADR 0028). The commission is computed on what the restaurant actually receives: a discount the restaurant funds lowers it, and a discount Vertex funds is paid by Vertex to the restaurant (ADR 0031).
+
+Vertex grows orders with promotions, coupons, platform points and referral, which it funds alone or with restaurants; a restaurant runs its own offers and loyalty within its entitlements. Vertex may run campaigns it funds fully without asking first, and a restaurant can opt out of platform campaigns. Trust policies (a late guarantee paid by the party at fault, no-show charges, a customer reliability level) make the customer app worth trusting for customers and restaurants alike (ADR 0026, 0027).
 
 Vertex sells and supports in the field: agents sign restaurants, install, train and stay reachable (owner, 2026-10-18).
 
@@ -42,3 +46,4 @@ Syria, starting with a pilot in Azaz (northern Aleppo) (owner, 2026-10-18). Cond
 6. **Fair to restaurants.** A restaurant's drivers see only its orders; a restaurant never sees a competitor's data; customer data follows a written policy (ADR 0006).
 7. **Vertex is always visible.** Restaurant-branded pages, receipts and screens always show "Powered by Vertex Food" (ADR 0018).
 8. **Built for Syria.** Arabic-first, cheap devices, weak networks, cash, three currencies.
+9. **Built for extension.** The platform core assumes no business type and uses generic names (tenant, branch, catalog item); food specifics stay in the food domain; tests keep the core from depending on it; nothing is built ahead of need (ADR 0025).

@@ -1,6 +1,6 @@
 # Roadmap
 
-Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs refer to `docs/product/v1-scope.md`. Work is grouped into specs (S01–S24): one spec, one `/spec` session. Production is deployed once at the end of each phase (`docs/workflow.md`).
+Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs refer to `docs/product/v1-scope.md`. Work is grouped into specs (S01–S29): one spec, one `/spec` session. Production is deployed once at the end of each phase (`docs/workflow.md`).
 
 ## Phase 0 — Foundation
 - [x] Product vision and V1 scope, decisions 0001–0021, glossary, working method, Claude Code setup (subagents `checker`, `reviewer`, `explorer`; skills `spec`, `feature-slice`, `db-migration`; hooks)
@@ -18,6 +18,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [x] S01 Tenancy and restaurant setup: F01 (spec: `docs/specs/S01-tenancy-and-restaurant-setup.md`). Backend (PR 1): contracts, schema with RLS and the Aleppo → Azaz seed, the API's access guard (fail closed until S02), architecture test and OpenAPI document, the tenancy, areas and files modules with console routes and the CLI, the worker's `tenancy/apply-scheduled-status`. Restaurant app (PR 2): typed API client and TanStack Query (online only, `VITE_API_URL` in `connect-src`), onboarding wizard with the waiting and setup-in-progress screens, restaurant, branch and hours settings with dated exceptions, status banners, E2E against a mocked API. Until S02 the app shows the owner's view and the API refuses it; the map picker waits for map tiles (hosting, Q1): pins are pasted coordinates or links. External audit fixed on `fix/S01-audit` (`docs/audits/S01-audit.md`): pinned DNS for map links, lock order, database guards, wizard and editor drafts, 44 px touch targets
 - [x] Full audit of the repository (2026-10-20, `docs/audits/2026-10-20-full-audit.md`): 38 findings verified; 27 fixed in #16 to #19, 5 spike defects recorded for the specs that reuse the code, BE-01 and VER-01 left to S02 and S04, 4 needing no change
 - [x] Faster checks (`docs/testing.md`), after Vertex Hub #172. Done: `pnpm verify`, the test guard hook, Vitest settings measured (isolation and workers kept), Playwright traces on retry and `fullyParallel`, two flaky tests fixed, cached `test:e2e` and E2E on three CI shards; local E2E 68 s → 48 s.
+- [x] V1 additions F41–F48 approved by the owner (2026-10-27): scope, vision, ADRs 0025–0031, open questions Q21–Q26, new specs S25–S29 and the changes folded into S07, S11, S14, S15, S17
 - [ ] S02 Identity, access and devices: F02 · F03
 - [ ] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012)
 - [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub with journal, standby and failover, client outbox, sync status (ADR 0008, 0022)
@@ -26,32 +27,37 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [ ] Production deploy of Phase 1 (internal test tenants only)
 
 ## Phase 2 — Restaurant operations
-- [ ] S07 Menu, prices and exchange rates: F10 · F11
+- [ ] S07 Menu, prices and exchange rates: F10 · F11 (base prices in USD with derived SYP and TRY prices and rounding rules, ADR 0031; the owner-only item cost; sold-out items kept visible)
 - [ ] S08 Branding and custom fields: F06 · F07
 - [ ] S09 POS orders and tables: F12
 - [ ] S10 Payments, cash sessions and end of day: F13 (receipts and the drawer per ADR 0023)
-- [ ] S11 Kitchen routing, display and printing: F14 · F15 (ADR 0008, 0023)
+- [ ] S11 Kitchen routing, display and printing: F14 · F15 (ADR 0008, 0023), with the kitchen display's load that suggests preparation times (F17, ADR 0029)
 - [ ] S12 Waiter app: F16
 - [ ] S13 Reports: F21
 - [ ] Production deploy of Phase 2
 
 ## Phase 3 — Online ordering
-- [ ] S14 Online order intake and the order lifecycle across channels: F17 · F18
-- [ ] S15 QR menu, restaurant pages and custom domains: F22 · F23
+- [ ] S14 Online order intake and the order lifecycle across channels: F17 · F18 · F41 (order-intake mode, ADR 0028; suggested and promised times, ADR 0029; weak-connection state, ADR 0030)
+- [ ] S15 QR menu, restaurant pages and custom domains: F22 · F23 (with table requests: call the waiter, ask for the bill, rate)
 - [ ] S16 Customer app: account, addresses, discovery: F24 · F25
-- [ ] S17 Customer app: restaurant page, cart, checkout, tracking, history, rating: F26 · F27 · F28 · F29
+- [ ] S17 Customer app: restaurant page, cart, checkout, tracking, history, rating: F26 · F27 · F28 · F29 (with sold-out items dimmed and lost demand, the "same price as in-store" badge, the weak-connection notice, express pickup with a pickup code)
+- [ ] S25 Ledger core: accounts, postings, balances, commission on what the restaurant receives, promotion funding and point liability accounts (ADR 0014, 0031); moved from S21, whose statements stay in Phase 5
+- [ ] S26 Promotions and coupons: F42 (ADR 0026, 0029, 0030), platform campaigns in the console, restaurant campaigns in the back office, report per campaign
+- [ ] S27 Loyalty, referral and unified customer identity: F43 · F48 (ADR 0026; needs Q5)
 - [ ] Production deploy of Phase 3
 
 ## Phase 4 — Delivery
 - [ ] S18 Delivery zones and restaurant drivers: F19 · F20
 - [ ] S19 Driver app: F30 · F31 · F32 · F33
 - [ ] S20 Vertex fleet and dispatch: F36 · F37
+- [ ] S28 Trust policies: late guarantee, no-show, customer reliability: F44 · F45 · F46 (ADR 0027), policies versioned in the console
 - [ ] Production deploy of Phase 4
 
-## Phase 5 — Money and console
-- [ ] S21 Platform money: commission ledger, statements, driver settlements: F38
+## Phase 5 — Money, analytics and console
+- [ ] S21 Platform money: statements, payments to and from Vertex, driver settlements: F38 (on the S25 ledger core)
 - [ ] S22 Console: restaurants, agreements, entitlements, support access: F34 · F35 · F39
 - [ ] S23 Cities, areas and platform reports: F40
+- [ ] S29 Restaurant analytics: F47 (menu engineering, lost revenue, area heatmap, returning and inactive customers, "final after sync")
 - [ ] S24 Monitoring and alerts
 - [ ] Production deploy of Phase 5; customer and driver apps published (Q3)
 

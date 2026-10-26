@@ -14,7 +14,7 @@ Model names, prices and behaviors below are from Anthropic's documentation as ch
 
 ## The feature cycle
 
-The unit of work is a spec from `docs/ROADMAP.md` (`S01`…`S24`). Each session ends with a merged PR (or a finished deploy) and `/clear`, so the next one starts from files and git. Set the model and effort before the first message.
+The unit of work is a spec from `docs/ROADMAP.md` (`S01`…`S29`). Each session ends with a merged PR (or a finished deploy) and `/clear`, so the next one starts from files and git. Set the model and effort before the first message.
 
 | # | Session | Model and effort | First message | The owner | Ends with |
 |---|---|---|---|---|---|
