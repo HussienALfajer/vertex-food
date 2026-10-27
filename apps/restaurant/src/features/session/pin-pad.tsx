@@ -1,10 +1,26 @@
 import { pinPolicy } from '@vertex-food/contracts';
 import { Button, cn } from '@vertex-food/ui';
 import { DeleteIcon } from 'lucide-react';
-import { type KeyboardEvent, useRef, useState } from 'react';
+import { type KeyboardEvent, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
+
+/** Hands the pad the keyboard's keys from around it (`dialogPinKeys`). */
+export type PinPadHandle = { keyDown: (event: KeyboardEvent<HTMLElement>) => void };
+
+/**
+ * The keyboard's digits for the pad of a dialog. When the element that had the focus leaves the
+ * dialog (the approver's name once chosen, the first pad once the PIN is typed), the dialog itself
+ * takes the focus back (Base UI); the keys typed then reach the pad all the same.
+ */
+export function dialogPinKeys(pad: { current: PinPadHandle | null }) {
+  return {
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) pad.current?.keyDown(event);
+    },
+  };
+}
 
 /**
  * The six-digit PIN pad (spec S02 screens 4, 5, 7): keys of at least 64 px, laid out as a phone's
@@ -17,11 +33,13 @@ export function PinPad({
   onComplete,
   disabled = false,
   autoFocus = true,
+  handle,
 }: {
   label: string;
   onComplete: (pin: string) => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  handle?: Ref<PinPadHandle>;
 }) {
   const { t } = useTranslation('restaurant');
   // The digits typed so far, in a ref: keys pressed faster than the screen re-renders each add to
@@ -41,7 +59,7 @@ export function PinPad({
     setCount(entered.current.length);
   };
 
-  const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const keyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (/^\d$/.test(event.key)) {
       event.preventDefault();
       press(event.key);
@@ -50,6 +68,8 @@ export function PinPad({
       erase();
     }
   };
+
+  useImperativeHandle(handle, () => ({ keyDown }));
 
   const key = (digit: string) => (
     <Button

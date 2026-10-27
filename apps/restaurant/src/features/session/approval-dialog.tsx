@@ -15,11 +15,11 @@ import {
   DialogTitle,
   toast,
 } from '@vertex-food/ui';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BridgeResult, DeviceBridge, DeviceMemberView } from '../../lib/device';
 import { MemberPicker, useBridgeErrorText } from './member-picker';
-import { PinPad } from './pin-pad';
+import { dialogPinKeys, PinPad, type PinPadHandle } from './pin-pad';
 
 type DialogProps = { open: boolean; onOpenChange: (open: boolean) => void };
 
@@ -50,6 +50,7 @@ function ApproverDialog({
   const [approver, setApprover] = useState<DeviceMemberView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const pad = useRef<PinPadHandle>(null);
 
   const change = (next: boolean) => {
     if (!next) {
@@ -74,13 +75,14 @@ function ApproverDialog({
 
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogContent>
+      <DialogContent {...dialogPinKeys(pad)}>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
         {error && <Callout role="alert" tone="danger" title={error} />}
         {approver ? (
           <div className="flex flex-col items-center gap-3">
             <PinPad
+              handle={pad}
               label={t('lock.pinFor', { name: approver.name })}
               disabled={busy}
               onComplete={(pin) => void submit(approver, pin)}

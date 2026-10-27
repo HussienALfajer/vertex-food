@@ -18,7 +18,7 @@ import {
   PageHeader,
   toast,
 } from '@vertex-food/ui';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OfflineNotice } from '../../components/offline-notice';
 import { OfflineState } from '../../components/query-states';
@@ -27,7 +27,7 @@ import { useErrorText } from '../../lib/error-text';
 import { formatDateTime } from '../../lib/format';
 import { useOnline } from '../../lib/online';
 import { ChoosePinDialog } from '../session/choose-pin-dialog';
-import { PinPad } from '../session/pin-pad';
+import { dialogPinKeys, PinPad, type PinPadHandle } from '../session/pin-pad';
 import { useMe } from '../session/queries';
 import { isReauthCancelled, useSensitive } from '../session/reauth';
 import { TextField } from '../sign-in/sign-in-flow';
@@ -162,6 +162,7 @@ function PinSection() {
   const { t } = useTranslation('restaurant');
   const online = useOnline();
   const [step, setStep] = useState<'idle' | 'current' | { current: string }>('idle');
+  const pad = useRef<PinPadHandle>(null);
   return (
     <Card>
       <CardHeader>
@@ -174,11 +175,12 @@ function PinSection() {
         </Button>
       </div>
       <Dialog open={step === 'current'} onOpenChange={(open) => !open && setStep('idle')}>
-        <DialogContent>
+        <DialogContent {...dialogPinKeys(pad)}>
           <DialogTitle>{t('account.changePin')}</DialogTitle>
           <DialogDescription>{t('account.currentPinDescription')}</DialogDescription>
           <div className="flex justify-center">
             <PinPad
+              handle={pad}
               label={t('account.currentPin')}
               disabled={!online}
               onComplete={(current) => setStep({ current })}

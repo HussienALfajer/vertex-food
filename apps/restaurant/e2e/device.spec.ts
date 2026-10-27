@@ -281,7 +281,10 @@ test.describe('manager approval', () => {
     await expect(approvers).not.toContainText('أحمد الكاشير');
     await screenshot(page, testInfo, 'device-approval');
     await approvers.getByRole('button', { name: /ليلى المديرة/ }).click();
-    await typePin(dialogPad(page), '000001');
+    // The chosen name left the dialog and Base UI gave the focus to the dialog itself: the
+    // keyboard's digits reach the pad without clicking it.
+    await expect(dialogPad(page)).toBeVisible();
+    await page.keyboard.type('000001');
     await expect(dialog.getByRole('alert')).toHaveText('الرمز السري غير صحيح.');
     await typePin(dialogPad(page), manager.pin as string);
     await expect(dialog).toHaveCount(0);

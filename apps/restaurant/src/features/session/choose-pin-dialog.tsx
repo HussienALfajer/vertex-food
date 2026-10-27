@@ -10,11 +10,11 @@ import {
   toast,
 } from '@vertex-food/ui';
 import { WifiOffIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useErrorText } from '../../lib/error-text';
 import { useOnline } from '../../lib/online';
-import { PinPad } from './pin-pad';
+import { dialogPinKeys, PinPad, type PinPadHandle } from './pin-pad';
 
 /**
  * Choosing a PIN (spec S02 screen 5, rule 22): six digits typed twice on this PC, the trivial-PIN
@@ -38,6 +38,7 @@ export function ChoosePinDialog({
   const [first, setFirst] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const pad = useRef<PinPadHandle>(null);
 
   const enter = async (pin: string) => {
     if (first === null) {
@@ -68,7 +69,7 @@ export function ChoosePinDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !busy && onCancel()}>
-      <DialogContent>
+      <DialogContent {...dialogPinKeys(pad)}>
         <DialogTitle>{t('choosePin.title')}</DialogTitle>
         <DialogDescription>{t('choosePin.description')}</DialogDescription>
         {!online && (
@@ -82,6 +83,7 @@ export function ChoosePinDialog({
         {error && <Callout role="alert" tone="danger" title={error} />}
         <div className="flex justify-center">
           <PinPad
+            handle={pad}
             key={first === null ? 'first' : 'confirm'}
             label={first === null ? t('choosePin.first') : t('choosePin.confirm')}
             disabled={busy || !online}
