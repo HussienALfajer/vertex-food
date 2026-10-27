@@ -1,6 +1,6 @@
 # 0002 — Stack and repository: TypeScript everywhere, one monorepo
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (Better Auth dropped by [0032](0032-identity-in-house-and-branch-pins.md)) · Date: 2026-10-18
 
 ## Context
 Claude Code writes the whole system (ADR 0019). One language across server, desktop, web and mobile lets contracts, validation, money rules and i18n be written once. Vertex Shifa runs this exact stack with its patterns, tests and spikes; staying on it lets Vertex Food copy proven code and lets both projects share skills and habits. The restaurant cashier runs on Windows PCs (owner, 2026-10-18).

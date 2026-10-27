@@ -25,7 +25,17 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | المركز الاحتياطي | standby | A second restaurant PC that holds a live copy of the hub's journal and takes over when the hub stops (ADR 0022) |
 | سجل المركز | hub journal | The hub's ordered list of the branch's commands, copied to the standby (ADR 0022) |
 | الدورة | epoch | The hub's term number; the higher epoch is the hub after a takeover or a split (ADR 0022) |
-| رمز PIN | PIN | A staff member's short code on a registered device |
+| رمز PIN | PIN | A staff member's six-digit code, valid on every registered PC of their branches, offline too (ADR 0032) |
+| العضوية | staff membership | A person's place in a tenant: roles, branch scope, permission adjustments, status |
+| الدور | role | A preset of permissions: owner, manager, cashier, waiter, kitchen, driver |
+| قائمة الموظفين على الجهاز | member list | The branch's members, permissions and PIN verifiers held by each registered PC |
+| مهلة الانقطاع | offline window | 7 days after a PC's last member-list refresh; after it only members who used that PC sign in, with a warning |
+| موافقة المدير | manager approval | A member holding a permission approves another's action with their PIN on the same device |
+| إعادة التحقق | re-authentication | Entering the password (staff) or a TOTP code (console) again before a sensitive action |
+| جهاز شخصي | personal device | An owner's or manager's own browser or app, signed in for the back office, online only |
+| المحطة | station | A paired hub client without personal sign-in, such as the kitchen display |
+| الحجر | quarantine | Commands from a revoked device held until the owner accepts or rejects them |
+| مستخدم المنصة | platform user | A Vertex staff account in the console, with a role and mandatory TOTP |
 | المنيو | menu | A branch's categories and items |
 | الصنف | menu item | Something sold, with sizes and modifiers |
 | عنصر البيع | catalog item | The platform's generic name for something a tenant sells; in the food domain, a menu item (ADR 0025) |

@@ -1,6 +1,6 @@
 # 0005 — Identity and access: one person, many roles; devices and PIN; no email or SMS
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (implementation, PIN and staff onboarding amended by [0032](0032-identity-in-house-and-branch-pins.md)) · Date: 2026-10-18
 
 ## Context
 A cashier may work in two restaurants and order food as a customer; a driver may drive for a restaurant and for Vertex. Restaurant PCs are shared by several cashiers per shift and often offline. The platform uses neither email nor SMS (ADR 0012).
