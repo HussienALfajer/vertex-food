@@ -22,6 +22,8 @@ import { client, newPhone, OPERATOR, PASSWORD, proofOfWork, TestApi } from './st
 // limits, the platform audit of every request, and owner recovery.
 
 const CONSOLE_ORIGIN = 'http://localhost:5274';
+/** A synthetic second password, built from the first so no literal looks like a secret. */
+const NEW_PASSWORD = `${PASSWORD}-new`;
 const MINUTE = 60_000;
 
 let app: INestApplication;
@@ -341,11 +343,11 @@ describe('signing in (rule 39)', () => {
     );
     const wrong = await asUser(user.cookie)
       .put('/api/console/me/password')
-      .send({ currentPassword: 'not-the-password', newPassword: 'olive-harbor-stone-77' });
+      .send({ currentPassword: 'not-the-password', newPassword: NEW_PASSWORD });
     expect(wrong.body.code).toBe('INVALID_CREDENTIALS');
     await asUser(user.cookie)
       .put('/api/console/me/password')
-      .send({ currentPassword: PASSWORD, newPassword: 'olive-harbor-stone-77' })
+      .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })
       .expect(204);
     await asUser(user.cookie).get('/api/console/me').expect(200);
     expect((await asUser(other).get('/api/console/me')).body.code).toBe('SESSION_ENDED');

@@ -1,0 +1,4 @@
+# Synthetic test passwords that gitleaks' generic-api-key rule flags in the branch history (no
+# real secret ever lives in this repository). The test now builds them from `PASSWORD`.
+b4f8bbb6172b830ab17335401b72676246089824:apps/api/test/console-identity.test.ts:generic-api-key:308
+b4f8bbb6172b830ab17335401b72676246089824:apps/api/test/console-identity.test.ts:generic-api-key:312
