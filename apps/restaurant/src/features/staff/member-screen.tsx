@@ -111,6 +111,8 @@ function MemberDetail({
   const branchNames = useBranchNames();
   const manages = mayManage(access, catalog, member);
   const closed = tenant.status === 'closed';
+  // Rule 9: the access form restarts from the member as saved now; this says why.
+  const [reloaded, setReloaded] = useState(false);
   const editable =
     manages && member.status === 'active' && tenant.status !== 'suspended' && !closed;
 
@@ -143,8 +145,11 @@ function MemberDetail({
           title={t('staff.deactivatedReason', { reason: member.deactivationReason })}
         />
       )}
+      {reloaded && <Callout role="alert" tone="warning" title={t('states.conflictReloaded')} />}
       <AccessSection
         key={member.updatedAt}
+        onReloaded={() => setReloaded(true)}
+        onSaved={() => setReloaded(false)}
         member={member}
         catalog={catalog}
         branches={branches}
@@ -160,11 +165,15 @@ function AccessSection({
   catalog,
   branches,
   editable,
+  onReloaded,
+  onSaved,
 }: {
   member: StaffMember;
   catalog: AccessCatalog;
   branches: Branch[];
   editable: boolean;
+  onReloaded: () => void;
+  onSaved: () => void;
 }) {
   const { t } = useTranslation('restaurant');
   const access = useStaffAccess();
@@ -197,6 +206,7 @@ function AccessSection({
       }),
     )
       .then((saved) => {
+        onSaved();
         queryClient.setQueryData(memberQuery(member.id).queryKey, saved);
         void queryClient.invalidateQueries({ queryKey: ['staff', 'list'] });
         toast.add({ title: t('states.saved'), type: 'success' });
@@ -206,7 +216,7 @@ function AccessSection({
         if (failure instanceof ApiError && failure.code === 'CONFLICT') {
           // Rule 9: another owner changed the member; the screen shows them as saved now.
           await queryClient.invalidateQueries({ queryKey: memberQuery(member.id).queryKey });
-          setNotice({ tone: 'warning', text: t('states.conflictReloaded') });
+          onReloaded();
           return;
         }
         setNotice({ tone: 'danger', text: errorText(failure) });

@@ -115,7 +115,7 @@ export function LockScreen({ bridge, status }: { bridge: DeviceBridge; status: R
               {t('lock.back')}
             </Button>
             <ForgotPinDialog
-              key={selected.membershipId}
+              key={`forgot-${selected.membershipId}`}
               open={forgot}
               onOpenChange={setForgot}
               bridge={bridge}

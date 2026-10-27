@@ -1,11 +1,16 @@
 import { crc32, deflateSync } from 'node:zlib';
 import type { Page, Route } from '@playwright/test';
 import {
+  addStaffMemberSchema,
+  assignableRoles,
   type Branch,
   type BranchCharge,
+  changeStaffAccessSchema,
   createHourExceptionSchema,
+  type Device,
   DomainError,
   type ErrorCode,
+  effectivePermissions,
   effectiveStatusState,
   errorStatus,
   type Governorate,
@@ -16,13 +21,20 @@ import {
   otpRequestSchema,
   otpVerifySchema,
   ownerReadAccessEndsAt,
+  type PersonalDevice,
+  permissionCatalog,
   replaceBranchChargesSchema,
   replaceBranchHoursSchema,
+  revokeDeviceSchema,
+  rolePresets,
+  type StaffMember,
   type StoredFile,
   signInSchema,
   staffPermissions,
+  staffRoles,
   type Tenant,
   updateBranchSchema,
+  updateBranchSecuritySchema,
   updateHourExceptionSchema,
   updateTenantSchema,
   validateHourException,
@@ -72,6 +84,19 @@ export type MockApi = {
   accounts: Map<string, MockAccount>;
   /** The next password sign-in answers `RATE_LIMITED` (rule 11's lock). */
   signInLocked: boolean;
+  /** The tenant's members (spec S02 screens 9, 10). */
+  staff: StaffMember[];
+  /** The registered PCs (screen 11). */
+  devices: Device[];
+  /** The signed-in person's personal devices (screen 13). */
+  personalDevices: PersonalDevice[];
+  /**
+   * Whether the session entered its password in the last 5 minutes (rule 26): sensitive routes
+   * answer `REAUTH_REQUIRED` until it did. A personal session's sign-in counts as an entry.
+   */
+  reauthenticated: boolean;
+  /** The password `POST /api/sessions/current/reauth` and `PUT /api/me/password` accept. */
+  sessionPassword: string;
 };
 
 /** A synthetic account; `password` null until its first sign-in (rule 13). */
@@ -100,6 +125,57 @@ export function me(tenantOf: Tenant, overrides: Partial<Me> = {}): Me {
     deviceId: null,
     branchId: null,
     pinSet: false,
+    ...overrides,
+  };
+}
+
+/** A member as `GET /api/staff/:id` answers it: a cashier of no branch by default. */
+export function staffMember(overrides: Partial<StaffMember> = {}): StaffMember {
+  const roles = overrides.roles ?? ['cashier'];
+  return {
+    id: syntheticId(),
+    accountId: syntheticId(),
+    phone: '+963900000020',
+    displayName: 'عضو تجريبي',
+    nameAr: null,
+    roles,
+    allBranches: roles.includes('owner'),
+    branchIds: [],
+    grantedPermissions: [],
+    revokedPermissions: [],
+    effectivePermissions: effectivePermissions(
+      roles,
+      overrides.grantedPermissions ?? [],
+      overrides.revokedPermissions ?? [],
+    ),
+    status: 'active',
+    hasPassword: false,
+    pinSet: true,
+    pinDisabled: false,
+    deactivatedAt: null,
+    deactivationReason: null,
+    createdAt: created,
+    updatedAt: created,
+    ...overrides,
+  };
+}
+
+/** A registered PC as `GET /api/devices` answers it. */
+export function device(branchId: string, overrides: Partial<Device> = {}): Device {
+  return {
+    id: syntheticId(),
+    branchId,
+    name: 'الكاشير 1',
+    status: 'active',
+    os: 'win32 10.0',
+    appVersion: '0.1.0',
+    lastSeenAt: '2026-10-19T08:55:00.000Z',
+    membersSyncedAt: '2026-10-19T08:55:00.000Z',
+    registeredAt: created,
+    revokedAt: null,
+    revokeReason: null,
+    wipedAt: null,
+    updatedAt: created,
     ...overrides,
   };
 }
@@ -270,6 +346,9 @@ export async function mockApi(
     /** The browser's session: the owner's unless null (signed out) or another member's. */
     me?: Me | null;
     accounts?: Record<string, MockAccount>;
+    staff?: StaffMember[];
+    devices?: Device[];
+    personalDevices?: PersonalDevice[];
   },
 ): Promise<MockApi> {
   const files = new Map<string, StoredFile>();
@@ -297,6 +376,11 @@ export async function mockApi(
     }),
     accounts: new Map(Object.entries(seed.accounts ?? {})),
     signInLocked: false,
+    staff: seed.staff ?? [],
+    devices: seed.devices ?? [],
+    personalDevices: seed.personalDevices ?? [],
+    reauthenticated: false,
+    sessionPassword: 'synthetic-pass-1',
   };
   // Challenges and tickets of the sign-in steps, by id: the phone they belong to.
   const challenges = new Map<string, string>();
@@ -395,6 +479,36 @@ export async function mockApi(
     }
 
     // Identity (spec S02): the browser's session and the sign-in steps.
+    const caller = request.headers().authorization ? state.deviceMe : state.me;
+    // Rule 26: a sensitive route needs the password in the last 5 minutes.
+    const reauth = () => (state.reauthenticated ? undefined : refuse(route, 'REAUTH_REQUIRED'));
+    if (path === '/api/sessions/current/reauth' && method === 'POST') {
+      const { password } = body() as { password: string };
+      if (password !== state.sessionPassword) return refuse(route, 'INVALID_CREDENTIALS');
+      state.reauthenticated = true;
+      return route.fulfill({ status: 204 });
+    }
+    if (path === '/api/sessions/current/end' && method === 'POST') {
+      if (!request.headers().authorization) state.me = null;
+      state.reauthenticated = false;
+      return route.fulfill({ status: 204 });
+    }
+    if (path === '/api/me/password' && method === 'PUT') {
+      const { currentPassword, newPassword } = body() as Record<string, string>;
+      if (currentPassword !== state.sessionPassword) return refuse(route, 'INVALID_CREDENTIALS');
+      state.sessionPassword = newPassword ?? '';
+      return route.fulfill({ status: 204 });
+    }
+    if (path === '/api/me/personal-devices' && method === 'GET') {
+      return reauth() ?? route.fulfill({ json: state.personalDevices });
+    }
+    const personalRevoke = /^\/api\/me\/personal-devices\/([^/]+)\/revoke$/.exec(path);
+    if (personalRevoke && method === 'POST') {
+      const refused = reauth();
+      if (refused) return refused;
+      state.personalDevices = state.personalDevices.filter((item) => item.id !== personalRevoke[1]);
+      return route.fulfill({ json: state.personalDevices });
+    }
     if (path === '/api/me' && method === 'GET') {
       // A registered PC's PIN session (the fake device's token) or the browser's cookie session.
       const session = request.headers().authorization ? state.deviceMe : state.me;
@@ -480,7 +594,153 @@ export async function mockApi(
       if (!account.me.permissions.includes('backoffice.remote')) return refuse(route, 'FORBIDDEN');
       tickets.delete(request.headers()['x-sign-in-ticket'] ?? '');
       state.me = account.me;
+      // The sign-in counts as the first password entry (rule 26).
+      state.reauthenticated = true;
       return route.fulfill({ json: account.me });
+    }
+
+    // Access (spec S02): the catalog for the caller, staff and devices. Rule 7 and the limits are
+    // the API's tests'; here the screens' answers.
+    if (path === '/api/access/catalog' && method === 'GET') {
+      const roles = caller?.roles ?? [];
+      return route.fulfill({
+        json: {
+          permissions: staffPermissions.map((key) => ({ key, ...permissionCatalog[key] })),
+          presets: staffRoles.map((role) => ({ role, permissions: rolePresets[role] })),
+          ownerLockedPermissions: [
+            'tenant.view',
+            'tenant.profile.edit',
+            'staff.view',
+            'staff.manage',
+            'staff.permissions.adjust',
+            'devices.manage',
+            'backoffice.remote',
+          ],
+          assignableRoles: assignableRoles(roles),
+          mayAdjustPermissions: roles.includes('owner'),
+        },
+      });
+    }
+    if (path === '/api/staff' && method === 'GET') {
+      const status = url.searchParams.get('status');
+      const branchId = url.searchParams.get('branchId');
+      const items = state.staff
+        .filter((item) => !status || item.status === status)
+        .filter((item) => !branchId || item.allBranches || item.branchIds.includes(branchId))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName));
+      return route.fulfill({ json: { items, total: items.length, page: 1, pageSize: 100 } });
+    }
+    if (path === '/api/staff' && method === 'POST') {
+      const parsed = addStaffMemberSchema.safeParse(body());
+      if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
+      const refused = reauth() ?? writable(route, at);
+      if (refused) return refused;
+      if (state.staff.some((item) => item.phone === parsed.data.phone)) {
+        return refuse(route, 'ALREADY_MEMBER');
+      }
+      const input = parsed.data;
+      const member = staffMember({
+        phone: input.phone,
+        displayName: input.displayName,
+        roles: input.roles,
+        allBranches: input.branchScope.allBranches,
+        branchIds: input.branchScope.allBranches ? [] : input.branchScope.branchIds,
+        grantedPermissions: input.grantedPermissions,
+        revokedPermissions: input.revokedPermissions,
+        pinSet: false,
+        createdAt: now(),
+      });
+      state.staff.push(member);
+      return route.fulfill({ status: 201, json: member });
+    }
+    const staffPath =
+      /^\/api\/staff\/([^/]+)(?:\/(access|deactivate|reactivate|pin|password-reset))?$/.exec(path);
+    if (staffPath) {
+      const [, id = '', action] = staffPath;
+      const index = state.staff.findIndex((item) => item.id === id);
+      const member = state.staff[index];
+      if (!member) return refuse(route, 'NOT_FOUND');
+      if (method === 'GET' && !action) return route.fulfill({ json: member });
+      const refused = reauth();
+      if (refused) return refused;
+      const save = (changes: Partial<StaffMember>) => {
+        const next = { ...member, ...changes, updatedAt: now() };
+        next.effectivePermissions = effectivePermissions(
+          next.roles,
+          next.grantedPermissions,
+          next.revokedPermissions,
+        );
+        state.staff[index] = next;
+        return next;
+      };
+      const otherOwner = state.staff.some(
+        (item) => item.id !== id && item.status === 'active' && item.roles.includes('owner'),
+      );
+      if (action === 'access' && method === 'PATCH') {
+        const parsed = changeStaffAccessSchema.safeParse(body());
+        if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
+        if (parsed.data.updatedAt !== member.updatedAt) return refuse(route, 'CONFLICT');
+        if (member.roles.includes('owner') && !parsed.data.roles.includes('owner') && !otherOwner) {
+          return refuse(route, 'LAST_OWNER');
+        }
+        const scope = parsed.data.branchScope;
+        return route.fulfill({
+          json: save({
+            roles: parsed.data.roles,
+            allBranches: scope.allBranches,
+            branchIds: scope.allBranches ? [] : scope.branchIds,
+            grantedPermissions: parsed.data.grantedPermissions,
+            revokedPermissions: parsed.data.revokedPermissions,
+          }),
+        });
+      }
+      if (action === 'deactivate' && method === 'POST') {
+        if (member.roles.includes('owner') && !otherOwner) return refuse(route, 'LAST_OWNER');
+        const { reason } = body() as { reason: string };
+        return route.fulfill({
+          json: save({ status: 'deactivated', deactivatedAt: now(), deactivationReason: reason }),
+        });
+      }
+      if (action === 'reactivate' && method === 'POST') {
+        return route.fulfill({
+          json: save({ status: 'active', deactivatedAt: null, deactivationReason: null }),
+        });
+      }
+      if (action === 'pin' && method === 'PUT') {
+        const { pin } = body() as { pin: string };
+        if (isWeakPin(pin, member.phone)) return refuse(route, 'PIN_TOO_WEAK');
+        save({ pinSet: true, pinDisabled: false });
+        return route.fulfill({ status: 204 });
+      }
+      if (action === 'password-reset' && method === 'POST') return route.fulfill({ status: 204 });
+    }
+    if (path === '/api/devices' && method === 'GET') return route.fulfill({ json: state.devices });
+    const devicePath = /^\/api\/devices\/([^/]+)(\/revoke)?$/.exec(path);
+    if (devicePath && !['token', 'current'].includes(devicePath[1] ?? '')) {
+      const index = state.devices.findIndex((item) => item.id === devicePath[1]);
+      const found = state.devices[index];
+      if (!found) return refuse(route, 'NOT_FOUND');
+      if (method === 'GET') return route.fulfill({ json: found });
+      if (method === 'PATCH' && !devicePath[2]) {
+        const { name } = body() as { name: string };
+        state.devices[index] = { ...found, name, updatedAt: now() };
+        return route.fulfill({ json: state.devices[index] });
+      }
+      if (method === 'POST' && devicePath[2]) {
+        const refused = reauth();
+        if (refused) return refused;
+        const parsed = revokeDeviceSchema.safeParse(body());
+        if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
+        if (found.status !== 'active') return refuse(route, 'INVALID_STATUS_TRANSITION');
+        state.devices[index] = {
+          ...found,
+          status: 'revoked',
+          revokedAt: now(),
+          revokeReason: parsed.data.reason,
+          updatedAt: now(),
+        };
+        return route.fulfill({ json: state.devices[index] });
+      }
     }
 
     if (path === '/api/tenant') {
@@ -548,7 +808,9 @@ export async function mockApi(
     if (path === '/api/branches' && method === 'GET') return route.fulfill({ json: inUse() });
 
     const branchPath =
-      /^\/api\/branches\/([^/]+)(?:\/(hours|charges|hour-exceptions))?(?:\/([^/]+))?$/.exec(path);
+      /^\/api\/branches\/([^/]+)(?:\/(hours|charges|hour-exceptions|security))?(?:\/([^/]+))?$/.exec(
+        path,
+      );
     if (branchPath) {
       const [, id = '', part, exceptionId] = branchPath;
       const current = inUse().find((item) => item.id === id);
@@ -569,6 +831,16 @@ export async function mockApi(
         const accepted = fields.acceptedCurrencies ?? current.acceptedCurrencies;
         if (!accepted.includes(defaultCurrency)) return refuse(route, 'VALIDATION_FAILED');
         return route.fulfill({ json: touchBranch(id, fields as Partial<Branch>) });
+      }
+
+      if (method === 'PATCH' && part === 'security') {
+        const parsed = updateBranchSecuritySchema.safeParse(body());
+        if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
+        if (statusNow(at).status === 'closed') return refuse(route, 'TENANT_CLOSED');
+        if (parsed.data.updatedAt !== current.updatedAt) return refuse(route, 'CONFLICT');
+        return route.fulfill({
+          json: touchBranch(id, { idleLockMinutes: parsed.data.idleLockMinutes }),
+        });
       }
 
       if (method === 'PUT' && part === 'hours') {

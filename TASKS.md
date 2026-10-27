@@ -34,7 +34,7 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 
 ### PR 4 — restaurant app: staff, devices, my account, personal mode (`feat/S02-restaurant-staff`)
 
-- [ ] screens: password re-auth dialog (rule 26); an owner or manager replacing a forgotten PIN on the lock screen by password (rule 22, `POST /api/sessions` with a ticket); staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
+- [x] screens: password re-auth dialog (rule 26); an owner or manager replacing a forgotten PIN on the lock screen by password (rule 22, `POST /api/sessions` with a ticket); staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
 - [ ] i18n keys; E2E as owner and manager, personal mode; RTL screenshots light and dark, looked at
 - [ ] ROADMAP marks S02 done once PR 5 has merged too; docs
 - [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge

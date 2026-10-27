@@ -164,8 +164,9 @@ function Detail({ label, value, ltr = false }: { label: string; value: string; l
   return (
     <div className="flex min-w-0 flex-col">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="wrap-anywhere text-foreground" dir={ltr ? 'ltr' : undefined}>
-        <span className={ltr ? 'block text-end' : undefined}>{value}</span>
+      {/* A Latin value keeps its own direction and sits at the start, like the Arabic ones. */}
+      <dd className="wrap-anywhere text-foreground">
+        {ltr ? <span dir="ltr">{value}</span> : value}
       </dd>
     </div>
   );
