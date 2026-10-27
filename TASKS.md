@@ -28,13 +28,13 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 ### PR 3 — restaurant app: device, sign-in and PIN (`feat/S02-restaurant-devices`)
 
 - [x] Electron main: Ed25519 device key in `safeStorage`, device token, encrypted member list file, local PIN check and lockout, offline window and post-window rule, highest-seen clock, wipe; IPC without verifiers to the renderer; unit tests
-- [ ] screens: welcome, sign-in (OTP, first sign-in, lock message), register this PC, member picker and lock screen (all states), choose PIN, switch cashier, idle lock, manager approval dialog, password re-auth dialog; session handling replacing the S01 owner view
+- [x] screens: welcome, sign-in (OTP, first sign-in, lock message), register this PC, member picker and lock screen (all states), choose PIN, switch cashier, idle lock, manager approval dialog (tried from the home screen until S09); session handling replacing the S01 owner view, the browser signing in to a personal session (one tenant chosen; the switcher is PR 4); the password re-auth dialog moved to PR 4, with its first sensitive action
 - [ ] i18n keys; E2E with the mocked API (incl. offline and window states); RTL screenshots light and dark, looked at
 - [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
 ### PR 4 — restaurant app: staff, devices, my account, personal mode (`feat/S02-restaurant-staff`)
 
-- [ ] screens: staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
+- [ ] screens: password re-auth dialog (rule 26); staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
 - [ ] i18n keys; E2E as owner and manager, personal mode; RTL screenshots light and dark, looked at
 - [ ] ROADMAP marks S02 done once PR 5 has merged too; docs
 - [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge

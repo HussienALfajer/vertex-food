@@ -727,6 +727,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@noble/hashes':
+        specifier: 2.3.0
+        version: 2.3.0
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -739,7 +742,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 5.0.5
-        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
+        version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(jsdom@30.1.3(@noble/hashes@2.3.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
 
   packages/db:
     dependencies:
@@ -2428,6 +2431,10 @@ packages:
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@2.3.0':
+    resolution: {integrity: sha512-oN+QwyX7VSHotibwubG3kpzbwKrfnyR6OOO+3Nk/53ADL7FmgHHz4TgrbaYKvvOw09u6QTx0oiH1cNCIOuN0CQ==}
+    engines: {node: '>= 20.19.0'}
 
   '@noxcturnal/noxcturnal-darwin-arm64@0.1.5':
     resolution: {integrity: sha512-hQgDaWxKYln83Uk1Hh4Liju9AvGoYh4aLd4A1ou3lGn5hxzhW2uO+z3mERtWk6BMGVazvi/yUXtp9x3IlaWyhA==}
@@ -7169,6 +7176,11 @@ snapshots:
     optionalDependencies:
       '@noble/hashes': 1.8.0
 
+  '@exodus/bytes@1.16.0(@noble/hashes@2.3.0)':
+    optionalDependencies:
+      '@noble/hashes': 2.3.0
+    optional: true
+
   '@expo/cli@58.1.11(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.14)(expo-constants@58.0.12)(expo-font@58.0.8(expo@58.0.14)(react-native@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0))(expo-router@58.0.23)(expo@58.0.14)(react-dom@19.3.0(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.0(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)(typescript@6.0.3)':
     dependencies:
       2g: 1.0.1(typescript@6.0.3)
@@ -7797,6 +7809,8 @@ snapshots:
     optional: true
 
   '@noble/hashes@1.8.0': {}
+
+  '@noble/hashes@2.3.0': {}
 
   '@noxcturnal/noxcturnal-darwin-arm64@0.1.5':
     optional: true
@@ -9168,6 +9182,14 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
+  data-urls@8.0.0(@noble/hashes@2.3.0):
+    dependencies:
+      whatwg-mimetype: 5.0.0
+      whatwg-url: 17.3.0(@noble/hashes@2.3.0)
+    transitivePeerDependencies:
+      - '@noble/hashes'
+    optional: true
+
   debug@2.6.9(supports-color@10.2.2):
     dependencies:
       ms: 2.0.0
@@ -9827,6 +9849,13 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
+  html-encoding-sniffer@7.0.0(@noble/hashes@2.3.0):
+    dependencies:
+      '@exodus/bytes': 1.16.0(@noble/hashes@2.3.0)
+    transitivePeerDependencies:
+      - '@noble/hashes'
+    optional: true
+
   html-parse-stringify@4.0.1: {}
 
   http-errors@2.0.1:
@@ -9972,6 +10001,32 @@ snapshots:
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
+
+  jsdom@30.1.3(@noble/hashes@2.3.0):
+    dependencies:
+      '@asamuzakjp/css-color': 7.1.7
+      '@asamuzakjp/dom-selector': 10.0.4
+      '@bramus/specificity': 2.4.3
+      '@csstools/css-syntax-patches-for-csstree': 1.1.15(css-tree@3.2.1)
+      '@exodus/bytes': 1.16.0(@noble/hashes@2.3.0)
+      css-tree: 3.2.1
+      data-urls: 8.0.0(@noble/hashes@2.3.0)
+      decimal.js: 10.6.0
+      html-encoding-sniffer: 7.0.0(@noble/hashes@2.3.0)
+      is-potential-custom-element-name: 1.0.1
+      lru-cache: 11.5.3
+      parse5: 8.0.1
+      saxes: 6.0.0
+      tough-cookie: 6.0.2
+      undici: 8.12.2
+      w3c-xmlserializer: 6.0.0
+      webidl-conversions: 8.0.1
+      whatwg-mimetype: 5.0.0
+      whatwg-url: 17.3.0(@noble/hashes@2.3.0)
+      xml-name-validator: 5.0.0
+    transitivePeerDependencies:
+      - '@noble/hashes'
+    optional: true
 
   jsesc@3.1.0: {}
 
@@ -11709,6 +11764,29 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
+  vitest@5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(jsdom@30.1.3(@noble/hashes@2.3.0))(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)):
+    dependencies:
+      '@types/chai': 5.2.3
+      '@vitest/mocker': 5.0.5(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15))
+      chai: 6.3.0
+      es-module-lexer: 2.3.2
+      expect-type: 1.4.0
+      magic-string: 1.4.3
+      obug: 3.0.0
+      picomatch: 4.0.7
+      std-env: 4.3.0
+      tinybench: 6.2.2
+      tinyexec: 1.3.1
+      tinyglobby: 0.2.17
+      vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)
+      why-is-node-running: 3.2.1
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.1
+      '@types/node': 24.19.2
+      jsdom: 30.1.3(@noble/hashes@2.3.0)
+    transitivePeerDependencies:
+      - msw
+
   vlq@1.0.1: {}
 
   w3c-xmlserializer@6.0.0:
@@ -11744,6 +11822,15 @@ snapshots:
       webidl-conversions: 8.0.1
     transitivePeerDependencies:
       - '@noble/hashes'
+
+  whatwg-url@17.3.0(@noble/hashes@2.3.0):
+    dependencies:
+      '@exodus/bytes': 1.16.0(@noble/hashes@2.3.0)
+      tr46: 7.0.0
+      webidl-conversions: 8.0.1
+    transitivePeerDependencies:
+      - '@noble/hashes'
+    optional: true
 
   whatwg-url@5.0.0:
     dependencies:

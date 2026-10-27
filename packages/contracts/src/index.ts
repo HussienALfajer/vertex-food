@@ -13,6 +13,7 @@ export * from './money.js';
 export * from './orders.js';
 export * from './phone.js';
 export * from './primitives.js';
+export * from './proof-of-work.js';
 export * from './staff.js';
 export * from './tenancy.js';
 export * from './time.js';
