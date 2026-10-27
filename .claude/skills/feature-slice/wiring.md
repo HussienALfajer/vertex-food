@@ -57,3 +57,4 @@ From S01. For a need not listed here, Vertex Shifa's files (read only, through t
 | Sessions and ports between modules, the authentication step | `apps/api/src/core/access/authentication.ts`, `apps/api/src/modules/platform/identity/`, `apps/api/src/modules/platform/access/ports.ts`, `apps/api/src/modules/platform/tenancy/ports.ts` |
 | API integration test with real sessions (S02) | `apps/api/test/staff.ts`, `apps/api/test/access.test.ts`, `apps/api/test/identity.test.ts` |
 | E2E with a mocked API, offline, RTL screenshots | `apps/restaurant/e2e/mock-api.ts`, `apps/restaurant/e2e/settings.spec.ts` |
+| Console screen: cookie session, identity scope, TOTP re-auth before a write (S02) | `apps/console/src/features/platform-users/`, `apps/console/src/features/session/reauth.tsx`, `apps/console/e2e/mock-api.ts` |
