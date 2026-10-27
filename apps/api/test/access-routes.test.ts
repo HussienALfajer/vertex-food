@@ -256,6 +256,45 @@ describe('lockouts on every path (rules 11, 24)', () => {
     expect(withoutPassword).toEqual(withPassword);
   });
 
+  it('shares one lock across re-entry and sign-in, with or without a password', async () => {
+    const elsewhere = await api.ownerOnDevice();
+    const { device, owner } = await api.ownerOnDevice();
+    const signInAfterReentries = async (phone: string, seed: number) => {
+      const added = await device
+        .as(owner)
+        .post('/api/staff')
+        .send({
+          phone,
+          displayName: 'عضو',
+          roles: ['cashier'],
+          branchScope: { allBranches: true },
+          grantedPermissions: [],
+          revokedPermissions: [],
+        })
+        .expect(201);
+      await device
+        .as(owner)
+        .put(`/api/staff/${added.body.id}/pin`)
+        .send({ pin: pinFor(seed) })
+        .expect(204);
+      const forged = await device.signIn(added.body.id, pinFor(seed));
+      for (let i = 0; i < 5; i += 1) {
+        await device
+          .as(forged)
+          .post('/api/sessions/current/reauth')
+          .send({ password: 'a-guess-of-the-password' });
+      }
+      const solved = await proofOfWork(app);
+      const signIn = await api
+        .http()
+        .post('/api/auth/sign-in')
+        .send({ phone, password: 'another-guess', intent: 'personal', proofOfWork: solved });
+      return signIn.body.code;
+    };
+    expect(await signInAfterReentries(elsewhere.ownerPhone, 13)).toBe('RATE_LIMITED');
+    expect(await signInAfterReentries(newPhone(), 14)).toBe('RATE_LIMITED');
+  });
+
   it('counts wrong re-authentications toward the sign-in lock', async () => {
     const { device, ownerMembershipId, ownerPhone } = await api.ownerOnDevice();
     const session = await device.signIn(ownerMembershipId, pinFor(0));

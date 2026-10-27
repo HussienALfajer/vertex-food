@@ -50,7 +50,7 @@ import { tenantStatusAt } from './member-lists.js';
 import { OtpChallenges } from './otp-challenges.js';
 import { PersonalDeviceStore } from './personal-devices.js';
 import { ProofOfWork } from './proof-of-work.js';
-import { hashPassword, verifyPassword } from './secrets.js';
+import { hashPassword } from './secrets.js';
 import { SignInLock } from './sign-in-lock.js';
 import { endSessions, SessionIssuer } from './staff-sessions.js';
 import { Tickets } from './tickets.js';
@@ -88,7 +88,7 @@ export class AuthService {
   private readonly perAddress = new RateLimiter(30, 10 * MINUTE_MS);
   private readonly challengesPerAddress = new RateLimiter(60, 10 * MINUTE_MS);
   private readonly verificationsPerAddress = new RateLimiter(60, 10 * MINUTE_MS);
-  /** Sign-in failures of phones without a password, locked like accounts (rule 11). */
+  /** Sign-in failures of phones without an account, locked like accounts (rule 11). */
   private readonly decoys = new DecoyLocks();
 
   constructor(
@@ -122,16 +122,13 @@ export class AuthService {
     await this.pow.verify(input.proofOfWork);
     const now = new Date();
     const account = await accountByPhone(this.db, input.phone);
-    if (!account?.passwordHash) {
+    if (!account) {
       await this.decoys.fail(this.hashes.hash('phone', input.phone), input.password, now);
       throw invalidCredentials();
     }
-    await this.signInLock.claim(account.id, now);
-    if (!(await verifyPassword(input.password, account.passwordHash))) {
-      await this.signInLock.failed(account.id, now);
-      throw invalidCredentials();
-    }
-    await this.signInLock.succeeded(account.id);
+    // One lock per account on every path (sign-in, re-entry, password change), with or without a
+    // password, so no sequence of attempts tells the two apart (rules 1, 11).
+    if (!(await this.signInLock.check(account, input.password, now))) throw invalidCredentials();
     if (input.intent === 'register_device') {
       const device = known.deviceToken
         ? this.tokens.verify(known.deviceToken, 'device')
