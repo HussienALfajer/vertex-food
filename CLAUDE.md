@@ -38,7 +38,11 @@
 
 ## Feature workflow
 
-`/spec` (own session, `high`, ends with the spec PR) → `/feature-slice` (one session per PR). After a spec's backend PR merges, independent front ends may run in parallel sessions, each in its own worktree (`docs/workflow.md`). Deploys happen once per phase, in their own session. After opening any PR, turn on its Auto-fix in the desktop app, so a failing CI run, a conflict or a review comment comes back to the session to fix.
+`/spec` (own session, `high`, ends with the spec PR) → `/feature-slice` (one session per PR). After a spec's backend PR merges, independent front ends may run in parallel sessions, each in its own worktree (`docs/workflow.md`). Deploys happen once per phase, in their own session. After opening any PR, turn on its auto-merge and its Auto-fix yourself without asking (bind it with the `ccd_pr` tools, then `set_auto_merge` and `set_monitor`), so a failing CI run, a conflict or a review comment comes back to the session to fix.
+
+## Permissions
+
+The owner gave Claude full permission in this repository (2026-10-27): `.claude/settings.json` runs in `bypassPermissions` with no `ask` rules, and `.env` files may be read and edited. Never print `.env` values in chat, commits, PRs or logs. The remaining `deny` rules and the hooks enforce repository conventions (generated files, merge commits only, no push to `main`), not approvals.
 
 ## Compaction
 
