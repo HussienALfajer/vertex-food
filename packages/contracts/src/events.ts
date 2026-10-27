@@ -30,6 +30,13 @@ export const eventCatalog = {
     branchId: idSchema,
     part: z.enum(['profile', 'hours', 'exceptions', 'charges']),
   }),
+  /** S02: a member was added or reactivated (S04 refreshes member lists and scopes). */
+  'staff.member_added.v1': z.object({ tenantId: idSchema, membershipId: idSchema }),
+  /** Roles, branches, permission adjustments or the PIN changed. */
+  'staff.access_changed.v1': z.object({ tenantId: idSchema, membershipId: idSchema }),
+  'staff.deactivated.v1': z.object({ tenantId: idSchema, membershipId: idSchema }),
+  'device.registered.v1': z.object({ tenantId: idSchema, branchId: idSchema, deviceId: idSchema }),
+  'device.revoked.v1': z.object({ tenantId: idSchema, branchId: idSchema, deviceId: idSchema }),
 } as const;
 
 export type EventType = keyof typeof eventCatalog;
