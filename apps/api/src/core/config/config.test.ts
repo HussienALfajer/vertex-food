@@ -27,13 +27,8 @@ describe('loadConfig', () => {
       databaseUrl: DATABASE_APP_URL,
       host: '127.0.0.1',
       port: 3100,
-      corsOrigins: [
-        'app://restaurant',
-        'http://localhost:5273',
-        'http://localhost:4273',
-        'http://localhost:5274',
-        'http://localhost:4274',
-      ],
+      corsOrigins: ['app://restaurant', 'http://localhost:5273', 'http://localhost:4273'],
+      consoleOrigins: ['http://localhost:5274', 'http://localhost:4274'],
       production: false,
       identity: { powDifficulty: 18, otpSender: 'fake' },
     });
@@ -49,6 +44,15 @@ describe('loadConfig', () => {
     expect(
       loadConfig({ ...base, CORS_ORIGINS: 'app://restaurant, https://example.test' }).corsOrigins,
     ).toEqual(['app://restaurant', 'https://example.test']);
+  });
+
+  it('reads CONSOLE_ORIGINS apart from CORS_ORIGINS (spec S02 rule 41)', () => {
+    expect(
+      loadConfig({ ...base, CONSOLE_ORIGINS: 'https://console.example.test' }).consoleOrigins,
+    ).toEqual(['https://console.example.test']);
+    expect(() => loadConfig({ ...base, CONSOLE_ORIGINS: '*' })).toThrow(
+      'Invalid API environment: CONSOLE_ORIGINS',
+    );
   });
 
   it.each([

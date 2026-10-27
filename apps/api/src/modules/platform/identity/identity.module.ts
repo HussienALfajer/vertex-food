@@ -29,11 +29,11 @@ import {
   StaffPinController,
 } from './identity.controller.js';
 import { MeService } from './me.service.js';
-import { PlatformUsersService } from './platform-users.service.js';
 import { OtpChallenges } from './otp-challenges.js';
 import { FakeOtpSender, OTP_SENDER, type OtpSender } from './otp-sender.js';
 import { PersonalDeviceStore } from './personal-devices.js';
 import { MemberCredentialsStore } from './pins.js';
+import { PlatformUsersService } from './platform-users.service.js';
 import { ProofOfWork } from './proof-of-work.js';
 import { SessionsService } from './sessions.service.js';
 import { SignInLock } from './sign-in-lock.js';

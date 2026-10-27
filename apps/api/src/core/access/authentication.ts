@@ -92,13 +92,14 @@ function matchers(routes: Route[]): Matcher[] {
  * tokens it declares through the identity module's `SessionVerifier`, and sets the actor, device
  * or ticket on the request; the access guard then checks permissions on what it set. A path no
  * route serves passes, to be answered `NOT_FOUND`. A personal-device session (a cookie) must send
- * its writes from an allowed origin (rule 35). A console session is checked whole here, origin,
+ * its writes from the restaurant app's origins (rule 35), a console session from the console's
+ * only (rule 41). A console session is checked whole here, origin,
  * permission and re-auth included, so the platform audit records every refusal (rules 41, 43).
  */
 export function authenticationStep(
   routes: Route[],
   verifier: SessionVerifier,
-  allowedOrigins: readonly string[],
+  origins: { staff: readonly string[]; console: readonly string[] },
 ) {
   const logger = new Logger('Authentication');
   const table = matchers(routes);
@@ -118,7 +119,7 @@ export function authenticationStep(
         if (!cookie) throw unauthenticated();
         if (
           !READS.has(request.method) &&
-          !allowedOrigins.includes(header(request, 'origin') ?? '')
+          !origins.staff.includes(header(request, 'origin') ?? '')
         ) {
           throw new DomainError('FORBIDDEN', 'A write from another origin');
         }
@@ -150,7 +151,8 @@ export function authenticationStep(
           params,
           subjectTenantId: subject ? (params[subject] ?? null) : null,
           foreignOrigin:
-            !READS.has(request.method) && !allowedOrigins.includes(header(request, 'origin') ?? ''),
+            !READS.has(request.method) &&
+            !origins.console.includes(header(request, 'origin') ?? ''),
           permissions: access.permissions,
           reauth: access.options.reauth ?? false,
         });

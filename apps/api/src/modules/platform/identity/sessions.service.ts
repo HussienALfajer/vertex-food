@@ -18,12 +18,7 @@ import {
   withTenant,
 } from '@vertex-food/db';
 import { and, eq } from 'drizzle-orm';
-import type {
-  DeviceActor,
-  PlatformActor,
-  StaffActor,
-  Ticket,
-} from '../../../core/access/actor.js';
+import type { DeviceActor, PlatformActor, StaffActor, Ticket } from '../../../core/access/actor.js';
 import type { ConsoleRequest, SessionVerifier } from '../../../core/access/session-verifier.js';
 import { audit } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';

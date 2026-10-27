@@ -265,6 +265,42 @@ describe('signing in (rule 39)', () => {
     expect((await signIn(app, user, codeOf(user.secret))).status).toBe(200);
   });
 
+  it('counts TOTP guesses toward the lock, which a correct password never clears', async () => {
+    const user = await setUpUser(app, 'sales');
+    const ticket = async () =>
+      (await postSignIn(app, { phone: user.phone, password: PASSWORD }, 200)).body.ticket as string;
+    const guess = async (stepTicket: string) =>
+      (
+        await client(app)
+          .post('/api/console/auth/totp')
+          .send({ ticket: stepTicket, code: '000000' })
+      ).body.code;
+    const first = await ticket();
+    for (let i = 0; i < 2; i += 1) expect(await guess(first)).toBe('TOTP_INVALID');
+    // The password again (the 3rd and 4th claims) does not clear the two wrong codes.
+    const second = await ticket();
+    // Five attempts counted (two passwords, three codes): the fifth, wrong, locks the user.
+    expect(await guess(second)).toBe('TOTP_INVALID');
+    expect(await guess(second)).toBe('RATE_LIMITED');
+    nextStep();
+    const locked = await client(app)
+      .post('/api/console/auth/totp')
+      .send({ ticket: second, code: codeOf(user.secret) });
+    expect(locked.body.code).toBe('RATE_LIMITED');
+  });
+
+  it('ends the session when wrong re-auth codes lock the user (reauth_failed)', async () => {
+    const user = await setUpUser(app, 'support');
+    let last = '';
+    for (let i = 0; i < 5; i += 1) {
+      last = (await asUser(user.cookie).post('/api/console/auth/reauth').send({ code: '000000' }))
+        .body.code;
+    }
+    expect(last).toBe('TOTP_INVALID');
+    const ended = await asUser(user.cookie).get('/api/console/me');
+    expect(ended.body.code).toBe('SESSION_ENDED');
+  });
+
   it('ends the session at sign-out, at 30 idle minutes and at 12 hours', async () => {
     const user = await setUpUser(app, 'dispatch');
     await asUser(user.cookie).post('/api/console/auth/sign-out').expect(204);
@@ -363,6 +399,12 @@ describe('every console request (rules 40, 41, 43)', () => {
       .set('origin', 'https://evil.example');
     expect(foreign.body.code).toBe('FORBIDDEN');
     expect(await lastRequest(sales.userId)).toMatchObject({ details: { outcome: 'FORBIDDEN' } });
+    // The restaurant app's origin is not the console's.
+    const restaurant = await client(app)
+      .post('/api/console/auth/sign-out')
+      .set('cookie', sales.cookie)
+      .set('origin', 'app://restaurant');
+    expect(restaurant.body.code).toBe('FORBIDDEN');
     const users = await asUser(sales.cookie).get('/api/console/platform-users');
     expect(users.body.code).toBe('FORBIDDEN');
     expect(await lastRequest(sales.userId)).toMatchObject({
@@ -465,10 +507,19 @@ describe('platform users (rule 42)', () => {
       .send({ disabled: true })
       .expect(200);
     expect((await asUser(other.cookie).get('/api/console/me')).body.code).toBe('SESSION_ENDED');
-    nextStep();
-    expect(
-      (await signIn(app, other, codeOf(other.secret)).catch(() => undefined)) ?? 'refused',
-    ).toBeDefined();
+    // A disabled user is answered as a wrong password, and the attempt is audited (rule 43).
+    const disabled = await postSignIn(app, { phone: other.phone, password: PASSWORD });
+    expect(disabled.body.code).toBe('INVALID_CREDENTIALS');
+    const [failure] = await db
+      .select()
+      .from(platformAuditEntries)
+      .where(
+        and(
+          eq(platformAuditEntries.entityId, other.userId),
+          eq(platformAuditEntries.action, 'platform_user.sign_in_failed'),
+        ),
+      );
+    expect(failure).toBeDefined();
     const enabled = await asUser(admin.cookie)
       .patch(`/api/console/platform-users/${other.userId}`)
       .send({ disabled: false })
@@ -554,6 +605,14 @@ describe('owner recovery (rule 15)', () => {
     expect(missing.body.code).toBe('NOT_FOUND');
 
     const accountId = looked.body.id as string;
+    // The same person is a cashier in another restaurant: that tenant's audit gets nothing.
+    const elsewhere = await api.ownerOnDevice();
+    await elsewhere.device.addMember(elsewhere.owner, {
+      phone: ownerPhone,
+      displayName: 'كاشير',
+      roles: ['cashier'],
+      branchScope: { allBranches: true },
+    });
     vi.setSystemTime(Date.now() + 6 * MINUTE);
     const needsTotp = await asUser(support.cookie)
       .post(`/api/console/accounts/${accountId}/password-reset`)
@@ -605,6 +664,10 @@ describe('owner recovery (rule 15)', () => {
         { action: 'account.phone_changed', reason: null, kind: 'platform' },
       ]),
     );
+    const notOwner = await withTenant(db, elsewhere.tenantId, (tx) =>
+      tx.select().from(auditEntries).where(eq(auditEntries.entityId, accountId)),
+    );
+    expect(notOwner).toEqual([]);
     // The phone never reaches the platform audit.
     const rows = await db
       .select()

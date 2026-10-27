@@ -30,11 +30,10 @@ export function configureApp(app: INestApplication, config: Config): INestApplic
     maxAge: 600,
   });
   app.use(
-    authenticationStep(
-      listRoutes(app),
-      app.get<SessionVerifier>(SESSION_VERIFIER),
-      config.corsOrigins,
-    ),
+    authenticationStep(listRoutes(app), app.get<SessionVerifier>(SESSION_VERIFIER), {
+      staff: config.corsOrigins,
+      console: config.consoleOrigins,
+    }),
   );
   express.useBodyParser('json');
   express.useBodyParser('urlencoded', { extended: true });

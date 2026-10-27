@@ -4,16 +4,11 @@ import { z } from 'zod';
 /** The restaurant app's Electron renderer (`apps/restaurant/electron/main.ts`). */
 const RENDERER_ORIGIN = 'app://restaurant';
 
-/**
- * The Vite dev servers and previews of the restaurant app and the console, allowed outside
- * production only.
- */
-const DEVELOPMENT_ORIGINS = [
-  'http://localhost:5273',
-  'http://localhost:4273',
-  'http://localhost:5274',
-  'http://localhost:4274',
-];
+/** The restaurant app's Vite dev server and preview, allowed outside production only. */
+const DEVELOPMENT_ORIGINS = ['http://localhost:5273', 'http://localhost:4273'];
+
+/** The console's Vite dev server and preview, allowed outside production only. */
+const CONSOLE_DEVELOPMENT_ORIGINS = ['http://localhost:5274', 'http://localhost:4274'];
 
 /** An exact origin: scheme and host, an optional port, nothing after it. */
 const originSchema = z.string().regex(/^[a-z][a-z0-9+.-]*:\/\/[^/\s*?#]+$/);
@@ -59,6 +54,15 @@ const configSchema = z
       .transform((value) => value.split(',').map((origin) => origin.trim()))
       .pipe(z.array(originSchema).min(1))
       .optional(),
+    /**
+     * The console's origins (spec S02 rule 41): its writes are accepted from these only, never
+     * from the restaurant app's. None in production until it is set: console writes are refused.
+     */
+    CONSOLE_ORIGINS: z
+      .string()
+      .transform((value) => value.split(',').map((origin) => origin.trim()))
+      .pipe(z.array(originSchema).min(1))
+      .optional(),
     /** HMAC-SHA-256 key of the keyed hashes (OTP codes, tokens, rate-limit keys); spec S02. */
     IDENTITY_HASH_KEY: base64Key(32),
     /** Signs access tokens, device tokens and tickets (EdDSA); its public key is the JWKS. */
@@ -95,6 +99,8 @@ const configSchema = z
       (env.NODE_ENV === 'production'
         ? [RENDERER_ORIGIN]
         : [RENDERER_ORIGIN, ...DEVELOPMENT_ORIGINS]),
+    consoleOrigins:
+      env.CONSOLE_ORIGINS ?? (env.NODE_ENV === 'production' ? [] : CONSOLE_DEVELOPMENT_ORIGINS),
     production: env.NODE_ENV === 'production',
     identity: {
       hashKey: env.IDENTITY_HASH_KEY,

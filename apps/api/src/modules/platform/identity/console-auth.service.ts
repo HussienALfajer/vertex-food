@@ -172,7 +172,23 @@ export class ConsoleAuthService {
       .from(platformUsers)
       .where(eq(platformUsers.phone, input.phone));
     if (!user || user.status === 'disabled') {
-      await this.decoys.fail(this.hashes.hash('platform_phone', input.phone), secret, now);
+      // The answer and the work of a wrong password; a disabled user's attempt is still audited
+      // (rule 43), an unknown phone's never.
+      try {
+        await this.decoys.fail(this.hashes.hash('platform_phone', input.phone), secret, now);
+      } finally {
+        if (user) {
+          await auditPlatform(
+            this.db,
+            { kind: 'platform', userId: user.id },
+            {
+              action: 'platform_user.sign_in_failed',
+              entityType: 'platform_user',
+              entityId: user.id,
+            },
+          );
+        }
+      }
       throw invalidCredentials();
     }
     await this.claim(user.id, now);
@@ -194,7 +210,8 @@ export class ConsoleAuthService {
       await this.failed(user.id, now, 'platform_user.sign_in_failed');
       throw invalidCredentials();
     }
-    await this.succeeded(user.id);
+    // The count is not reset here: TOTP and recovery-code guesses share it, so only a passed
+    // second factor (or setup) clears it, and a known password never buys more guesses.
     if (input.setupCode !== undefined) {
       const totpSecret = newTotpSecret();
       const sealed = this.box.seal(`${totpContext(user.id)}:setup`, totpSecret);
@@ -230,7 +247,10 @@ export class ConsoleAuthService {
       if (!(await useToken(tx, 'console_step', claims.jti, this.stepExpiry())))
         throw invalidTicket();
       const current = await platformUserById(tx, user.id, { lock: 'update' });
-      if (!current || this.stepRef(current, 'setup') !== claims.ref) throw invalidTicket();
+      // Disabled meanwhile, or set up by a concurrent request: the ticket no longer applies.
+      if (current?.status !== 'pending_setup' || this.stepRef(current, 'setup') !== claims.ref) {
+        throw invalidTicket();
+      }
       await tx
         .update(platformUsers)
         .set({
