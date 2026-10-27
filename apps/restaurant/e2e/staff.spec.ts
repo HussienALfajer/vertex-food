@@ -139,7 +139,7 @@ test.describe('staff as the owner', () => {
     await screenshot(page, testInfo, 'staff-added');
     await expect(page.getByText('أُضيف رنا النادلة')).toBeVisible();
     // In a browser the PIN is chosen later on a PC of the branch (edge case 11).
-    await expect(page.getByText(/يختار رنا النادلة رمزه السري على حاسوب فرعه/)).toBeVisible();
+    await expect(page.getByText(/يختار رنا النادلة رمزه السري على حاسوب المطعم/)).toBeVisible();
     expect(api.staff.find((item) => item.displayName === 'رنا النادلة')).toMatchObject({
       roles: ['waiter'],
       branchIds: [api.branches[0]?.id],
