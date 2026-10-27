@@ -25,6 +25,7 @@ import { api, unwrap } from '../../lib/api';
 import { type DeviceBridge, deviceBridge } from '../../lib/device';
 import { useOnline } from '../../lib/online';
 import { useBridgeErrorText } from '../session/member-picker';
+import { rememberTenantCount } from '../session/personal-actions';
 import { SignInFlow, TextField, TICKET_HEADER, useStepAction } from './sign-in-flow';
 import { dropTicket, heldTicket, holdTicket } from './ticket';
 
@@ -117,6 +118,9 @@ function PersonalTenantStep({ ticket, onRestart }: { ticket: string; onRestart: 
     });
 
   const tenants = options.data?.tenants ?? [];
+  useEffect(() => {
+    if (options.data) rememberTenantCount(options.data.tenants.length);
+  }, [options.data]);
   const onlyId = tenants.length === 1 ? tenants[0]?.tenantId : undefined;
   // One tenant: it opens at once, once (the ticket is single use, StrictMode runs effects twice).
   const opened = useRef(false);

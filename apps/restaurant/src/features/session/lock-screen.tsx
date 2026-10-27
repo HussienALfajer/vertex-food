@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import type { DeviceBridge, DeviceMemberView, DeviceStatus } from '../../lib/device';
 import { useOnline } from '../../lib/online';
 import { ReenableDialog } from './approval-dialog';
+import { ForgotPinDialog, mayReplacePinByPassword } from './forgot-pin-dialog';
 import { MemberPicker, MemberRoles, useBridgeErrorText } from './member-picker';
 import { PinPad } from './pin-pad';
 import { WindowWarning } from './window-warning';
@@ -25,6 +26,7 @@ export function LockScreen({ bridge, status }: { bridge: DeviceBridge; status: R
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reenabling, setReenabling] = useState(false);
+  const [forgot, setForgot] = useState(false);
 
   const members = status.members.filter((member) => member.hasPin);
   const selected = members.find((member) => member.membershipId === selectedId) ?? null;
@@ -104,9 +106,21 @@ export function LockScreen({ bridge, status }: { bridge: DeviceBridge; status: R
                 onComplete={(pin) => void signIn(selected, pin)}
               />
             )}
+            {mayReplacePinByPassword(selected) && (
+              <Button type="button" variant="ghost" onClick={() => setForgot(true)}>
+                {t('forgotPin.open')}
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={back}>
               {t('lock.back')}
             </Button>
+            <ForgotPinDialog
+              key={`forgot-${selected.membershipId}`}
+              open={forgot}
+              onOpenChange={setForgot}
+              bridge={bridge}
+              member={selected}
+            />
             <ReenableDialog
               open={reenabling}
               onOpenChange={setReenabling}

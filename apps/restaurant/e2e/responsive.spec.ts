@@ -1,6 +1,14 @@
 import { expect, type Page, test } from '@playwright/test';
 import { fakeDevice, installFakeDevice, team } from './fake-device.js';
-import { branch, completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
+import {
+  branch,
+  completeBranch,
+  device,
+  everyDay,
+  mockApi,
+  staffMember,
+  tenant,
+} from './mock-api.js';
 import {
   expectNoHorizontalOverflow,
   expectTouchTargets,
@@ -108,6 +116,51 @@ for (const viewport of viewports) {
         await page.goto('/setup');
         await expect(page.getByText('الخطوة 5 من 5')).toBeVisible();
       }
+    });
+
+    test('lays out the staff, devices and account screens', async ({ page }, testInfo) => {
+      const souq = completeBranch({ nameAr: 'فرع السوق', code: 'souq' });
+      const campus = completeBranch({ nameAr: 'فرع الجامعة', code: 'campus' });
+      const manager = staffMember({
+        displayName: 'ليلى المديرة',
+        roles: ['manager'],
+        branchIds: [souq.id],
+        hasPassword: true,
+      });
+      const api = await mockApi(page, {
+        tenant: active({ branchCount: 2 }),
+        branches: [souq, campus],
+        hours: { [souq.id]: everyDay('10:00', '23:00'), [campus.id]: everyDay('10:00', '23:00') },
+        staff: [
+          staffMember({ displayName: 'سامر المالك', roles: ['owner'], hasPassword: true }),
+          manager,
+          staffMember({ displayName: 'أحمد الكاشير', branchIds: [souq.id], pinSet: false }),
+        ],
+        devices: [device(souq.id), device(campus.id, { name: 'الكاشير 2' })],
+      });
+      api.reauthenticated = true;
+      await page.goto('/');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
+
+      await navigate(page, wide, 'فريق العمل');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('فريق العمل');
+      await laidOut(page, testInfo, 'staff');
+
+      await page.getByRole('link', { name: /ليلى المديرة/ }).click();
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('ليلى المديرة');
+      await laidOut(page, testInfo, 'staff-member');
+
+      await page.goto('/settings/staff/new');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('إضافة عضو');
+      await laidOut(page, testInfo, 'staff-add');
+
+      await navigate(page, wide, 'الحواسيب');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('الحواسيب');
+      await laidOut(page, testInfo, 'devices');
+
+      await navigate(page, wide, 'حسابي');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('حسابي');
+      await laidOut(page, testInfo, 'account');
     });
 
     test('lays out the onboarding wizard without a sidebar', async ({ page }, testInfo) => {

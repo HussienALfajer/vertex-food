@@ -3,6 +3,7 @@ import {
   type BridgeResult,
   deviceChannels,
   lockReasonSchema,
+  passwordSignInInputSchema,
   reenableInputSchema,
   registerInputSchema,
   signInInputSchema,
@@ -27,6 +28,10 @@ export function deviceHandlers(service: DeviceService): Record<string, Handler> 
     [deviceChannels.signIn]: async (input) => {
       const parsed = signInInputSchema.safeParse(input);
       return parsed.success ? service.signIn(parsed.data) : invalid;
+    },
+    [deviceChannels.signInByPassword]: async (input) => {
+      const parsed = passwordSignInInputSchema.safeParse(input);
+      return parsed.success ? service.signInByPassword(parsed.data) : invalid;
     },
     [deviceChannels.lock]: async (input) => {
       const parsed = lockReasonSchema.safeParse(input);

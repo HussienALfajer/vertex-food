@@ -48,8 +48,13 @@ test.describe('single-branch restaurant', () => {
     await expect(
       page.getByText('على الإيصال: «ضريبة 2.5%» ضمن الأسعار، ولا يغيّر المجموع.'),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'حفظ التغييرات' }).last().click();
-    await expect(page.getByRole('button', { name: 'حفظ التغييرات' }).last()).toBeDisabled();
+    // The charges' own form: the idle-lock section (spec S02) follows it.
+    const charges = page
+      .locator('form')
+      .filter({ has: page.getByRole('button', { name: 'إضافة بند' }) })
+      .getByRole('button', { name: 'حفظ التغييرات' });
+    await charges.click();
+    await expect(charges).toBeDisabled();
     expect(api.charges.get(only.id)).toMatchObject([
       { kind: 'tax', rateBp: 250, mode: 'inclusive' },
     ]);

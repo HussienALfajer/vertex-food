@@ -4,7 +4,9 @@ import {
   memberListResultSchema,
   nonceSchema,
   registeredDeviceSchema,
+  type SignIn,
   sessionTokensSchema,
+  signInResultSchema,
 } from '@vertex-food/contracts';
 import type { z } from 'zod';
 
@@ -127,7 +129,18 @@ export class DeviceClient {
     });
   }
 
-  openSession(deviceToken: string, body: { membershipId: string; pin: string }) {
+  /** Phone and password with the PC's device token, so a member of this PC skips the OTP. */
+  signIn(deviceToken: string, body: SignIn) {
+    return this.request('POST', '/api/auth/sign-in', signInResultSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+      body,
+    });
+  }
+
+  openSession(
+    deviceToken: string,
+    body: { membershipId: string; pin: string } | { membershipId: string; ticket: string },
+  ) {
     return this.request('POST', '/api/sessions', sessionTokensSchema, {
       headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
       body,
@@ -158,6 +171,7 @@ export type DeviceApi = Pick<
   | 'members'
   | 'acknowledge'
   | 'wiped'
+  | 'signIn'
   | 'openSession'
   | 'refreshSession'
   | 'endSession'

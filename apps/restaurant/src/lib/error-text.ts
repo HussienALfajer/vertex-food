@@ -8,6 +8,10 @@ import { apiErrorCode } from './api';
 export function useErrorText(): (error: unknown) => string {
   const { t } = useTranslation(['errors', 'restaurant', 'common']);
   return (error) => {
+    // The password dialog of a sensitive action was closed (`features/session/reauth.tsx`).
+    if (error instanceof Error && error.name === 'ReauthCancelled') {
+      return t('restaurant:reauth.cancelled');
+    }
     const code = apiErrorCode(error);
     if (code === 'NETWORK_ERROR') return t('restaurant:states.networkError');
     if (code) return t(`errors:${code}`);

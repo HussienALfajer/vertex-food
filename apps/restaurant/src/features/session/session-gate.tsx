@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import type { Me } from '@vertex-food/contracts';
 import { Button, Callout } from '@vertex-food/ui';
 import { LockIcon, WifiIcon } from 'lucide-react';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../../components/app-shell';
 import { LoadingState, OfflineState } from '../../components/query-states';
@@ -17,7 +18,9 @@ import { ApprovalTrial } from './approval-trial';
 import { ChoosePinDialog } from './choose-pin-dialog';
 import { activityEvents, createIdleTimer } from './idle-timer';
 import { LockScreen } from './lock-screen';
-import { meQuery, useDeviceStatus, useSessionLost } from './queries';
+import { PersonalActions } from './personal-actions';
+import { forgetSessionData, MeContext, meQuery, useDeviceStatus, useSessionLost } from './queries';
+import { ReauthProvider, useSensitive } from './reauth';
 import { WindowWarning } from './window-warning';
 
 type Registered = Extract<DeviceStatus, { state: 'registered' }>;
@@ -43,10 +46,28 @@ function Bare({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
 
+/**
+ * Members share a PC: what one member's session read (staff, devices, the catalog of what they may
+ * assign) is forgotten when the session ends, so the next member never sees it (rules 6, 7).
+ */
+function useForgetBetweenSessions(membershipId: string | null) {
+  const queryClient = useQueryClient();
+  const previous = useRef(membershipId);
+  useLayoutEffect(() => {
+    if (previous.current !== null && previous.current !== membershipId) {
+      forgetSessionData(queryClient);
+    }
+    previous.current = membershipId;
+  }, [membershipId, queryClient]);
+}
+
 function DeviceGate({ bridge }: { bridge: DeviceBridge }) {
   const status = useDeviceStatus(bridge);
   const pathname = usePathname();
   const current = status.data;
+  useForgetBetweenSessions(
+    current?.state === 'registered' ? (current.session?.membershipId ?? null) : null,
+  );
   if (!current) return <Bare>{status.isError ? <OfflineState /> : <LoadingState />}</Bare>;
   if (current.state === 'wiped') {
     return (
@@ -100,26 +121,23 @@ function DeviceSession({
         branchIds: [status.branch.id],
       };
 
-  if (member && !member.hasPin) {
-    // The member signed in by password (registration) and has no PIN yet: they choose one first.
+  if (member && (!member.hasPin || session.choosePin)) {
+    // The member signed in by password (registration, or a forgotten PIN, rule 22) and needs a
+    // PIN: they choose one first. Their password was just entered, so no current PIN is asked;
+    // after 5 minutes the password dialog asks for it again (rule 26).
     return (
-      <Bare>
-        <ChoosePinDialog
-          open
-          save={async (pin) => {
-            await unwrapEmpty(api.PUT('/api/me/pin', { body: body({ newPin: pin }) }));
-            await bridge.refresh();
-          }}
-          onCancel={() => void bridge.lock('signed_out')}
-          cancelLabel={t('choosePin.signOut')}
-        />
-      </Bare>
+      <ReauthProvider hasPassword={me.data?.account.hasPassword ?? true}>
+        <Bare>
+          <RequiredPin bridge={bridge} />
+        </Bare>
+      </ReauthProvider>
     );
   }
 
   return (
     <StaffAccessContext.Provider value={access}>
       <SignedIn
+        me={me.data ?? null}
         actions={
           <Button
             type="button"
@@ -164,17 +182,46 @@ function DeviceSession({
   );
 }
 
+function RequiredPin({ bridge }: { bridge: DeviceBridge }) {
+  const { t } = useTranslation('restaurant');
+  const sensitive = useSensitive();
+  return (
+    <ChoosePinDialog
+      open
+      save={async (pin) => {
+        await sensitive(() => unwrapEmpty(api.PUT('/api/me/pin', { body: body({ newPin: pin }) })));
+        await bridge.refresh();
+      }}
+      onCancel={() => void bridge.lock('signed_out')}
+      cancelLabel={t('choosePin.signOut')}
+    />
+  );
+}
+
 function PersonalGate() {
   const me = useQuery(meQuery('personal'));
+  const queryClient = useQueryClient();
   const online = useOnline();
   const pathname = usePathname();
   const entry = entryPaths.includes(pathname);
-  const signedOut = ['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(me.error) ?? '');
-  if (me.data) {
+  // When the server last said there is no session (rule 35). A failed read keeps the cached data,
+  // and a later failure of another kind (the network, a restart) replaces the refusal: data older
+  // than the refusal is the ended session's, whatever came after.
+  const refusedAt = useRef(0);
+  if (['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(me.error) ?? '')) {
+    refusedAt.current = Math.max(refusedAt.current, me.errorUpdatedAt);
+  }
+  const session = me.data && me.dataUpdatedAt > refusedAt.current ? me.data : undefined;
+  const ended = refusedAt.current > 0 && !session;
+  useEffect(() => {
+    // Rules 6, 7: nothing the ended session read stays for the next one.
+    if (ended) forgetSessionData(queryClient);
+  }, [ended, queryClient]);
+  if (session) {
     if (entry || pathname === '/lock') return <Navigate to="/" replace />;
     return (
-      <StaffAccessContext.Provider value={accessOfMe(me.data)}>
-        <SignedIn />
+      <StaffAccessContext.Provider value={accessOfMe(session)}>
+        <SignedIn me={session} personal actions={<PersonalActions />} />
       </StaffAccessContext.Provider>
     );
   }
@@ -185,22 +232,39 @@ function PersonalGate() {
       </Bare>
     );
   }
-  if (signedOut) return <Navigate to="/welcome" replace />;
+  if (ended) return <Navigate to="/welcome" replace />;
   return <Bare>{me.isPending && online ? <LoadingState /> : <OfflineState />}</Bare>;
 }
 
-/** The app with a session: the sidebar, the tenant gate, the screen. */
-function SignedIn({ actions, notices }: { actions?: ReactNode; notices?: ReactNode }) {
+/**
+ * The app with a session: the sidebar, the tenant gate, the screen, and the password dialog of
+ * sensitive actions (rule 26). On a personal device the shell says "back office" (rule 34).
+ */
+function SignedIn({
+  me,
+  personal = false,
+  actions,
+  notices,
+}: {
+  me: Me | null;
+  personal?: boolean;
+  actions?: ReactNode;
+  notices?: ReactNode;
+}) {
   const navigation = useRestaurantNavigation();
   return (
-    <AppShell navigation={navigation} actions={actions}>
-      <div className="flex flex-col gap-6">
-        {notices}
-        <TenantGate>
-          <Outlet />
-        </TenantGate>
-      </div>
-    </AppShell>
+    <MeContext.Provider value={me}>
+      <ReauthProvider hasPassword={me?.account.hasPassword ?? false}>
+        <AppShell navigation={navigation} actions={actions} personal={personal}>
+          <div className="flex flex-col gap-6">
+            {notices}
+            <TenantGate>
+              <Outlet />
+            </TenantGate>
+          </div>
+        </AppShell>
+      </ReauthProvider>
+    </MeContext.Provider>
   );
 }
 

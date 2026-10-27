@@ -32,6 +32,7 @@ async function fakeApi() {
     // The PC's clock against the server's (a power cut can set it back).
     pcClockOffsetMs: 0,
     tokenIssuedAt: 0,
+    ownerPassword: 'synthetic-owner-pass',
   };
   let sessions = 0;
   // JWT-shaped: the PC reads the membership from the payload.
@@ -110,8 +111,20 @@ async function fakeApi() {
       reach();
       server.wipedConfirmed = true;
     }),
+    signIn: vi.fn(async (token, body) => {
+      reach();
+      if (body.password !== server.ownerPassword) throw new DeviceApiError('INVALID_CREDENTIALS');
+      // The device token makes the PC known: no OTP for a member of this PC (rule 12).
+      return token
+        ? { step: 'done' as const, ticket: `ticket-${owner.membershipId}` }
+        : { step: 'otp' as const, challengeId: uuid7() };
+    }),
     openSession: vi.fn(async (_token, body) => {
       device();
+      if ('ticket' in body) {
+        if (body.ticket !== `ticket-${body.membershipId}`) throw new DeviceApiError('FORBIDDEN');
+        return tokens(body.membershipId);
+      }
       if (pins.get(body.membershipId) !== body.pin) throw new DeviceApiError('INVALID_PIN');
       return tokens(body.membershipId);
     }),
@@ -266,6 +279,145 @@ describe('DeviceService PIN sessions (rules 24, 25, 32)', () => {
     server.now = later(14.5);
     expect(await service.accessToken()).toBeNull();
     expect(service.status()).toMatchObject({ session: null });
+  });
+});
+
+describe('DeviceService forgotten PIN by password (rule 22)', () => {
+  const proofOfWork = { challenge: 'pow', nonce: '1' };
+
+  it('opens the owner session by password and asks for a new PIN until the list has it', async () => {
+    const { service, owner, api, server } = await registered();
+    await service.lock('locked');
+    const input = {
+      membershipId: owner.membershipId,
+      phone: '+963900000010',
+      password: server.ownerPassword,
+      proofOfWork,
+    };
+    expect(await service.signInByPassword(input)).toEqual({ ok: true });
+    expect(api.signIn).toHaveBeenCalledWith(
+      'device-token',
+      expect.objectContaining({ intent: 'register_device' }),
+    );
+    expect(service.status()).toMatchObject({ session: { online: true, choosePin: true } });
+    // The same verifier: the PIN is not replaced yet.
+    await service.refresh();
+    expect(service.status()).toMatchObject({ session: { choosePin: true } });
+    server.list = {
+      ...server.list,
+      version: 'v2',
+      members: server.list.members.map((item) =>
+        item.membershipId === owner.membershipId ? { ...item, pinVerifier: 'new-verifier' } : item,
+      ),
+    };
+    await service.refresh();
+    expect(service.status()).toMatchObject({ session: { choosePin: false } });
+  });
+
+  it('clears the forgotten PIN lockout on this PC once the new PIN arrives', async () => {
+    const { service, owner, server } = await registered();
+    await service.lock('locked');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await service.signIn({ membershipId: owner.membershipId, pin: '000001' });
+    }
+    const ownerView = () => {
+      const status = service.status();
+      return status.state === 'registered'
+        ? status.members.find((item) => item.membershipId === owner.membershipId)
+        : undefined;
+    };
+    expect(ownerView()).toMatchObject({ pinDisabledHere: true });
+    expect(
+      await service.signInByPassword({
+        membershipId: owner.membershipId,
+        phone: '+963900000010',
+        password: server.ownerPassword,
+        proofOfWork,
+      }),
+    ).toEqual({ ok: true });
+    // Still disabled until the new PIN is set: the old one stays refused here.
+    expect(ownerView()).toMatchObject({ pinDisabledHere: true });
+    server.list = {
+      ...server.list,
+      version: 'v2',
+      members: server.list.members.map((item) =>
+        item.membershipId === owner.membershipId ? { ...item, pinVerifier: 'new-verifier' } : item,
+      ),
+    };
+    await service.refresh();
+    expect(ownerView()).toMatchObject({ pinDisabledHere: false });
+  });
+
+  it('a PIN reset by a manager lifts its lockout on this PC once the list has it', async () => {
+    const { service, cashier, server } = await registered();
+    await service.lock('locked');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await service.signIn({ membershipId: cashier.membershipId, pin: '000001' });
+    }
+    const cashierView = () => {
+      const status = service.status();
+      return status.state === 'registered'
+        ? status.members.find((item) => item.membershipId === cashier.membershipId)
+        : undefined;
+    };
+    expect(cashierView()).toMatchObject({ pinDisabledHere: true });
+    // An unchanged list leaves the lockout.
+    await service.refresh();
+    expect(cashierView()).toMatchObject({ pinDisabledHere: true });
+    server.list = {
+      ...server.list,
+      version: 'v2',
+      members: server.list.members.map((item) =>
+        item.membershipId === cashier.membershipId ? { ...item, pinVerifier: 'reset' } : item,
+      ),
+    };
+    await service.refresh();
+    expect(cashierView()).toMatchObject({ pinDisabledHere: false });
+  });
+
+  it('keeps asking for the new PIN across an access-token refresh', async () => {
+    const { service, owner, server } = await registered();
+    await service.lock('locked');
+    await service.signInByPassword({
+      membershipId: owner.membershipId,
+      phone: '+963900000010',
+      password: server.ownerPassword,
+      proofOfWork,
+    });
+    server.now = later(14.5);
+    expect(await service.accessToken()).toMatch(/^access-/);
+    expect(service.status()).toMatchObject({ session: { choosePin: true } });
+  });
+
+  it('refuses a wrong password and opens nothing', async () => {
+    const { service, owner, api } = await registered();
+    await service.lock('locked');
+    const result = await service.signInByPassword({
+      membershipId: owner.membershipId,
+      phone: '+963900000010',
+      password: 'wrong-password-1',
+      proofOfWork,
+    });
+    expect(result).toEqual({ ok: false, code: 'INVALID_CREDENTIALS' });
+    expect(api.openSession).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ ticket: expect.any(String) }),
+    );
+    expect(service.status()).toMatchObject({ session: null });
+  });
+
+  it('needs a connection: offline it says so and never checks a password on the PC', async () => {
+    const { service, owner, server } = await registered();
+    await service.lock('locked');
+    server.reachable = false;
+    const result = await service.signInByPassword({
+      membershipId: owner.membershipId,
+      phone: '+963900000010',
+      password: server.ownerPassword,
+      proofOfWork,
+    });
+    expect(result).toEqual({ ok: false, code: 'NETWORK_ERROR' });
+    expect(service.status()).toMatchObject({ session: null, online: false });
   });
 });
 

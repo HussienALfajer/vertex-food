@@ -11,12 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LockRouteImport } from './routes/lock'
+import { Route as MeRouteImport } from './routes/me'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as SettingsDevicesRouteImport } from './routes/settings/devices'
 import { Route as SettingsRestaurantRouteImport } from './routes/settings/restaurant'
 import { Route as SettingsBranchesIndexRouteImport } from './routes/settings/branches/index'
+import { Route as SettingsStaffIndexRouteImport } from './routes/settings/staff/index'
+import { Route as SettingsStaffMemberIdRouteImport } from './routes/settings/staff/$memberId'
+import { Route as SettingsStaffNewRouteImport } from './routes/settings/staff/new'
 import { Route as SettingsBranchesBranchIdIndexRouteImport } from './routes/settings/branches/$branchId/index'
 import { Route as SettingsBranchesBranchIdHoursRouteImport } from './routes/settings/branches/$branchId/hours'
 
@@ -28,6 +33,11 @@ const IndexRoute = IndexRouteImport.update({
 const LockRoute = LockRouteImport.update({
   id: '/lock',
   path: '/lock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -50,6 +60,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsDevicesRoute = SettingsDevicesRouteImport.update({
+  id: '/settings/devices',
+  path: '/settings/devices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRestaurantRoute = SettingsRestaurantRouteImport.update({
   id: '/settings/restaurant',
   path: '/settings/restaurant',
@@ -58,6 +73,21 @@ const SettingsRestaurantRoute = SettingsRestaurantRouteImport.update({
 const SettingsBranchesIndexRoute = SettingsBranchesIndexRouteImport.update({
   id: '/settings/branches/',
   path: '/settings/branches/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsStaffIndexRoute = SettingsStaffIndexRouteImport.update({
+  id: '/settings/staff/',
+  path: '/settings/staff/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsStaffMemberIdRoute = SettingsStaffMemberIdRouteImport.update({
+  id: '/settings/staff/$memberId',
+  path: '/settings/staff/$memberId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsStaffNewRoute = SettingsStaffNewRouteImport.update({
+  id: '/settings/staff/new',
+  path: '/settings/staff/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsBranchesBranchIdIndexRoute =
@@ -76,24 +106,34 @@ const SettingsBranchesBranchIdHoursRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/lock': typeof LockRoute
+  '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
+  '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/staff/': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lock': typeof LockRoute
+  '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
+  '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches': typeof SettingsBranchesIndexRoute
+  '/settings/staff': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId': typeof SettingsBranchesBranchIdIndexRoute
 }
@@ -101,12 +141,17 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/lock': typeof LockRoute
+  '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
+  '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/staff/': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
 }
@@ -115,36 +160,51 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/lock'
+    | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/staff/$memberId'
+    | '/settings/staff/new'
     | '/settings/branches/'
+    | '/settings/staff/'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/lock'
+    | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/staff/$memberId'
+    | '/settings/staff/new'
     | '/settings/branches'
+    | '/settings/staff'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId'
   id:
     | '__root__'
     | '/'
     | '/lock'
+    | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/staff/$memberId'
+    | '/settings/staff/new'
     | '/settings/branches/'
+    | '/settings/staff/'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId/'
   fileRoutesById: FileRoutesById
@@ -152,12 +212,17 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LockRoute: typeof LockRoute
+  MeRoute: typeof MeRoute
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
   WelcomeRoute: typeof WelcomeRoute
+  SettingsDevicesRoute: typeof SettingsDevicesRoute
   SettingsRestaurantRoute: typeof SettingsRestaurantRoute
+  SettingsStaffMemberIdRoute: typeof SettingsStaffMemberIdRoute
+  SettingsStaffNewRoute: typeof SettingsStaffNewRoute
   SettingsBranchesIndexRoute: typeof SettingsBranchesIndexRoute
+  SettingsStaffIndexRoute: typeof SettingsStaffIndexRoute
   SettingsBranchesBranchIdHoursRoute: typeof SettingsBranchesBranchIdHoursRoute
   SettingsBranchesBranchIdIndexRoute: typeof SettingsBranchesBranchIdIndexRoute
 }
@@ -176,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/lock'
       fullPath: '/lock'
       preLoaderRoute: typeof LockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -206,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/devices': {
+      id: '/settings/devices'
+      path: '/settings/devices'
+      fullPath: '/settings/devices'
+      preLoaderRoute: typeof SettingsDevicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/restaurant': {
       id: '/settings/restaurant'
       path: '/settings/restaurant'
@@ -218,6 +297,27 @@ declare module '@tanstack/react-router' {
       path: '/settings/branches'
       fullPath: '/settings/branches/'
       preLoaderRoute: typeof SettingsBranchesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/staff/': {
+      id: '/settings/staff/'
+      path: '/settings/staff'
+      fullPath: '/settings/staff/'
+      preLoaderRoute: typeof SettingsStaffIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/staff/$memberId': {
+      id: '/settings/staff/$memberId'
+      path: '/settings/staff/$memberId'
+      fullPath: '/settings/staff/$memberId'
+      preLoaderRoute: typeof SettingsStaffMemberIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/staff/new': {
+      id: '/settings/staff/new'
+      path: '/settings/staff/new'
+      fullPath: '/settings/staff/new'
+      preLoaderRoute: typeof SettingsStaffNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/branches/$branchId/': {
@@ -240,12 +340,17 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LockRoute: LockRoute,
+  MeRoute: MeRoute,
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,
   WelcomeRoute: WelcomeRoute,
+  SettingsDevicesRoute: SettingsDevicesRoute,
   SettingsRestaurantRoute: SettingsRestaurantRoute,
+  SettingsStaffMemberIdRoute: SettingsStaffMemberIdRoute,
+  SettingsStaffNewRoute: SettingsStaffNewRoute,
   SettingsBranchesIndexRoute: SettingsBranchesIndexRoute,
+  SettingsStaffIndexRoute: SettingsStaffIndexRoute,
   SettingsBranchesBranchIdHoursRoute: SettingsBranchesBranchIdHoursRoute,
   SettingsBranchesBranchIdIndexRoute: SettingsBranchesBranchIdIndexRoute,
 }

@@ -1,10 +1,26 @@
 import { pinPolicy } from '@vertex-food/contracts';
 import { Button, cn } from '@vertex-food/ui';
 import { DeleteIcon } from 'lucide-react';
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
+
+/** Hands the pad the keyboard's keys from around it (`dialogPinKeys`). */
+export type PinPadHandle = { keyDown: (event: KeyboardEvent<HTMLElement>) => void };
+
+/**
+ * The keyboard's digits for the pad of a dialog. When the element that had the focus leaves the
+ * dialog (the approver's name once chosen, the first pad once the PIN is typed), the dialog itself
+ * takes the focus back (Base UI); the keys typed then reach the pad all the same.
+ */
+export function dialogPinKeys(pad: { current: PinPadHandle | null }) {
+  return {
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) pad.current?.keyDown(event);
+    },
+  };
+}
 
 /**
  * The six-digit PIN pad (spec S02 screens 4, 5, 7): keys of at least 64 px, laid out as a phone's
@@ -17,28 +33,33 @@ export function PinPad({
   onComplete,
   disabled = false,
   autoFocus = true,
+  handle,
 }: {
   label: string;
   onComplete: (pin: string) => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  handle?: Ref<PinPadHandle>;
 }) {
   const { t } = useTranslation('restaurant');
-  const [pin, setPin] = useState('');
+  // The digits typed so far, in a ref: keys pressed faster than the screen re-renders each add to
+  // what is there, never to the last render's copy. The state only draws the dots.
+  const entered = useRef('');
+  const [count, setCount] = useState(0);
 
   const press = (digit: string) => {
     if (disabled) return;
-    const next = `${pin}${digit}`.slice(0, pinPolicy.length);
-    if (next.length === pinPolicy.length) {
-      setPin('');
-      onComplete(next);
-    } else {
-      setPin(next);
-    }
+    const next = `${entered.current}${digit}`.slice(0, pinPolicy.length);
+    entered.current = next.length === pinPolicy.length ? '' : next;
+    setCount(entered.current.length);
+    if (next.length === pinPolicy.length) onComplete(next);
   };
-  const erase = () => setPin((current) => current.slice(0, -1));
+  const erase = () => {
+    entered.current = entered.current.slice(0, -1);
+    setCount(entered.current.length);
+  };
 
-  const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const keyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (/^\d$/.test(event.key)) {
       event.preventDefault();
       press(event.key);
@@ -47,6 +68,8 @@ export function PinPad({
       erase();
     }
   };
+
+  useImperativeHandle(handle, () => ({ keyDown }));
 
   const key = (digit: string) => (
     <Button
@@ -76,7 +99,7 @@ export function PinPad({
     >
       <p className="text-sm font-medium text-foreground">{label}</p>
       <div className="flex gap-3" aria-live="polite">
-        <span className="sr-only">{t('pin.entered', { count: pin.length })}</span>
+        <span className="sr-only">{t('pin.entered', { count })}</span>
         {Array.from({ length: pinPolicy.length }, (_, index) => (
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: the dots are positions.
@@ -84,7 +107,7 @@ export function PinPad({
             aria-hidden
             className={cn(
               'size-3.5 rounded-full border-2 border-primary',
-              index < pin.length && 'bg-primary',
+              index < count && 'bg-primary',
             )}
           />
         ))}
@@ -97,7 +120,7 @@ export function PinPad({
           type="button"
           variant="ghost"
           className="h-16 min-w-16 lg:pointer-fine:h-16"
-          disabled={disabled || pin.length === 0}
+          disabled={disabled || count === 0}
           onClick={erase}
           aria-label={t('pin.delete')}
         >

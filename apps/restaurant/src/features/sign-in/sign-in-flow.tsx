@@ -487,4 +487,4 @@ function PasswordStep({
   );
 }
 
-export { TextField, TICKET_HEADER, useStepAction };
+export { proofOfWork, TextField, TICKET_HEADER, useStepAction };
