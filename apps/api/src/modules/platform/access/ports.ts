@@ -40,8 +40,8 @@ export interface MemberCredentials {
     membershipIds: string[],
   ): Promise<Map<string, { set: boolean; disabled: boolean }>>;
   /**
-   * The members who have been present in this tenant: a PIN set on one of its PCs, or a session in
-   * it. Only for them may the tenant see account-level facts (the name the person chose, whether
+   * The members who have been present in this tenant: a session in it in which they entered their
+   * own password (a PIN is set by a manager, so it proves nothing). Only for them may the tenant see account-level facts (the name the person chose, whether
    * they have a password): adding a phone must tell nothing about the account (rule 1).
    */
   presentIn(tx: Transaction, membershipIds: string[]): Promise<Set<string>>;

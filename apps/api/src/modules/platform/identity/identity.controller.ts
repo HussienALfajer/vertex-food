@@ -388,8 +388,9 @@ export class MeController {
     await this.me.changePin(staff, input);
   }
 
+  // The account's devices are account-wide: the password, entered in this session, first.
   @Get('personal-devices')
-  @StaffRoute()
+  @StaffRoute({ reauth: true })
   @SerializeOptions({ schema: personalDeviceListSchema })
   personalDevices(@CurrentStaff() staff: StaffActor) {
     return this.me.listPersonalDevices(staff);
@@ -397,7 +398,7 @@ export class MeController {
 
   @Post('personal-devices/:id/revoke')
   @HttpCode(200)
-  @StaffRoute()
+  @StaffRoute({ reauth: true })
   @SerializeOptions({ schema: personalDeviceListSchema })
   revokePersonalDevice(@CurrentStaff() staff: StaffActor, @Param('id', idParam) id: string) {
     return this.me.revokePersonalDevice(staff, id);

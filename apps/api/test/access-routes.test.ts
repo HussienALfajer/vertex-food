@@ -54,6 +54,11 @@ async function ownerPersonalSession(ownerPhone: string, tenantId: string) {
 }
 
 describe('the authentication step on every route (rule 46)', () => {
+  it('serves no route under a percent-encoded spelling of its path', async () => {
+    const response = await client(app).post('/api/%73taff').send({});
+    expect([response.status, response.body.code]).toEqual([404, 'NOT_FOUND']);
+  });
+
   it('refuses every non-public route before parsing a malformed body, in any case', async () => {
     const routes = listRoutes(app).filter((route) => route.access?.kind !== 'public');
     for (const route of routes) {
@@ -148,11 +153,33 @@ describe('what adding a phone may reveal (rule 1, edge case 3)', () => {
       (m: { membershipId: string }) => m.membershipId === added.body.id,
     );
     expect(listed.name).toBe('كاشير');
-    // Once the person chose a PIN here, the tenant sees what they chose to be called.
+    // A PIN the restaurant sets, and a PIN session it opens with it, reveal nothing either.
     await device
       .as(owner)
       .put(`/api/staff/${added.body.id}/pin`)
       .send({ pin: pinFor(4) })
+      .expect(204);
+    const forged = await device.signIn(added.body.id, pinFor(4));
+    expect((await device.as(owner).get(`/api/staff/${added.body.id}`)).body).toMatchObject({
+      nameAr: null,
+      hasPassword: false,
+    });
+    expect((await device.as(forged).get('/api/me')).body.account).toMatchObject({
+      nameAr: null,
+      hasPassword: false,
+    });
+    const devicesRead = await device.as(forged).get('/api/me/personal-devices');
+    expect(devicesRead.body.code).toBe('REAUTH_REQUIRED');
+    const devicesRevoked = await device
+      .as(forged)
+      .post(`/api/me/personal-devices/${added.body.id}/revoke`);
+    expect(devicesRevoked.body.code).toBe('REAUTH_REQUIRED');
+    // Once the person entered their own password in a session here, the tenant sees their name.
+    const own = await device.signIn(added.body.id, pinFor(4));
+    await device
+      .as(own)
+      .post('/api/sessions/current/reauth')
+      .send({ password: PASSWORD })
       .expect(204);
     const after = await device.as(owner).get(`/api/staff/${added.body.id}`).expect(200);
     expect(after.body).toMatchObject({ nameAr: 'اسم تجريبي', hasPassword: true });
@@ -207,7 +234,8 @@ describe('lockouts on every path (rules 11, 24)', () => {
     expect(signIn.body.code).toBe('RATE_LIMITED');
   });
 
-  it('counts a wrong current PIN as a wrong PIN', async () => {
+  // Ten Argon2id checks at 64 MiB: slower than the default limit while other files run.
+  it('counts a wrong current PIN as a wrong PIN', { timeout: 30_000 }, async () => {
     const { device, ownerMembershipId } = await api.ownerOnDevice();
     const session = await device.signIn(ownerMembershipId, pinFor(0));
     const change = () =>

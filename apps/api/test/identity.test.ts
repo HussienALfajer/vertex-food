@@ -332,7 +332,10 @@ describe('registered PCs and their member lists (rules 18, 28)', () => {
 });
 
 describe('PIN sessions (rules 22, 24, 26)', () => {
-  it('disables a PIN after ten wrong online attempts, until a manager resets it', async () => {
+  // Ten Argon2id checks at 64 MiB: slower than the default limit while other files run.
+  it('disables a PIN after ten wrong online attempts, until a manager resets it', {
+    timeout: 30_000,
+  }, async () => {
     const { device, owner, branchIds } = await api.ownerOnDevice();
     const waiter = await device.addMember(
       owner,

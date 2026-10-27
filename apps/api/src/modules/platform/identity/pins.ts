@@ -1,6 +1,6 @@
 import { pinPolicy, type StaffSessionEndReason } from '@vertex-food/contracts';
 import { staffPins, staffSessions, type Transaction } from '@vertex-food/db';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import type { DeviceActor, StaffActor } from '../../../core/access/actor.js';
 import { audit } from '../../../core/audit/audit.js';
 import type { MemberCredentials } from '../access/index.js';
@@ -113,18 +113,23 @@ export class MemberCredentialsStore implements MemberCredentials {
     return states;
   }
 
+  /**
+   * Presence the restaurant cannot make on its own: a session in this tenant in which the person
+   * entered their own password (a personal-device sign-in, a registration, a re-authentication).
+   * A PIN proves nothing here: a manager sets a member's PIN (rule 22).
+   */
   async presentIn(tx: Transaction, membershipIds: string[]): Promise<Set<string>> {
     if (membershipIds.length === 0) return new Set();
-    // One after the other: a transaction runs one statement at a time.
-    const pins = await tx
-      .selectDistinct({ id: staffPins.membershipId })
-      .from(staffPins)
-      .where(inArray(staffPins.membershipId, membershipIds));
-    const sessions = await tx
+    const rows = await tx
       .selectDistinct({ id: staffSessions.membershipId })
       .from(staffSessions)
-      .where(inArray(staffSessions.membershipId, membershipIds));
-    return new Set([...pins, ...sessions].map((row) => row.id));
+      .where(
+        and(
+          inArray(staffSessions.membershipId, membershipIds),
+          or(eq(staffSessions.kind, 'personal'), isNotNull(staffSessions.passwordVerifiedAt)),
+        ),
+      );
+    return new Set(rows.map((row) => row.id));
   }
 
   endSessions(

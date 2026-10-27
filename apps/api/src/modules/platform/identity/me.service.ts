@@ -28,7 +28,7 @@ import { permissionsOf, reach, readMembership } from '../access/index.js';
 import { accountById } from './accounts.js';
 import { tenantStatusAt } from './member-lists.js';
 import { PersonalDeviceStore } from './personal-devices.js';
-import { checkOnlinePin, currentPin, replacePin } from './pins.js';
+import { checkOnlinePin, currentPin, MemberCredentialsStore, replacePin } from './pins.js';
 import { hashPassword, hashPin, verifyPassword } from './secrets.js';
 import { SignInLock } from './sign-in-lock.js';
 
@@ -71,12 +71,17 @@ export class MeService {
       const member = await readMembership(tx, { accountId: session.accountId });
       if (!member) throw new DomainError('UNAUTHENTICATED', 'No membership');
       const pin = await currentPin(tx, member.id);
+      // A PIN session the restaurant opened with a PIN it set learns nothing about the account
+      // (rule 1): its facts need the person's own password in this tenant.
+      const present = (await new MemberCredentialsStore().presentIn(tx, [member.id])).has(
+        member.id,
+      );
       return {
         account: {
           id: account.id,
           phone: account.phone,
-          nameAr: account.nameAr,
-          hasPassword: account.passwordHash !== null,
+          nameAr: present ? account.nameAr : null,
+          hasPassword: present && account.passwordHash !== null,
         },
         tenant: { id: tenant.row.id, nameAr: tenant.row.nameAr, status: tenant.status },
         membershipId: member.id,
