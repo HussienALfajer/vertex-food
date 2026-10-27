@@ -243,8 +243,10 @@ describe('slugs', () => {
       slug: '  Test-Grill ',
       defaultCurrency: 'USD',
       branches: [{ nameAr: 'الرئيسي', code: 'main' }],
+      owner: { phone: '0900 000 001', displayName: 'مالك تجريبي' },
     });
     expect(tenant.slug).toBe('test-grill');
+    expect(tenant.owner.phone).toBe('+963900000001');
   });
 
   it('refuses two branches with one code at creation', () => {
@@ -257,6 +259,7 @@ describe('slugs', () => {
           { nameAr: 'الأول', code: 'main' },
           { nameAr: 'الثاني', code: 'main' },
         ],
+        owner: { phone: '0900 000 001', displayName: 'مالك تجريبي' },
       }).success,
     ).toBe(false);
   });

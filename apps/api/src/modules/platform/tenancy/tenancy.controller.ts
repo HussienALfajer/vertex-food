@@ -31,6 +31,7 @@ import {
   resolveMapLinkSchema,
   tenantSchema,
   updateBranchSchema,
+  updateBranchSecuritySchema,
   updateHourExceptionSchema,
   updateTenantSchema,
 } from '@vertex-food/contracts';
@@ -137,6 +138,18 @@ export class BranchesController {
     @Body({ schema: updateBranchSchema }) input: z.output<typeof updateBranchSchema>,
   ) {
     return this.tenancy.updateBranch(staff, id, input);
+  }
+
+  @Patch(':id/security')
+  @StaffRoute('branch.security.edit')
+  @SerializeOptions({ schema: branchSchema })
+  updateSecurity(
+    @CurrentStaff() staff: StaffActor,
+    @Param('id', idParam) id: string,
+    @Body({ schema: updateBranchSecuritySchema })
+    input: z.output<typeof updateBranchSecuritySchema>,
+  ) {
+    return this.tenancy.updateBranchSecurity(staff, id, input);
   }
 
   @Put(':id/hours')

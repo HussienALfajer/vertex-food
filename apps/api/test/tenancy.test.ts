@@ -24,9 +24,11 @@ import { listRoutes } from '../src/core/routes.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
+import { newPhone } from './staff.js';
 
-// Spec S01 over the API. Until S02 there are no sessions: every non-public route answers 401, and
-// the rules are exercised on the service the routes call, with the actors S02 will build.
+// Spec S01 over the API: the rules exercised on the service the routes call, with staff actors as
+// the session verifier builds them. Access over HTTP (sessions, 403, other tenants) is in
+// `access.test.ts` (spec S02).
 
 const AZAZ = '0199fd00-0000-7000-8000-00000000c001';
 const OPERATOR: SystemActor = { kind: 'system', name: 'test operator' };
@@ -62,10 +64,18 @@ function staff(
   return {
     kind: 'staff',
     tenantId,
+    tenantStatus: 'active',
     accountId: uuidv7(),
+    membershipId: uuidv7(),
+    sessionId: uuidv7(),
+    sessionKind: 'device',
+    deviceId: null,
+    branchId: null,
+    roles: ['owner'],
     permissions: [...permissions],
     allBranches: branchIds === undefined,
     branchIds: branchIds ?? [],
+    passwordVerifiedAt: null,
   };
 }
 
@@ -77,6 +87,7 @@ async function newTenant(branchCodes = ['main']) {
     slug: `test-${Date.now().toString(36)}-${slugCount}`,
     defaultCurrency: 'USD',
     branches: branchCodes.map((code, index) => ({ nameAr: `فرع ${index + 1}`, code })),
+    owner: { phone: newPhone(), displayName: 'مالك تجريبي' },
   });
   const owner = staff(detail.tenant.id);
   return { detail, tenantId: detail.tenant.id, owner, branchIds: detail.branches.map((b) => b.id) };
@@ -106,7 +117,7 @@ async function completeBranch(owner: StaffActor, branchId: string) {
 }
 
 describe('routes', () => {
-  it('refuse every non-public route with 401 until sessions exist (S02)', async () => {
+  it('refuse every non-public route without a session, device token or ticket', async () => {
     const routes = listRoutes(app).filter((route) => route.access?.kind !== 'public');
     expect(routes.length).toBeGreaterThan(20);
     for (const route of routes) {
@@ -114,7 +125,7 @@ describe('routes', () => {
       const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
       const response = await request(app.getHttpServer())[method](path).send({});
       expect(response.status, `${route.method} ${route.path}`).toBe(401);
-      expect(response.body.code).toBe('UNAUTHENTICATED');
+      expect(['UNAUTHENTICATED', 'TICKET_INVALID']).toContain(response.body.code);
     }
   });
 
@@ -145,11 +156,14 @@ describe('creating a tenant', () => {
       expect.arrayContaining([
         { action: 'tenant.created', actorName: 'test operator' },
         { action: 'branch.created', actorName: 'test operator' },
+        // Spec S02 rule 3: the first owner, created with the tenant.
+        { action: 'staff.added', actorName: 'test operator' },
       ]),
     );
     expect(events.map((e) => e.type).sort()).toEqual([
       'branch.created.v1',
       'branch.created.v1',
+      'staff.member_added.v1',
       'tenant.created.v1',
     ]);
   });
@@ -160,6 +174,7 @@ describe('creating a tenant', () => {
       nameAr: 'مطعم آخر',
       defaultCurrency: 'TRY' as const,
       branches: [{ nameAr: 'الرئيسي', code: 'main' }],
+      owner: { phone: newPhone(), displayName: 'مالك' },
     };
     expect(
       await codeOf(tenancy.createTenant(OPERATOR, { ...input, slug: detail.tenant.slug })),

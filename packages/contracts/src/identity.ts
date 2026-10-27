@@ -4,7 +4,7 @@ import { commonPasswords } from './common-passwords.js';
 import { DomainError } from './errors.js';
 import { mobilePhoneNumberSchema } from './phone.js';
 import { idSchema, instantSchema } from './primitives.js';
-import { tenantStatusSchema } from './tenancy.js';
+import { idleLockMinutesSchema, tenantStatusSchema } from './tenancy.js';
 
 /**
  * Staff identity (spec S02, ADR 0005, ADR 0032): accounts, passwords, OTPs, PINs, registered PCs,
@@ -171,11 +171,6 @@ export function mayOpenOfflineSession(
   );
 }
 
-/** The branch's idle lock (rule 32). */
-export const idleLockMinutesSchema = z.int().min(1).max(60).meta({ id: 'IdleLockMinutes' });
-
-export const DEFAULT_IDLE_LOCK_MINUTES = 5;
-
 // Devices (rules 16–21).
 
 /**
@@ -324,7 +319,7 @@ export type OtpChallenge = z.infer<typeof otpChallengeSchema>;
 export const otpResendSchema = z.object({ challengeId: idSchema }).meta({ id: 'OtpResend' });
 
 export const otpVerifySchema = z
-  .object({ challengeId: idSchema, code: otpCodeSchema })
+  .object({ challengeId: idSchema, code: otpCodeSchema, intent: signInIntentSchema })
   .meta({ id: 'OtpVerify' });
 
 export type OtpVerify = z.infer<typeof otpVerifySchema>;
@@ -408,7 +403,8 @@ export const deviceSchema = z
     membersSyncedAt: instantSchema.nullable(),
     registeredAt: instantSchema,
     revokedAt: instantSchema.nullable(),
-    revokeReason: deviceRevokeReasonSchema.nullable(),
+    /** A member's reason, or `tenant_closed` when the restaurant's closure revoked it (rule 37). */
+    revokeReason: z.enum([...deviceRevokeReasonSchema.options, 'tenant_closed']).nullable(),
     wipedAt: instantSchema.nullable(),
     updatedAt: instantSchema,
   })
@@ -627,12 +623,6 @@ export type PersonalDevice = z.infer<typeof personalDeviceSchema>;
 export const personalDeviceListSchema = z
   .array(personalDeviceSchema)
   .meta({ id: 'PersonalDeviceList' });
-
-export const branchSecuritySchema = z
-  .object({ idleLockMinutes: idleLockMinutesSchema, updatedAt: instantSchema })
-  .meta({ id: 'BranchSecurity' });
-
-export type BranchSecurity = z.infer<typeof branchSecuritySchema>;
 
 /** The API's public token keys (RFC 7517), for the sync service to check access tokens (S04). */
 export const jwksSchema = z

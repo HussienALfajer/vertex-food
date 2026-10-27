@@ -40,6 +40,14 @@ const OWNED_TABLES = {
   tenantSlugs: 'platform/tenancy',
   governorates: 'platform/areas',
   cities: 'platform/areas',
+  accounts: 'platform/identity',
+  personalDevices: 'platform/identity',
+  otpChallenges: 'platform/identity',
+  usedTokens: 'platform/identity',
+  platformUsers: 'platform/identity',
+  platformUserRecoveryCodes: 'platform/identity',
+  platformSessions: 'platform/identity',
+  accountTenantLinks: 'platform/access',
 };
 
 function sourceFiles(): Map<string, string> {

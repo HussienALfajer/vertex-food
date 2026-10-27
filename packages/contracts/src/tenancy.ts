@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { DomainError } from './errors.js';
 import { currencyCodeSchema } from './money.js';
 import { orderTypeSchema } from './orders.js';
-import { parsePhoneNumber, phoneNumberSchema } from './phone.js';
+import { mobilePhoneNumberSchema, parsePhoneNumber, phoneNumberSchema } from './phone.js';
 import {
   coordinatesSchema,
   idSchema,
@@ -613,6 +613,11 @@ const acceptedCurrenciesSchema = z
   .min(1)
   .refine((codes) => new Set(codes).size === codes.length, 'A currency appears twice');
 
+/** The branch's idle lock (spec S02 rule 32): 1 to 60 minutes, 5 by default. */
+export const idleLockMinutesSchema = z.int().min(1).max(60).meta({ id: 'IdleLockMinutes' });
+
+export const DEFAULT_IDLE_LOCK_MINUTES = 5;
+
 export const branchSchema = z
   .object({
     id: idSchema,
@@ -628,6 +633,7 @@ export const branchSchema = z
     /** Set by S09 with the first real order; the default currency is fixed after it. */
     currencyLockedAt: instantSchema.nullable(),
     businessDayEndsAt: businessDayEndSchema,
+    idleLockMinutes: idleLockMinutesSchema,
     createdAt: instantSchema,
     updatedAt: instantSchema,
     archivedAt: instantSchema.nullable(),
@@ -670,6 +676,13 @@ export const updateBranchSchema = z
   .meta({ id: 'UpdateBranch' });
 
 export type UpdateBranch = z.infer<typeof updateBranchSchema>;
+
+/** Spec S02 rule 32: `branch.security.edit`, with the `updatedAt` the client read. */
+export const updateBranchSecuritySchema = z
+  .object({ idleLockMinutes: idleLockMinutesSchema, updatedAt: instantSchema })
+  .meta({ id: 'UpdateBranchSecurity' });
+
+export type UpdateBranchSecurity = z.infer<typeof updateBranchSecuritySchema>;
 
 /** The fields of `UpdateBranch` each permission may change. */
 export const branchSettingsFields = [
@@ -848,6 +861,11 @@ export const createTenantSchema = z
         (branches) => new Set(branches.map((branch) => branch.code)).size === branches.length,
         'A branch code appears twice',
       ),
+    /** The first owner (spec S02 rule 3): an account found or created by phone. */
+    owner: z.object({
+      phone: mobilePhoneNumberSchema,
+      displayName: z.string().trim().min(2).max(100),
+    }),
     note: noteSchema.optional(),
   })
   .meta({ id: 'CreateTenant' });

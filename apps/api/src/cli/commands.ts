@@ -18,7 +18,7 @@ import type { AreasService } from '../modules/platform/areas/index.js';
 import type { TenancyService } from '../modules/platform/tenancy/index.js';
 
 export const USAGE = `Usage (Vertex staff, on the server with the API's .env); every command takes --operator <your name>:
-  tenant:create --name-ar <name> [--name-latin <name>] --slug <slug> --currency <USD|TRY|SYP> --branch <code>=<Arabic name> [--branch …] [--note <text>]
+  tenant:create --name-ar <name> [--name-latin <name>] --slug <slug> --currency <USD|TRY|SYP> --branch <code>=<Arabic name> [--branch …] --owner-phone <phone> --owner-name <name> [--note <text>]
   tenant:list [--status <onboarding|active|suspended|closed>] [--q <text>] [--page <n>]
   tenant:set-slug <tenant-id> --slug <slug>
   tenant:set-status <tenant-id> --status <active|suspended|closed> [--reason <non_payment|abuse|other>] [--note <text>]
@@ -42,6 +42,8 @@ const options = {
   page: { type: 'string' },
   code: { type: 'string' },
   governorate: { type: 'string' },
+  'owner-phone': { type: 'string' },
+  'owner-name': { type: 'string' },
 } as const;
 
 const operatorSchema = z.string().trim().min(2).max(100);
@@ -105,6 +107,7 @@ export async function runCommand(
               slug: values.slug,
               defaultCurrency: values.currency,
               branches: (values.branch ?? []).map(branchOption),
+              owner: { phone: values['owner-phone'], displayName: values['owner-name'] },
               note: values.note,
             }),
           ),

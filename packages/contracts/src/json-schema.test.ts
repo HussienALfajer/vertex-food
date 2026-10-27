@@ -90,7 +90,7 @@ describe('contractJsonSchemas', () => {
         'AddStaffMember',
         'AuthorizeAccountPasswordReset',
         'BranchScope',
-        'BranchSecurity',
+        'UpdateBranchSecurity',
         'ChangeAccountPhone',
         'ChangePassword',
         'ChangePin',
