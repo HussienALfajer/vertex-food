@@ -18,7 +18,7 @@ This project is independent. Do not read or reuse other folders on this machine 
 | `docs/ROADMAP.md` | Phase and spec status. Update it when a spec or phase item is done. |
 | `docs/specs/<id>-<name>.md` | Detailed spec per feature group, written before implementation |
 | `docs/open-questions.md` | Unresolved decisions. Never guess an answer to one: ask. |
-| `docs/workflow.md` | How work is run with Claude Code |
+| `docs/workflow.md` | How work is run with Claude Code, including cloud sessions ("Cloud sessions") |
 | `docs/testing.md` | How checks run: `pnpm verify`, what runs locally and what in CI, the test databases, the E2E rules, the CI jobs, the local machine |
 | `<app or package>/CLAUDE.md` | Local rules and the pattern to copy; each arrives with its folder |
 
