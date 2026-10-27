@@ -71,6 +71,9 @@ export class SecretBox {
   }
 }
 
+/** The AES-256-GCM box of identity (`IDENTITY_ENCRYPTION_KEY`), for the console's TOTP secrets. */
+export const SECRET_BOX = Symbol('SecretBox');
+
 /** Compares two strings in time independent of where they differ. */
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);

@@ -20,9 +20,9 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 
 ### PR 2 — console identity backend (`feat/S02-console-identity-api`)
 
-- [ ] api: console session guard (cookie on `/api/console/`, 30-minute idle, 12-hour absolute, `Origin`), platform audit of every console request (rule 43), sign-in with setup code, TOTP enrollment (RFC 6238, step replay), recovery codes, re-auth window, `/api/console/me`, platform users (`LAST_ADMIN`, limits), account lookup, owner password reset and phone change (both audits)
-- [ ] CLI: `platform-user:create`, `platform-user:reset`, `account:authorize-password-reset`, `account:change-phone`; CLI tests
-- [ ] tests: `test/console-identity.test.ts`, HTTP access tests of every S01 console route (staff sessions refused, re-auth on status and slug)
+- [x] api: console session guard (cookie on `/api/console/`, 30-minute idle, 12-hour absolute, `Origin`), platform audit of every console request (rule 43), sign-in with setup code, TOTP enrollment (RFC 6238, step replay), recovery codes, re-auth window, `/api/console/me`, platform users (`LAST_ADMIN`, limits), account lookup, owner password reset and phone change (both audits)
+- [x] CLI: `platform-user:create`, `platform-user:reset`, `account:authorize-password-reset`, `account:change-phone`; CLI tests
+- [x] tests: `test/console-identity.test.ts`, HTTP access tests of every S01 console route (staff sessions refused, re-auth on status and slug)
 - [ ] OpenAPI regenerated; docs; checks, `reviewer`, owner acceptance, PR with auto-merge
 
 ### PR 3 — restaurant app: device, sign-in and PIN (`feat/S02-restaurant-devices`)

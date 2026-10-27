@@ -1,4 +1,5 @@
-import type { DeviceActor, StaffActor, Ticket } from './actor.js';
+import type { ConsolePermission } from '@vertex-food/contracts';
+import type { DeviceActor, PlatformActor, StaffActor, Ticket } from './actor.js';
 
 /** Headers that carry the tokens (spec S02 rule 44): the device token and a sign-in ticket. */
 export const DEVICE_TOKEN_HEADER = 'x-device-token';
@@ -15,6 +16,27 @@ export const STAFF_SESSION_COOKIE = '__Secure-vf-session';
  * sign-ins there need the password only. Sent to the sign-in routes only.
  */
 export const PERSONAL_DEVICE_COOKIE = '__Secure-vf-device';
+
+/**
+ * The console session cookie (spec S02 rule 41): `HttpOnly`, `Secure`, `SameSite=Strict`, sent to
+ * `/api/console/` only.
+ */
+export const CONSOLE_SESSION_COOKIE = '__Secure-vf-console';
+export const CONSOLE_COOKIE_PATH = '/api/console/';
+
+/** A console request as the authentication step sees it, before its body is read (rule 43). */
+export type ConsoleRequest = {
+  /** The route as `METHOD /api/console/path/:param`. */
+  route: string;
+  /** The route's parameters (ids only). */
+  params: Record<string, string>;
+  /** The tenant the request concerns, from the parameter the route names. */
+  subjectTenantId: string | null;
+  /** A write from an origin that is not allowed (rule 41). */
+  foreignOrigin: boolean;
+  permissions: ConsolePermission[];
+  reauth: boolean;
+};
 
 /**
  * Checks the tokens of a request and answers who sent them, or refuses with a coded error. The
@@ -39,6 +61,13 @@ export interface SessionVerifier {
    * input is valid, so a refused step does not cost the person their ticket.
    */
   ticket(ticket: string, purpose: Ticket['purpose']): Promise<Ticket>;
+  /**
+   * A console session cookie (rules 40–43), rechecked against the database, the idle and absolute
+   * limits, the user's status, the origin, the route's permissions and the re-auth window; a
+   * request counts as activity. Every request with a known session is written to the platform
+   * audit, refused or not.
+   */
+  console(sessionToken: string, request: ConsoleRequest): Promise<PlatformActor>;
 }
 
 export const SESSION_VERIFIER = Symbol('SessionVerifier');

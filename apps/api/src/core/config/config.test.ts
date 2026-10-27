@@ -27,7 +27,13 @@ describe('loadConfig', () => {
       databaseUrl: DATABASE_APP_URL,
       host: '127.0.0.1',
       port: 3100,
-      corsOrigins: ['app://restaurant', 'http://localhost:5273', 'http://localhost:4273'],
+      corsOrigins: [
+        'app://restaurant',
+        'http://localhost:5273',
+        'http://localhost:4273',
+        'http://localhost:5274',
+        'http://localhost:4274',
+      ],
       production: false,
       identity: { powDifficulty: 18, otpSender: 'fake' },
     });

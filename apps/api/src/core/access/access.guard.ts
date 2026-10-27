@@ -13,7 +13,8 @@ const MINUTE_MS = 60_000;
  * tokens the authentication step did not verify is refused with `UNAUTHENTICATED`; every route
  * that needs a feature is refused until the entitlement resolver (S05). On what the step set, it
  * checks the staff route's permissions, the registered PC, the 5-minute password re-entry and a
- * closed tenant's read-only access (spec S02 rules 26, 34, 37).
+ * closed tenant's read-only access (spec S02 rules 26, 34, 37), and the console route's
+ * permissions and TOTP re-entry (rules 40, 43).
  */
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -34,10 +35,30 @@ export class AccessGuard implements CanActivate {
       throw new DomainError('UNAUTHENTICATED', 'No session');
     }
     if (access.kind === 'staff') this.checkStaff(access, request);
+    if (access.kind === 'console') this.checkConsole(access, request);
     if (entitlement.kind === 'feature') {
       throw new DomainError('NOT_ENTITLED', `Feature ${entitlement.feature} is not enabled`);
     }
     return true;
+  }
+
+  /** The authentication step checked the console session whole (rule 43); this repeats it. */
+  private checkConsole(
+    access: Extract<Access, { kind: 'console' }>,
+    request: IncomingRequest,
+  ): void {
+    const actor = request.actor;
+    if (actor?.kind !== 'platform') throw new DomainError('UNAUTHENTICATED', 'No session');
+    const { permissions, options } = access;
+    if (permissions.length > 0 && !permissions.some((p) => actor.permissions.includes(p))) {
+      throw new DomainError('FORBIDDEN', 'The user lacks the permission');
+    }
+    if (options.reauth) {
+      const enteredAt = actor.reauthenticatedAt?.getTime() ?? 0;
+      if (Date.now() - enteredAt > reauthMinutes * MINUTE_MS) {
+        throw new DomainError('REAUTH_REQUIRED', 'Enter a TOTP code again');
+      }
+    }
   }
 
   private checkStaff(access: Extract<Access, { kind: 'staff' }>, request: IncomingRequest): void {

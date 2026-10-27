@@ -4,8 +4,16 @@ import { z } from 'zod';
 /** The restaurant app's Electron renderer (`apps/restaurant/electron/main.ts`). */
 const RENDERER_ORIGIN = 'app://restaurant';
 
-/** The restaurant app's Vite dev server and preview, allowed outside production only. */
-const DEVELOPMENT_ORIGINS = ['http://localhost:5273', 'http://localhost:4273'];
+/**
+ * The Vite dev servers and previews of the restaurant app and the console, allowed outside
+ * production only.
+ */
+const DEVELOPMENT_ORIGINS = [
+  'http://localhost:5273',
+  'http://localhost:4273',
+  'http://localhost:5274',
+  'http://localhost:4274',
+];
 
 /** An exact origin: scheme and host, an optional port, nothing after it. */
 const originSchema = z.string().regex(/^[a-z][a-z0-9+.-]*:\/\/[^/\s*?#]+$/);

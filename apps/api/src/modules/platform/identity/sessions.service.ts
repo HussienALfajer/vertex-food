@@ -18,13 +18,19 @@ import {
   withTenant,
 } from '@vertex-food/db';
 import { and, eq } from 'drizzle-orm';
-import type { DeviceActor, StaffActor, Ticket } from '../../../core/access/actor.js';
-import type { SessionVerifier } from '../../../core/access/session-verifier.js';
+import type {
+  DeviceActor,
+  PlatformActor,
+  StaffActor,
+  Ticket,
+} from '../../../core/access/actor.js';
+import type { ConsoleRequest, SessionVerifier } from '../../../core/access/session-verifier.js';
 import { audit } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { inScope, type Membership, permissionsOf, readMembership } from '../access/index.js';
 import { accountById } from './accounts.js';
+import { ConsoleAuthService } from './console-auth.service.js';
 import { closeTenantAccess } from './device-access.js';
 import { tenantStatusAt } from './member-lists.js';
 import { checkOnlinePin, currentPin } from './pins.js';
@@ -102,6 +108,7 @@ export class SessionsService implements SessionVerifier {
     @Inject(Tickets) private readonly tickets: Tickets,
     @Inject(SessionIssuer) private readonly issuer: SessionIssuer,
     @Inject(SignInLock) private readonly signInLock: SignInLock,
+    @Inject(ConsoleAuthService) private readonly consoleAuth: ConsoleAuthService,
   ) {}
 
   /** Rule 24: a member's PIN on this PC, checked online; ten wrong ones disable it everywhere. */
@@ -340,6 +347,10 @@ export class SessionsService implements SessionVerifier {
 
   ticket(ticket: string, purpose: Ticket['purpose']): Promise<Ticket> {
     return this.tickets.verify(ticket, purpose);
+  }
+
+  console(sessionToken: string, request: ConsoleRequest): Promise<PlatformActor> {
+    return this.consoleAuth.verify(sessionToken, request);
   }
 
   // Shared steps.

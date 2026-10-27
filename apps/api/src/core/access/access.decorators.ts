@@ -19,7 +19,7 @@ export type Access =
   | { kind: 'staff'; permissions: StaffPermission[]; options: StaffRouteOptions }
   | { kind: 'device'; allowRevoked: boolean }
   | { kind: 'ticket'; purpose: Ticket['purpose'] }
-  | { kind: 'console'; permission: ConsolePermission };
+  | { kind: 'console'; permissions: ConsolePermission[]; options: ConsoleRouteOptions };
 
 /** What a staff route asks beyond a permission (spec S02 rules 26, 34, 37). */
 export type StaffRouteOptions = {
@@ -29,6 +29,14 @@ export type StaffRouteOptions = {
   reauth?: boolean;
   /** A write that a closed tenant still allows (ending one's own session); reads always pass. */
   whileClosed?: boolean;
+};
+
+/** What a console route asks beyond a permission (spec S02 rules 40, 43). */
+export type ConsoleRouteOptions = {
+  /** A TOTP entered in this session in the last 5 minutes (`REAUTH_REQUIRED`). */
+  reauth?: boolean;
+  /** The route parameter that names the tenant the request concerns, for the platform audit. */
+  subjectTenant?: string;
 };
 
 /** The commercial feature the tenant needs (S05), or none for routes outside any package. */
@@ -82,9 +90,18 @@ export const DeviceRoute = (options: { allowRevoked?: boolean } = {}) =>
 export const TicketRoute = (purpose: Ticket['purpose']) =>
   declare(ACCESS, { kind: 'ticket', purpose });
 
-/** Vertex staff signed in to the console (S02, TOTP) holding `permission`; under `/api/console/`. */
-export const ConsoleRoute = (permission: ConsolePermission) =>
-  declare(ACCESS, { kind: 'console', permission });
+/**
+ * Vertex staff signed in to the console (spec S02, TOTP) holding one of `permissions` (any platform
+ * user when none is named), with `options` first when the route needs more; under `/api/console/`.
+ */
+export function ConsoleRoute(
+  ...args: [ConsoleRouteOptions, ...ConsolePermission[]] | ConsolePermission[]
+): ClassDecorator & MethodDecorator {
+  const [first, ...rest] = args;
+  const options = typeof first === 'object' ? first : {};
+  const permissions = (typeof first === 'object' ? rest : args) as ConsolePermission[];
+  return declare(ACCESS, { kind: 'console', permissions, options });
+}
 
 /** The tenant's agreement must include `feature` (S05). */
 export const RequiresFeature = (feature: string) =>

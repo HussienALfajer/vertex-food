@@ -48,7 +48,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Local database (roles and `vertex_food`, from `.env`) | `pnpm db:setup-local` (`packages/db/CLAUDE.md`) |
 | Generate a migration from the schema | `pnpm db:generate` · custom SQL: `pnpm --filter @vertex-food/db exec drizzle-kit generate --custom --name=<name>` |
 | Apply migrations to the local database | `pnpm db:migrate` |
-| Tenancy CLI for Vertex staff (after `build`; `apps/api/CLAUDE.md`) | `pnpm --filter @vertex-food/api cli <command> --operator <name> …` |
+| CLI for Vertex staff: tenants, platform users, owner recovery (after `build`; `apps/api/CLAUDE.md`) | `pnpm --filter @vertex-food/api cli <command> --operator <name> …` |
 | Regenerate `apps/api/openapi.json` after a route or contract change | `pnpm --filter @vertex-food/api exec vitest run test/openapi.test.ts -u` |
 | Regenerate the restaurant app's API types after `openapi.json` changes | `pnpm --filter @vertex-food/restaurant exec vitest run test/api-schema.test.ts -u` |
 
