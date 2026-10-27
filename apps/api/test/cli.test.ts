@@ -52,6 +52,10 @@ describe('the CLI', () => {
       'main=الفرع الرئيسي',
       '--branch',
       'east=الفرع الشرقي',
+      '--owner-phone',
+      '0944 000 001',
+      '--owner-name',
+      'مالك تجريبي',
     );
     expect(created).toMatchObject({ code: 0, err: '' });
     const detail = JSON.parse(created.out);

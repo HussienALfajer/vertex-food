@@ -161,6 +161,7 @@ export function branch(overrides: Partial<Branch> = {}): Branch {
     acceptedCurrencies: ['USD'],
     currencyLockedAt: null,
     businessDayEndsAt: '04:00',
+    idleLockMinutes: 5,
     createdAt: created,
     updatedAt: created,
     archivedAt: null,

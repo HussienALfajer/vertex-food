@@ -69,6 +69,7 @@ export function toBranch(row: BranchRow): Branch {
     acceptedCurrencies: row.acceptedCurrencies as CurrencyCode[],
     currencyLockedAt: iso(row.currencyLockedAt),
     businessDayEndsAt: timeOf(row.businessDayEndsAt),
+    idleLockMinutes: row.idleLockMinutes,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     archivedAt: iso(row.archivedAt),

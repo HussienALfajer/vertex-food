@@ -5,6 +5,336 @@
     "version": "0.0.0"
   },
   "paths": {
+    "/api/.well-known/jwks.json": {
+      "get": {
+        "operationId": "JwksController.jwks",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Jwks"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/access/catalog": {
+      "get": {
+        "operationId": "AccessController.catalog",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessCatalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/request": {
+      "post": {
+        "operationId": "AuthController.requestOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/resend": {
+      "post": {
+        "operationId": "AuthController.resendOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpResend"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpChallenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/otp/verify": {
+      "post": {
+        "operationId": "AuthController.verifyOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OtpVerify"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OtpVerified"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "operationId": "AuthController.setPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPassword"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignInTicket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/personal-session": {
+      "post": {
+        "operationId": "AuthController.personalSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/pow": {
+      "post": {
+        "operationId": "AuthController.proofOfWork",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofOfWorkChallenge"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in": {
+      "post": {
+        "operationId": "AuthController.signIn",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignInResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/tenant-options": {
+      "get": {
+        "operationId": "AuthController.tenantOptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/branches": {
       "get": {
         "operationId": "BranchesController.list",
@@ -329,6 +659,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BranchHours"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/branches/{id}/security": {
+      "patch": {
+        "operationId": "BranchesController.updateSecurity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBranchSecurity"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Branch"
                 }
               }
             }
@@ -731,6 +1108,359 @@
         }
       }
     },
+    "/api/devices": {
+      "post": {
+        "operationId": "DevicesController.register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredDevice"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "DevicesController.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{id}": {
+      "get": {
+        "operationId": "DevicesController.get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "DevicesController.rename",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/{id}/revoke": {
+      "post": {
+        "operationId": "DevicesController.revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeDevice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Device"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/current/members": {
+      "get": {
+        "operationId": "DevicesController.members",
+        "parameters": [
+          {
+            "name": "knownVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberListResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/current/members/ack": {
+      "post": {
+        "operationId": "DevicesController.acknowledge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberListAck"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/current/wiped": {
+      "post": {
+        "operationId": "DevicesController.wiped",
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/token": {
+      "post": {
+        "operationId": "DevicesController.token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceToken"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/devices/token/challenge": {
+      "post": {
+        "operationId": "DevicesController.challenge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenChallenge"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Nonce"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/files/{id}": {
       "get": {
         "operationId": "FilesController.read",
@@ -822,6 +1552,652 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Coordinates"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "MeController.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/password": {
+      "put": {
+        "operationId": "MeController.changePassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePassword"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/personal-devices": {
+      "get": {
+        "operationId": "MeController.personalDevices",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDeviceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/personal-devices/{id}/revoke": {
+      "post": {
+        "operationId": "MeController.revokePersonalDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalDeviceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/pin": {
+      "put": {
+        "operationId": "MeController.changePin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions": {
+      "post": {
+        "operationId": "SessionsController.open",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokens"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/current/end": {
+      "post": {
+        "operationId": "SessionsController.end",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/current/reauth": {
+      "post": {
+        "operationId": "SessionsController.reauthenticate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reauthenticate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/refresh": {
+      "post": {
+        "operationId": "SessionsController.refresh",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTokens"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff": {
+      "get": {
+        "operationId": "StaffController.list",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "displayName",
+                "createdAt"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "asc",
+              "$ref": "#/components/schemas/SortOrder"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipStatus"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "StaffController.add",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddStaffMember"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMember"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}": {
+      "get": {
+        "operationId": "StaffController.get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMember"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}/access": {
+      "patch": {
+        "operationId": "StaffController.changeAccess",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStaffAccess"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMember"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}/deactivate": {
+      "post": {
+        "operationId": "StaffController.deactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeactivateStaffMember"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMember"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}/password-reset": {
+      "post": {
+        "operationId": "StaffController.authorizePasswordReset",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}/pin": {
+      "put": {
+        "operationId": "StaffPinController.setPin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMemberPin"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/{id}/reactivate": {
+      "post": {
+        "operationId": "StaffController.reactivate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMember"
                 }
               }
             }
@@ -1059,6 +2435,156 @@
   },
   "components": {
     "schemas": {
+      "AccessCatalog": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "$ref": "#/components/schemas/StaffPermission"
+                },
+                "group": {
+                  "$ref": "#/components/schemas/PermissionGroup"
+                },
+                "branchScoped": {
+                  "type": "boolean"
+                },
+                "limit": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffRole"
+                  }
+                }
+              },
+              "required": [
+                "key",
+                "group",
+                "branchScoped",
+                "limit"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "$ref": "#/components/schemas/StaffRole"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffPermission"
+                  }
+                }
+              },
+              "required": [
+                "role",
+                "permissions"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ownerLockedPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "assignableRoles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "mayAdjustPermissions": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "permissions",
+          "presets",
+          "ownerLockedPermissions",
+          "assignableRoles",
+          "mayAdjustPermissions"
+        ],
+        "additionalProperties": false
+      },
+      "AccountName": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 100
+      },
+      "AccountPasswordResetAuthorized": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "passwordResetAuthorizedUntil": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "accountId",
+          "passwordResetAuthorizedUntil"
+        ],
+        "additionalProperties": false
+      },
+      "AddStaffMember": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "roles": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "branchScope": {
+            "$ref": "#/components/schemas/BranchScope"
+          },
+          "grantedPermissions": {
+            "default": [],
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "revokedPermissions": {
+            "default": [],
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          }
+        },
+        "required": [
+          "phone",
+          "displayName",
+          "roles",
+          "branchScope",
+          "grantedPermissions",
+          "revokedPermissions"
+        ],
+        "additionalProperties": false
+      },
       "ArchiveBranch": {
         "type": "object",
         "properties": {
@@ -1094,7 +2620,40 @@
           "branch_hour_exception.archived",
           "branch_charges.replaced",
           "governorate.created",
-          "city.created"
+          "city.created",
+          "staff.added",
+          "staff.access_changed",
+          "staff.deactivated",
+          "staff.reactivated",
+          "staff.password_reset_authorized",
+          "staff_pin.set",
+          "staff_pin.disabled",
+          "device.registered",
+          "device.renamed",
+          "device.revoked",
+          "device.wiped",
+          "staff_session.started",
+          "staff_session.reauthenticated",
+          "branch.security_updated",
+          "account.created",
+          "account.password_set",
+          "account.password_reset_authorized",
+          "account.phone_changed",
+          "account.sign_in_locked",
+          "personal_device.added",
+          "personal_device.revoked",
+          "console.request",
+          "platform_user.created",
+          "platform_user.updated",
+          "platform_user.disabled",
+          "platform_user.reset",
+          "platform_user.setup_completed",
+          "platform_user.signed_in",
+          "platform_user.signed_out",
+          "platform_user.sign_in_failed",
+          "platform_user.totp_failed",
+          "platform_user.reauthenticated",
+          "platform_user.password_changed"
         ]
       },
       "AuditActorKind": {
@@ -1106,6 +2665,20 @@
           "platform",
           "system"
         ]
+      },
+      "AuthorizeAccountPasswordReset": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
       },
       "Branch": {
         "type": "object",
@@ -1179,6 +2752,9 @@
           "businessDayEndsAt": {
             "$ref": "#/components/schemas/BusinessDayEnd"
           },
+          "idleLockMinutes": {
+            "$ref": "#/components/schemas/IdleLockMinutes"
+          },
           "createdAt": {
             "$ref": "#/components/schemas/Instant"
           },
@@ -1209,6 +2785,7 @@
           "acceptedCurrencies",
           "currencyLockedAt",
           "businessDayEndsAt",
+          "idleLockMinutes",
           "createdAt",
           "updatedAt",
           "archivedAt"
@@ -1400,6 +2977,45 @@
           "$ref": "#/components/schemas/Branch"
         }
       },
+      "BranchScope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "allBranches": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "allBranches"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "allBranches": {
+                "type": "boolean",
+                "const": false
+              },
+              "branchIds": {
+                "minItems": 1,
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Id"
+                }
+              }
+            },
+            "required": [
+              "allBranches",
+              "branchIds"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "BusinessDayEnd": {
         "type": "string",
         "pattern": "^(0[0-7]:(00|30)|08:00)$"
@@ -1419,6 +3035,98 @@
         },
         "required": [
           "cancelScheduled"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeAccountPhone": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "phone",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ChangePassword": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "newPassword": {
+            "$ref": "#/components/schemas/Password"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "additionalProperties": false
+      },
+      "ChangePin": {
+        "type": "object",
+        "properties": {
+          "currentPin": {
+            "$ref": "#/components/schemas/Pin"
+          },
+          "newPin": {
+            "$ref": "#/components/schemas/Pin"
+          }
+        },
+        "required": [
+          "newPin"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeStaffAccess": {
+        "type": "object",
+        "properties": {
+          "roles": {
+            "minItems": 1,
+            "maxItems": 6,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "branchScope": {
+            "$ref": "#/components/schemas/BranchScope"
+          },
+          "grantedPermissions": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "revokedPermissions": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "roles",
+          "branchScope",
+          "grantedPermissions",
+          "revokedPermissions",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
@@ -1496,11 +3204,368 @@
         ],
         "additionalProperties": false
       },
+      "ConsoleAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "passwordResetAuthorizedUntil": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signInLockedUntil": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tenantId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "tenantNameAr": {
+                  "type": "string"
+                },
+                "tenantStatus": {
+                  "$ref": "#/components/schemas/TenantStatus"
+                },
+                "membershipId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/MembershipStatus"
+                },
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffRole"
+                  }
+                }
+              },
+              "required": [
+                "tenantId",
+                "tenantNameAr",
+                "tenantStatus",
+                "membershipId",
+                "status",
+                "roles"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "nameAr",
+          "hasPassword",
+          "passwordResetAuthorizedUntil",
+          "signInLockedUntil",
+          "memberships"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleAccountLookup": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleMe": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConsoleRole"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "recoveryCodesRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "expiresAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "reauthenticatedUntil": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Instant"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "expiresAt",
+              "reauthenticatedUntil"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "name",
+          "role",
+          "permissions",
+          "recoveryCodesRemaining",
+          "session"
+        ],
+        "additionalProperties": false
+      },
       "ConsolePermission": {
         "type": "string",
         "enum": [
           "console.tenants.manage",
-          "console.tenants.status"
+          "console.tenants.status",
+          "console.users.manage",
+          "console.accounts.recover"
+        ]
+      },
+      "ConsoleReauth": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/TotpCode"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleReauthenticated": {
+        "type": "object",
+        "properties": {
+          "reauthenticatedUntil": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "reauthenticatedUntil"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleRole": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "sales",
+          "dispatch",
+          "finance",
+          "support"
+        ]
+      },
+      "ConsoleSetup": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "password": {
+            "$ref": "#/components/schemas/Password"
+          },
+          "code": {
+            "$ref": "#/components/schemas/TotpCode"
+          }
+        },
+        "required": [
+          "ticket",
+          "password",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleSetUp": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConsoleRole"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "recoveryCodesRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "expiresAt": {
+                "$ref": "#/components/schemas/Instant"
+              },
+              "reauthenticatedUntil": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Instant"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "expiresAt",
+              "reauthenticatedUntil"
+            ],
+            "additionalProperties": false
+          },
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "name",
+          "role",
+          "permissions",
+          "recoveryCodesRemaining",
+          "session",
+          "recoveryCodes"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleSignIn": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "setupCode": {
+            "$ref": "#/components/schemas/SetupCode"
+          },
+          "proofOfWork": {
+            "$ref": "#/components/schemas/ProofOfWorkSolution"
+          }
+        },
+        "required": [
+          "phone",
+          "proofOfWork"
+        ],
+        "additionalProperties": false
+      },
+      "ConsoleSignInResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "const": "totp"
+              },
+              "ticket": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "step",
+              "ticket"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "const": "setup"
+              },
+              "ticket": {
+                "type": "string"
+              },
+              "totpSecret": {
+                "type": "string"
+              },
+              "totpUri": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "step",
+              "ticket",
+              "totpSecret",
+              "totpUri"
+            ],
+            "additionalProperties": false
+          }
         ]
       },
       "ConsoleTenant": {
@@ -1651,6 +3716,31 @@
         ],
         "additionalProperties": false
       },
+      "ConsoleTotp": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TotpCode"
+              },
+              {
+                "$ref": "#/components/schemas/RecoveryCode"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ticket",
+          "code"
+        ],
+        "additionalProperties": false
+      },
       "ContactPhone": {
         "type": "object",
         "properties": {
@@ -1796,6 +3886,46 @@
         ],
         "additionalProperties": false
       },
+      "CreatePlatformUser": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConsoleRole"
+          },
+          "grantedPermissions": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "revokedPermissions": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          }
+        },
+        "required": [
+          "phone",
+          "name",
+          "role",
+          "grantedPermissions",
+          "revokedPermissions"
+        ],
+        "additionalProperties": false
+      },
       "CreateTenant": {
         "type": "object",
         "properties": {
@@ -1825,6 +3955,24 @@
               "$ref": "#/components/schemas/CreateBranch"
             }
           },
+          "owner": {
+            "type": "object",
+            "properties": {
+              "phone": {
+                "$ref": "#/components/schemas/MobilePhoneNumber"
+              },
+              "displayName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "phone",
+              "displayName"
+            ],
+            "additionalProperties": false
+          },
           "note": {
             "type": "string",
             "minLength": 2,
@@ -1835,7 +3983,8 @@
           "nameAr",
           "slug",
           "defaultCurrency",
-          "branches"
+          "branches",
+          "owner"
         ],
         "additionalProperties": false
       },
@@ -1852,6 +4001,262 @@
           "TRY": 2,
           "SYP": 2
         }
+      },
+      "DeactivateStaffMember": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeviceStatus"
+          },
+          "os": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "membersSyncedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registeredAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "revokedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokeReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "lost_or_stolen",
+                  "replaced",
+                  "other",
+                  "tenant_closed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wipedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "branchId",
+          "name",
+          "status",
+          "os",
+          "appVersion",
+          "lastSeenAt",
+          "membersSyncedAt",
+          "registeredAt",
+          "revokedAt",
+          "revokeReason",
+          "wipedAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Device"
+        }
+      },
+      "DeviceMember": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "pinVerifier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pinDisabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "membershipId",
+          "name",
+          "roles",
+          "permissions",
+          "pinVerifier",
+          "pinDisabled"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceName": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 50
+      },
+      "DeviceRevokeReason": {
+        "type": "string",
+        "enum": [
+          "lost_or_stolen",
+          "replaced",
+          "other"
+        ]
+      },
+      "DeviceStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "revoked"
+        ]
+      },
+      "DeviceToken": {
+        "type": "object",
+        "properties": {
+          "deviceToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "deviceToken",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceTokenChallenge": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "tenantId",
+          "deviceId"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceTokenRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nonce": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "tenantId",
+          "deviceId",
+          "nonce",
+          "signature",
+          "appVersion"
+        ],
+        "additionalProperties": false
+      },
+      "EndSession": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "signed_out",
+              "locked",
+              "idle"
+            ]
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
       },
       "ErrorCode": {
         "type": "string",
@@ -1877,7 +4282,35 @@
           "INVALID_HOURS",
           "RATE_LIMITED",
           "INTERNAL_ERROR",
-          "SERVICE_UNAVAILABLE"
+          "SERVICE_UNAVAILABLE",
+          "INVALID_CREDENTIALS",
+          "TICKET_INVALID",
+          "SESSION_ENDED",
+          "SIGNATURE_INVALID",
+          "DEVICE_UNKNOWN",
+          "INVALID_PIN",
+          "DEVICE_REVOKED",
+          "MEMBERSHIP_INACTIVE",
+          "BRANCH_NOT_IN_SCOPE",
+          "REAUTH_REQUIRED",
+          "DEVICE_REQUIRED",
+          "PIN_DISABLED",
+          "APPROVER_NOT_ALLOWED",
+          "OFFLINE_WINDOW_EXPIRED",
+          "POW_INVALID",
+          "OTP_INVALID",
+          "OTP_EXPIRED",
+          "OTP_ATTEMPTS_EXCEEDED",
+          "OTP_COOLDOWN",
+          "PASSWORD_TOO_WEAK",
+          "PIN_TOO_WEAK",
+          "TOTP_INVALID",
+          "PERMISSION_NOT_GRANTABLE",
+          "ALREADY_MEMBER",
+          "LAST_OWNER",
+          "LAST_ADMIN",
+          "BRANCH_HAS_DEVICES",
+          "OTP_DELIVERY_UNAVAILABLE"
         ]
       },
       "ErrorResponse": {
@@ -2090,10 +4523,63 @@
         "format": "uuid",
         "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$"
       },
+      "IdleLockMinutes": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 60
+      },
       "Instant": {
         "type": "string",
         "format": "date-time",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "Jwks": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kty": {
+                  "type": "string",
+                  "const": "OKP"
+                },
+                "crv": {
+                  "type": "string",
+                  "const": "Ed25519"
+                },
+                "x": {
+                  "type": "string"
+                },
+                "kid": {
+                  "type": "string"
+                },
+                "alg": {
+                  "type": "string",
+                  "const": "EdDSA"
+                },
+                "use": {
+                  "type": "string",
+                  "const": "sig"
+                }
+              },
+              "required": [
+                "kty",
+                "crv",
+                "x",
+                "kid",
+                "alg",
+                "use"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "additionalProperties": false
       },
       "ListConsoleTenantsQuery": {
         "type": "object",
@@ -2137,6 +4623,46 @@
         ],
         "additionalProperties": false
       },
+      "ListStaffQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "default": 50,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "displayName",
+              "createdAt"
+            ]
+          },
+          "order": {
+            "default": "asc",
+            "$ref": "#/components/schemas/SortOrder"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "order"
+        ],
+        "additionalProperties": false
+      },
       "Liveness": {
         "type": "object",
         "properties": {
@@ -2154,6 +4680,288 @@
         "type": "string",
         "format": "date",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "nameAr": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hasPassword": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "phone",
+              "nameAr",
+              "hasPassword"
+            ],
+            "additionalProperties": false
+          },
+          "tenant": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "nameAr": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/TenantStatus"
+              }
+            },
+            "required": [
+              "id",
+              "nameAr",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          "membershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "allBranches": {
+            "type": "boolean"
+          },
+          "branchIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "sessionKind": {
+            "$ref": "#/components/schemas/StaffSessionKind"
+          },
+          "deviceId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "branchId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pinSet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account",
+          "tenant",
+          "membershipId",
+          "displayName",
+          "roles",
+          "allBranches",
+          "branchIds",
+          "permissions",
+          "sessionKind",
+          "deviceId",
+          "branchId",
+          "pinSet"
+        ],
+        "additionalProperties": false
+      },
+      "MemberList": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "issuedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "tenant": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "nameAr": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/components/schemas/TenantStatus"
+              },
+              "logoFileId": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "nameAr",
+              "status",
+              "logoFileId"
+            ],
+            "additionalProperties": false
+          },
+          "branch": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "nameAr": {
+                "type": "string"
+              },
+              "idleLockMinutes": {
+                "$ref": "#/components/schemas/IdleLockMinutes"
+              }
+            },
+            "required": [
+              "id",
+              "nameAr",
+              "idleLockMinutes"
+            ],
+            "additionalProperties": false
+          },
+          "device": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceMember"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "issuedAt",
+          "tenant",
+          "branch",
+          "device",
+          "members"
+        ],
+        "additionalProperties": false
+      },
+      "MemberListAck": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "MemberListQuery": {
+        "type": "object",
+        "properties": {
+          "knownVersion": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "additionalProperties": false
+      },
+      "MemberListResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "not_modified"
+              },
+              "issuedAt": {
+                "$ref": "#/components/schemas/Instant"
+              }
+            },
+            "required": [
+              "status",
+              "issuedAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "current"
+              },
+              "list": {
+                "$ref": "#/components/schemas/MemberList"
+              }
+            },
+            "required": [
+              "status",
+              "list"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "MembershipStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "deactivated"
+        ]
       },
       "MissingOnboardingItem": {
         "type": "object",
@@ -2178,6 +4986,11 @@
         ],
         "additionalProperties": false
       },
+      "MobilePhoneNumber": {
+        "type": "string",
+        "pattern": "^\\+\\d{8,15}$",
+        "$ref": "#/components/schemas/PhoneNumber"
+      },
       "Money": {
         "type": "object",
         "properties": {
@@ -2198,6 +5011,22 @@
       },
       "NoContent": {
         "type": "null"
+      },
+      "Nonce": {
+        "type": "object",
+        "properties": {
+          "nonce": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "nonce",
+          "expiresAt"
+        ],
+        "additionalProperties": false
       },
       "OnboardingCompleteness": {
         "type": "object",
@@ -2246,6 +5075,44 @@
         ],
         "additionalProperties": false
       },
+      "OpenSession": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "membershipId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "pin": {
+                "$ref": "#/components/schemas/Pin"
+              }
+            },
+            "required": [
+              "membershipId",
+              "pin"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "membershipId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "ticket": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "membershipId",
+              "ticket"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "OrderType": {
         "type": "string",
         "enum": [
@@ -2255,9 +5122,432 @@
           "pickup"
         ]
       },
+      "OtpChallenge": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "challengeId"
+        ],
+        "additionalProperties": false
+      },
+      "OtpCode": {
+        "type": "string",
+        "pattern": "^\\d{6}$"
+      },
+      "OtpPurpose": {
+        "type": "string",
+        "enum": [
+          "new_device",
+          "first_sign_in",
+          "password_reset"
+        ]
+      },
+      "OtpRequest": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "first_sign_in",
+              "password_reset"
+            ]
+          },
+          "intent": {
+            "$ref": "#/components/schemas/SignInIntent"
+          },
+          "proofOfWork": {
+            "$ref": "#/components/schemas/ProofOfWorkSolution"
+          }
+        },
+        "required": [
+          "phone",
+          "purpose",
+          "intent",
+          "proofOfWork"
+        ],
+        "additionalProperties": false
+      },
+      "OtpResend": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "challengeId"
+        ],
+        "additionalProperties": false
+      },
+      "OtpVerified": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string"
+          },
+          "needsPassword": {
+            "type": "boolean"
+          },
+          "needsName": {
+            "type": "boolean"
+          },
+          "suggestedName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "ticket",
+          "needsPassword",
+          "needsName",
+          "suggestedName"
+        ],
+        "additionalProperties": false
+      },
+      "OtpVerify": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "code": {
+            "$ref": "#/components/schemas/OtpCode"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/SignInIntent"
+          }
+        },
+        "required": [
+          "challengeId",
+          "code",
+          "intent"
+        ],
+        "additionalProperties": false
+      },
+      "Password": {
+        "type": "string",
+        "minLength": 10,
+        "maxLength": 128
+      },
+      "PermissionGroup": {
+        "type": "string",
+        "enum": [
+          "tenant",
+          "branch",
+          "staff",
+          "devices"
+        ]
+      },
+      "PersonalDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "current": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "lastUsedAt",
+          "expiresAt",
+          "current"
+        ],
+        "additionalProperties": false
+      },
+      "PersonalDeviceList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PersonalDevice"
+        }
+      },
+      "PersonalSessionRequest": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "tenantId"
+        ],
+        "additionalProperties": false
+      },
       "PhoneNumber": {
         "type": "string",
         "pattern": "^\\+\\d{8,15}$"
+      },
+      "Pin": {
+        "type": "string",
+        "pattern": "^\\d{6}$"
+      },
+      "PlatformUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ConsoleRole"
+          },
+          "grantedPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "revokedPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "effectivePermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlatformUserStatus"
+          },
+          "setupCodeExpiresAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "name",
+          "role",
+          "grantedPermissions",
+          "revokedPermissions",
+          "effectivePermissions",
+          "status",
+          "setupCodeExpiresAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformUserList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PlatformUser"
+        }
+      },
+      "PlatformUserSetup": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PlatformUser"
+          },
+          "setupCode": {
+            "type": "string"
+          },
+          "setupCodeExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "user",
+          "setupCode",
+          "setupCodeExpiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "PlatformUserStatus": {
+        "type": "string",
+        "enum": [
+          "pending_setup",
+          "active",
+          "disabled"
+        ]
+      },
+      "ProofOfWorkChallenge": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "challenge",
+          "difficulty",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "ProofOfWorkSolution": {
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "nonce": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "challenge",
+          "nonce"
+        ],
+        "additionalProperties": false
+      },
+      "PublicKey": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$"
+      },
+      "Reauthenticate": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "RecoveryCode": {
+        "type": "string",
+        "pattern": "^[A-Z2-7]{4}(-[A-Z2-7]{4}){1}$"
+      },
+      "RefreshSession": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "refreshToken"
+        ],
+        "additionalProperties": false
+      },
+      "RegisterDevice": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/DeviceName"
+          },
+          "publicKey": {
+            "$ref": "#/components/schemas/PublicKey"
+          },
+          "os": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "tenantId",
+          "branchId",
+          "name",
+          "publicKey",
+          "os",
+          "appVersion"
+        ],
+        "additionalProperties": false
+      },
+      "RegisteredDevice": {
+        "type": "object",
+        "properties": {
+          "device": {
+            "$ref": "#/components/schemas/Device"
+          },
+          "members": {
+            "$ref": "#/components/schemas/MemberList"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionTokens"
+          }
+        },
+        "required": [
+          "device",
+          "members",
+          "session"
+        ],
+        "additionalProperties": false
+      },
+      "RenameDevice": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/DeviceName"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
       },
       "ReplaceBranchCharges": {
         "type": "object",
@@ -2317,6 +5607,23 @@
         ],
         "additionalProperties": false
       },
+      "RevokeDevice": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/DeviceRevokeReason"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "ScheduledStatusChange": {
         "type": "object",
         "properties": {
@@ -2344,6 +5651,61 @@
           "closed"
         ]
       },
+      "SessionTokens": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "accessTokenExpiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "sessionId",
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "SetMemberPin": {
+        "type": "object",
+        "properties": {
+          "pin": {
+            "$ref": "#/components/schemas/Pin"
+          }
+        },
+        "required": [
+          "pin"
+        ],
+        "additionalProperties": false
+      },
+      "SetPassword": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/AccountName"
+          },
+          "password": {
+            "$ref": "#/components/schemas/Password"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false
+      },
       "SetTenantSlug": {
         "type": "object",
         "properties": {
@@ -2354,6 +5716,97 @@
         },
         "required": [
           "slug"
+        ],
+        "additionalProperties": false
+      },
+      "SetupCode": {
+        "type": "string",
+        "pattern": "^[A-Z2-7]{4}(-[A-Z2-7]{4}){2}$"
+      },
+      "Signature": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9+/]{86}==$"
+      },
+      "SignIn": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "$ref": "#/components/schemas/MobilePhoneNumber"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "intent": {
+            "$ref": "#/components/schemas/SignInIntent"
+          },
+          "proofOfWork": {
+            "$ref": "#/components/schemas/ProofOfWorkSolution"
+          }
+        },
+        "required": [
+          "phone",
+          "password",
+          "intent",
+          "proofOfWork"
+        ],
+        "additionalProperties": false
+      },
+      "SignInIntent": {
+        "type": "string",
+        "enum": [
+          "register_device",
+          "personal"
+        ]
+      },
+      "SignInResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "const": "otp"
+              },
+              "challengeId": {
+                "$ref": "#/components/schemas/Id"
+              }
+            },
+            "required": [
+              "step",
+              "challengeId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "string",
+                "const": "done"
+              },
+              "ticket": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "step",
+              "ticket"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SignInTicket": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket"
         ],
         "additionalProperties": false
       },
@@ -2368,13 +5821,198 @@
           "desc"
         ]
       },
+      "StaffMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "accountId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRole"
+            }
+          },
+          "allBranches": {
+            "type": "boolean"
+          },
+          "branchIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          "grantedPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "revokedPermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "effectivePermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "pinSet": {
+            "type": "boolean"
+          },
+          "pinDisabled": {
+            "type": "boolean"
+          },
+          "deactivatedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deactivationReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "accountId",
+          "phone",
+          "displayName",
+          "nameAr",
+          "roles",
+          "allBranches",
+          "branchIds",
+          "grantedPermissions",
+          "revokedPermissions",
+          "effectivePermissions",
+          "status",
+          "hasPassword",
+          "pinSet",
+          "pinDisabled",
+          "deactivatedAt",
+          "deactivationReason",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "StaffMemberPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffMember"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "additionalProperties": false
+      },
       "StaffPermission": {
         "type": "string",
         "enum": [
           "tenant.view",
           "tenant.profile.edit",
           "branch.settings.edit",
-          "branch.hours.edit"
+          "branch.hours.edit",
+          "branch.security.edit",
+          "staff.view",
+          "staff.manage",
+          "staff.permissions.adjust",
+          "devices.manage",
+          "backoffice.remote"
+        ]
+      },
+      "StaffRole": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "manager",
+          "cashier",
+          "waiter",
+          "kitchen",
+          "driver"
+        ]
+      },
+      "StaffSessionEndReason": {
+        "type": "string",
+        "enum": [
+          "signed_out",
+          "locked",
+          "idle",
+          "expired",
+          "member_deactivated",
+          "branch_left",
+          "device_revoked",
+          "password_reset",
+          "tenant_closed",
+          "refresh_reused",
+          "access_lost"
+        ]
+      },
+      "StaffSessionKind": {
+        "type": "string",
+        "enum": [
+          "device",
+          "personal"
         ]
       },
       "Tenant": {
@@ -2522,6 +6160,73 @@
         ],
         "additionalProperties": false
       },
+      "TenantOptions": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/SignInIntent"
+          },
+          "tenants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tenantId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "nameAr": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/TenantStatus"
+                },
+                "logoFileId": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Id"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "branches": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "$ref": "#/components/schemas/Id"
+                      },
+                      "nameAr": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "nameAr"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "tenantId",
+                "nameAr",
+                "status",
+                "logoFileId",
+                "branches"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "intent",
+          "tenants"
+        ],
+        "additionalProperties": false
+      },
       "TenantSlug": {
         "type": "object",
         "properties": {
@@ -2572,6 +6277,10 @@
       "TimeOfDay": {
         "type": "string",
         "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+      },
+      "TotpCode": {
+        "type": "string",
+        "pattern": "^\\d{6}$"
       },
       "UpdateBranch": {
         "type": "object",
@@ -2631,6 +6340,22 @@
         ],
         "additionalProperties": false
       },
+      "UpdateBranchSecurity": {
+        "type": "object",
+        "properties": {
+          "idleLockMinutes": {
+            "$ref": "#/components/schemas/IdleLockMinutes"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "idleLockMinutes",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
       "UpdateHourException": {
         "type": "object",
         "properties": {
@@ -2666,6 +6391,32 @@
           "note",
           "updatedAt"
         ],
+        "additionalProperties": false
+      },
+      "UpdatePlatformUser": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ConsoleRole"
+          },
+          "grantedPermissions": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "revokedPermissions": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolePermission"
+            }
+          },
+          "disabled": {
+            "type": "boolean"
+          }
+        },
         "additionalProperties": false
       },
       "UpdateTenant": {

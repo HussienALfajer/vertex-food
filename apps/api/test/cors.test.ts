@@ -21,7 +21,9 @@ describe('CORS', () => {
       .expect(204);
     expect(response.headers['access-control-allow-origin']).toBe(RENDERER);
     expect(response.headers['access-control-allow-methods']).toContain('PATCH');
-    expect(response.headers['access-control-allow-headers']).toBe('content-type,authorization');
+    expect(response.headers['access-control-allow-headers']).toBe(
+      'content-type,authorization,x-device-token,x-sign-in-ticket',
+    );
     expect(response.headers['access-control-max-age']).toBe('600');
     expect(response.headers['access-control-allow-credentials']).toBeUndefined();
   });

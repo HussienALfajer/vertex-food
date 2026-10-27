@@ -3,13 +3,16 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, Reflector } from '@ne
 import { AccessGuard } from './core/access/access.guard.js';
 import type { Config } from './core/config/config.js';
 import { ConfigModule } from './core/config/config.module.js';
+import { CookieWriter } from './core/cookies/cookies.js';
 import { DatabaseModule } from './core/database/database.module.js';
 import { ErrorFilter } from './core/errors/error.filter.js';
 import { HealthCheckModule } from './core/health/health-check.module.js';
 import { ContractSerializer } from './core/serialization/contract-serializer.js';
 import { requestValidationPipe } from './core/validation/request-validation.js';
+import { AccessModule } from './modules/platform/access/index.js';
 import { AreasModule } from './modules/platform/areas/index.js';
 import { FilesModule } from './modules/platform/files/index.js';
+import { IdentityModule } from './modules/platform/identity/index.js';
 import { TenancyModule } from './modules/platform/tenancy/index.js';
 
 /**
@@ -29,6 +32,8 @@ export class AppModule {
         AreasModule,
         FilesModule,
         TenancyModule,
+        IdentityModule,
+        AccessModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: AccessGuard },
@@ -39,6 +44,7 @@ export class AppModule {
           inject: [Reflector],
           useFactory: (reflector: Reflector) => new ContractSerializer(reflector),
         },
+        { provide: APP_INTERCEPTOR, useClass: CookieWriter },
       ],
     };
   }

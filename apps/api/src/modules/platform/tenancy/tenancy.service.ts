@@ -34,6 +34,7 @@ import {
   type TenantStatusRequest,
   type TimeOfDay,
   type UpdateBranch,
+  type UpdateBranchSecurity,
   type UpdateHourException,
   type UpdateTenant,
   validateHourException,
@@ -80,6 +81,7 @@ import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { AreasService } from '../areas/index.js';
 import { encodeImage, FilesService } from '../files/index.js';
 import type { MapLinkResolver } from './map-link-resolver.js';
+import { TENANT_DEVICES, TENANT_OWNERS, type TenantDevices, type TenantOwners } from './ports.js';
 import {
   activeBranches,
   type BranchRow,
@@ -122,6 +124,8 @@ export class TenancyService {
     @Inject(FilesService) private readonly files: FilesService,
     @Inject(AreasService) private readonly areas: AreasService,
     @Inject(MAP_LINK_RESOLVER) private readonly resolver: MapLinkResolver,
+    @Inject(TENANT_OWNERS) private readonly owners: TenantOwners,
+    @Inject(TENANT_DEVICES) private readonly devices: TenantDevices,
   ) {}
 
   // The restaurant's tenant.
@@ -343,6 +347,37 @@ export class TenancyService {
         part: 'profile',
       });
       return changedBranch;
+    });
+  }
+
+  /** Spec S02 rule 32: the branch's idle lock; its PCs read it with their member list. */
+  async updateBranchSecurity(
+    actor: StaffActor,
+    branchId: string,
+    input: UpdateBranchSecurity,
+  ): Promise<Branch> {
+    requirePermission(actor, 'branch.security.edit', branchId);
+    return withTenant(this.db, actor.tenantId, async (tx) => {
+      const tenant = await readTenant(tx, actor.tenantId, { lock: 'share' });
+      const row = await this.lockBranch(tx, branchId);
+      const now = writableAt(tenant);
+      assertCurrent(row, input.updatedAt);
+      const [updated] = await tx
+        .update(branches)
+        .set({ idleLockMinutes: input.idleLockMinutes, updatedAt: nextUpdatedAt(row, now) })
+        .where(eq(branches.id, row.id))
+        .returning();
+      if (!updated) throw new Error('No branch updated');
+      await audit(tx, actor.tenantId, actor, {
+        action: 'branch.security_updated',
+        entityType: 'branch',
+        entityId: row.id,
+        details: {
+          before: { idleLockMinutes: row.idleLockMinutes },
+          after: { idleLockMinutes: input.idleLockMinutes },
+        },
+      });
+      return toBranch(updated);
     });
   }
 
@@ -702,6 +737,7 @@ export class TenancyService {
       for (const branch of input.branches) {
         await this.insertBranch(tx, operator, tenantId, input.defaultCurrency, branch, null);
       }
+      await this.owners.addFirstOwner(tx, tenantId, input.owner, operator);
       return this.consoleDetail(tx, row, now);
     });
   }
@@ -837,7 +873,10 @@ export class TenancyService {
     });
   }
 
-  /** Rule 2: never the last non-archived branch (`LAST_ACTIVE_BRANCH`); archiving twice is a no-op. */
+  /**
+   * Rule 2: never the last non-archived branch (`LAST_ACTIVE_BRANCH`), nor one with an active PC
+   * (`BRANCH_HAS_DEVICES`, spec S02 rule 21); archiving twice is a no-op.
+   */
   async archiveBranch(
     operator: PlatformOperator,
     tenantId: string,
@@ -853,6 +892,7 @@ export class TenancyService {
       if (active.length <= 1) {
         throw new DomainError('LAST_ACTIVE_BRANCH', 'The last branch cannot be archived');
       }
+      await this.devices.assertNoActiveDevices(tx, row.id);
       const now = new Date();
       const [archived] = await tx
         .update(branches)
@@ -1102,6 +1142,8 @@ export class TenancyService {
       .where(eq(tenants.id, row.id))
       .returning();
     if (!updated) throw new Error('No tenant updated');
+    // Spec S02 rule 37: no staff session or registered PC outlives the closure.
+    if (status === 'closed') await this.devices.closeAccess(tx, row.id, at);
     return updated;
   }
 

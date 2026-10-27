@@ -2,47 +2,48 @@
 
 The live checklist of the current spec or Phase 0 item, replaced when the next one starts. Tick items as they finish; add work you discover.
 
-## S01 — Tenancy and restaurant setup (`docs/specs/S01-tenancy-and-restaurant-setup.md`)
+## S02 — Identity, access and devices (`docs/specs/S02-identity-access-and-devices.md`)
 
-Two PRs, run one after the other (one front end only, so nothing runs in parallel). PR 2 starts after PR 1 merges into `main`.
+Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restaurant devices) run in parallel sessions, each in its own worktree; PR 4 follows PR 3 (same app); PR 5 follows PR 2 and may run in parallel with PR 3 or PR 4. Whichever of PR 2 and PR 3 merges second regenerates `apps/api/openapi.json` consumers (`apps/restaurant` API types) after syncing with `main`.
 
-### PR 1 — backend (`feat/S01-tenancy`)
+### PR 1 — staff identity backend (`feat/S02-identity-api`)
 
-- [x] contracts: `primitives` additions, `phone.ts` (from Vertex Shifa), `currencies` codes, `tenancy.ts` (schemas, status table, `effectiveStatus`, scheduled time from business day ends, slug shape and reserved list, hours validation, `businessDateOf`, `isBranchOpenAt`, charge lines, `onboardingCompleteness`, permissions), `areas.ts`, `files.ts`, `maps.ts`, list params; new error codes with Arabic text in `packages/i18n`; audit actions and outbox event names; unit tests
-- [x] db (`/db-migration`): `tenancy.ts` schema (`tenants`, `tenant_slugs`, `branches`, `branch_hours`, `branch_hour_exceptions`, `branch_charges`), `areas.ts` (`governorates`, `cities`), `files.ts`; registry; generated migration; custom migration with RLS, grants (`DELETE` on `branch_hours` only), `food_jobs` grant and policy on `tenants`, seed Aleppo → Azaz with fixed UUIDv7 ids; convention, isolation and jobs tests; no drift
-- [x] api core: access decorators and fail-closed guard (`UNAUTHENTICATED` until S02), `@NoFeature()`, architecture test, audit and outbox writers in the transaction, optimistic concurrency, rate limit, multipart uploads, OpenAPI export
-- [x] api modules: `platform/tenancy` (restaurant and console controllers, service, image pipeline, map-link resolver), `platform/areas`, `platform/files`; `test/tenancy.test.ts` (401 on every route; service-level tests for rules, isolation, conflicts, suspended and closed writes, images, map links)
-- [x] api CLI: `tenant:create`, `tenant:list`, `tenant:set-slug`, `tenant:set-status`, `tenant:cancel-scheduled-status`, `branch:create`, `branch:archive`, `city:add`, `governorate:add`; CLI tests against the same rows and audit as the routes
-- [x] worker: queue core (pg-boss as `food_queue`, jobs as `food_jobs`) and `tenancy/apply-scheduled-status` every minute; tests: applies once, twice changes nothing
-- [x] wiring checklist, docs (`apps/api/CLAUDE.md`, `apps/worker/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table if a command is added), `wiring.md` patterns table
-- [x] checks (`checker`: lint, typecheck, test, build, migration drift), `reviewer`, owner acceptance (endpoints and rules summary, 2026-10-19), PR with auto-merge
+- [x] contracts: `access.ts` (catalog, role presets, limits, `ownerLockedPermissions`, `effectivePermissions`, `grantablePermissions`, `managerAssignableRoles`, console catalog and presets, `effectiveConsolePermissions`), `identity.ts` (password, PIN with the trivial rule, OTP code, sign-in, OTP, ticket, device, member list, session, approval, re-auth shapes, `isWithinOfflineWindow` with clock rollback), `staff.ts`, `console-identity.ts`; new error codes with Arabic text; audit actions and event names; unit tests for both tables, every limit and preset
+- [x] db (`/db-migration`): `accounts`, `account_tenant_links`, `staff_memberships`, `staff_membership_branches`, `staff_pins`, `devices`, `staff_sessions`, `personal_devices`, `otp_challenges`, `used_tokens`, `platform_users`, `platform_user_recovery_codes`, `platform_sessions`, `branches.idle_lock_minutes`, `platform_audit_entries` columns if missing; RLS, grants, append-only `used_tokens`; convention and isolation tests; no drift
+- [x] api core: keyed hashes, AES-GCM, Argon2id, EdDSA tokens and JWKS, tickets and `used_tokens`, proof of work, `OtpSender` port with the fake (refused in production), env keys in `.env.example`; session guard replacing fail-closed for staff routes, `StaffActor`, `@DeviceRoute`, `@TicketRoute`, `{ device: 'required' }`, pre-parse auth before the body parser (BE-01, rule 46), `Origin` checks, cookies
+- [x] api `platform/identity`: pow, sign-in (lock, decoy timing), OTP request/resend/verify (limits), password with ticket, tenant options, personal sessions and devices, device registration, device token challenge, member list and ack, wipe, PIN sessions (online lockout), refresh rotation and reuse, end, re-auth, `/api/me` routes
+- [x] api `platform/access`: catalog, staff list and detail, add (enumeration-safe, `ALREADY_MEMBER`), access changes (rule 7, `LAST_OWNER`, limits, `CONFLICT`), deactivate and reactivate ending sessions, PIN reset, password-reset authorization; devices list, rename, revoke; branch security; `BRANCH_HAS_DEVICES` on archive; `tenant.status_changed.v1` consumer (rule 37); events `staff.*`, `device.*`
+- [x] api tests: `test/identity.test.ts`, `test/access.test.ts` (service rules of Acceptance "Service"), HTTP access tests for every S01 and S02 staff route (success, 401, 403, other tenant, device routes, unparsed bodies)
+- [x] CLI: `tenant:create --owner-phone --owner-name`; console `POST /api/console/tenants` gains the owner (console route stays fail-closed until PR 2)
+- [x] OpenAPI regenerated; restaurant API types regenerated; wiring checklist; docs (`apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table)
+- [x] checks (`checker`), `reviewer` (four rounds, every blocking finding fixed), owner acceptance (endpoints and rules summary, Q27 decided, 2026-10-27), PR with auto-merge
 
-### PR 2 — restaurant app (`feat/S01-restaurant-setup`)
+### PR 2 — console identity backend (`feat/S02-console-identity-api`)
 
-- [x] API client and TanStack Query; `connect-src` for the API origin; online-only "needs a connection" state
-- [x] onboarding wizard `/setup` (5 steps, saving on Next), waiting-for-activation and setup-in-progress screens
-- [x] settings: `/settings/restaurant`, `/settings/branches`, `/settings/branches/:id`, `/settings/branches/:id/hours` (single-branch tenants never see "branch")
-- [x] status banners (scheduled, suspended, closed); i18n keys
-- [x] E2E with the API mocked: wizard steps, settings, banners, offline; RTL screenshots light and dark, looked at
-- [x] ROADMAP marks S01 done; docs
-- [x] checks (`checker` incl. E2E), `reviewer`, owner acceptance (numbered steps), PR with auto-merge
+- [ ] api: console session guard (cookie on `/api/console/`, 30-minute idle, 12-hour absolute, `Origin`), platform audit of every console request (rule 43), sign-in with setup code, TOTP enrollment (RFC 6238, step replay), recovery codes, re-auth window, `/api/console/me`, platform users (`LAST_ADMIN`, limits), account lookup, owner password reset and phone change (both audits)
+- [ ] CLI: `platform-user:create`, `platform-user:reset`, `account:authorize-password-reset`, `account:change-phone`; CLI tests
+- [ ] tests: `test/console-identity.test.ts`, HTTP access tests of every S01 console route (staff sessions refused, re-auth on status and slug)
+- [ ] OpenAPI regenerated; docs; checks, `reviewer`, owner acceptance, PR with auto-merge
 
-## S01 audit fixes (`fix/S01-audit`, `docs/audits/S01-audit.md`)
+### PR 3 — restaurant app: device, sign-in and PIN (`feat/S02-restaurant-devices`)
 
-- [x] Copy the audit into `docs/audits/S01-audit.md`; mark each finding's status
-- [x] Majors: A01 pinned DNS per hop, A02 lock order and clock after locks (barrier test), A03 exception editor version, A04 wizard commits per request, A05 partial-update validation, A06 44 px touch targets
-- [x] Minors A07–A21 (A07–A09 through `/db-migration`: `0004`, `0005`), A22 comment (confirm/undo deferred to the owner)
-- [x] Owner decisions: rule 16 wording, rule 12 clarified, rule 6 reschedule on a day end change (audited, tested), early-morning periods (contract tests, "(next day)" E2E)
-- [x] Checks through `checker` (lint, typecheck, test with PostgreSQL, build, E2E of all five front ends, migration drift), `reviewer`, PR with auto-merge
+- [ ] Electron main: Ed25519 device key in `safeStorage`, device token, encrypted member list file, local PIN check and lockout, offline window and post-window rule, highest-seen clock, wipe; IPC without verifiers to the renderer; unit tests
+- [ ] screens: welcome, sign-in (OTP, first sign-in, lock message), register this PC, member picker and lock screen (all states), choose PIN, switch cashier, idle lock, manager approval dialog, password re-auth dialog; session handling replacing the S01 owner view
+- [ ] i18n keys; E2E with the mocked API (incl. offline and window states); RTL screenshots light and dark, looked at
+- [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
-## Full audit fixes (`docs/audits/2026-10-20-full-audit.md`)
+### PR 4 — restaurant app: staff, devices, my account, personal mode (`feat/S02-restaurant-staff`)
 
-Four PRs on separate files, all merged 2026-10-20 (#16 to #19); statuses in the audit file. Still to check on a device: Syrian month names under Hermes in the Expo apps.
+- [ ] screens: staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
+- [ ] i18n keys; E2E as owner and manager, personal mode; RTL screenshots light and dark, looked at
+- [ ] ROADMAP marks S02 done once PR 5 has merged too; docs
+- [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
-- [x] `fix/audit-tooling-docs`: the audit record; TOOL-01 git guard (commit, add and push forms, table test in `packages/config`); DOC-01 to DOC-05; TEST-03 in the printing spike; spike defects recorded in `docs/spikes/` (SYNC-01, SYNC-02, RES-04, PRIV-01, TEST-04)
-- [x] `fix/audit-api-runtime`: READY-01, RES-01, RES-02, RES-03, CONC-02
-- [x] `fix/audit-restaurant-drafts`: FE-01, FE-02, CONC-01, TIME-01, TEST-02, UX-03, UX-02
-- [x] `fix/audit-ui-responsive`: UX-01, UX-05, AR-01, TEST-01, TOOL-02, FE-03, FE-04, CQ-01
+### PR 5 — console screens (`feat/S02-console-screens`)
+
+- [ ] API client; sign-in with setup (TOTP QR, recovery codes once) and TOTP step; re-auth dialog; platform users; my account
+- [ ] i18n keys; E2E with the mocked API; RTL screenshots light and dark, looked at
+- [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
 ## Follow-ups (not this spec)
 
@@ -50,19 +51,3 @@ Four PRs on separate files, all merged 2026-10-20 (#16 to #19); statuses in the 
 - Store icons wired into `app.config.ts` with the first store build (Q3); the files are in `brand/logo/png/`
 - Madani Arabic: provisioned only when its licence is bought (outside the repository)
 
-## Faster checks (`chore/test-speed`, `docs/testing.md`)
-
-The Vertex Hub model (#172) adapted: each check once, the session checks what it changed, CI checks everything.
-
-- [x] Baseline with no dev server: db, worker and api suites (wall and Vitest's Duration); each app's whole E2E suite
-- [x] Vitest: `isolate: false` measured (passes normal and shuffled, saves under 1 s: isolation kept, so no `process.env` restore); api workers measured (peak 5 connections, no cap); stale test databases dropped by `createTestDatabase`
-- [x] Playwright: `trace: 'on-first-retry'`, `fullyParallel`, `failOnFlakyTests` on CI in the five apps
-- [x] Timeouts fixed at their cause: the wizard tour (trace per action, 5.7 s now); two flaky tests found by the faster runs fixed (`preloadOnHover` race, Expo hydration in the layout check)
-- [x] turbo.json: `test:e2e` cached (outputs `test-results/**`), `brand/**` in build and test inputs, `remoteCache.signature`
-- [x] `pnpm verify` (`scripts/verify.mjs`), `.verify/` ignored
-- [x] Test guard hook and its test; `pnpm verify` permissions
-- [x] Agent rules and docs: checker, feature-slice, db-migration, AGENTS.md, CLAUDE.md, workflow, folder CLAUDE.md files, ROADMAP
-- [x] `docs/testing.md` with this repository's numbers
-- [x] CI: E2E on three shards behind the same gate, TURBO_* env on the turbo jobs, cache comment corrected, `.github/CLAUDE.md`
-- [x] Measure again, `pnpm verify`, reviewer (4 blocking findings fixed: cross-package test inputs, `timeout` options, quoted text and here-strings in the guard, `CI` in the test hash)
-- [x] PR with auto-merge and Auto-fix

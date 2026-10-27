@@ -30,6 +30,43 @@ export const auditActions = [
   // S01 areas, in the platform audit
   'governorate.created',
   'city.created',
+  // S02 staff and devices, in the tenant's audit
+  'staff.added',
+  'staff.access_changed',
+  'staff.deactivated',
+  'staff.reactivated',
+  'staff.password_reset_authorized',
+  'staff_pin.set',
+  'staff_pin.disabled',
+  'device.registered',
+  'device.renamed',
+  'device.revoked',
+  'device.wiped',
+  'staff_session.started',
+  'staff_session.reauthenticated',
+  'branch.security_updated',
+  // S02 accounts, in the platform audit (support recovery also in each tenant where the account
+  // is an owner)
+  'account.created',
+  'account.password_set',
+  'account.password_reset_authorized',
+  'account.phone_changed',
+  'account.sign_in_locked',
+  'personal_device.added',
+  'personal_device.revoked',
+  // S02 console, in the platform audit
+  'console.request',
+  'platform_user.created',
+  'platform_user.updated',
+  'platform_user.disabled',
+  'platform_user.reset',
+  'platform_user.setup_completed',
+  'platform_user.signed_in',
+  'platform_user.signed_out',
+  'platform_user.sign_in_failed',
+  'platform_user.totp_failed',
+  'platform_user.reauthenticated',
+  'platform_user.password_changed',
 ] as const;
 
 export const auditActionSchema = z.enum(auditActions).meta({ id: 'AuditAction' });

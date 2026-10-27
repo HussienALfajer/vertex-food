@@ -38,6 +38,7 @@ const branch: Branch = {
   acceptedCurrencies: ['USD'],
   currencyLockedAt: null,
   businessDayEndsAt: '04:00',
+  idleLockMinutes: 5,
   createdAt: '2026-10-19T09:00:00.000Z',
   updatedAt: '2026-10-19T09:00:00.000Z',
   archivedAt: null,
