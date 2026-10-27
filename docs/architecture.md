@@ -64,9 +64,9 @@ docs/                 product, decisions, specs, roadmap, workflow
 
 | Layer | Module | Owns (main tables) | Notes |
 |---|---|---|---|
-| platform | identity | accounts, sessions, devices, hub_pairings, otp_challenges | ADR 0005 |
+| platform | identity | accounts, personal_devices, otp_challenges, used_tokens, devices, staff_pins, staff_sessions, platform_users, platform_sessions; hub_pairings (S04) | ADR 0005, 0032, S02 |
 | platform | tenancy | tenants (catalog with `data_location`), tenant_slugs, branches, branch_hours, branch_hour_exceptions, branch_charges | ADR 0004, S01 |
-| platform | access | roles, role_permissions, staff_memberships | ADR 0005 |
+| platform | access | staff_memberships, staff_membership_branches, account_tenant_links; the permission catalog and role presets are code in `packages/contracts` | ADR 0005, 0032, S02 |
 | platform | commercial | features (the feature catalog), packages, agreement_templates, agreements, agreement_terms (append-only) | ADR 0013, 0025 |
 | platform | entitlements | entitlement_overrides, resolved cache | ADR 0013 |
 | platform | config | branding_versions, custom_field_definitions | ADR 0010 |
