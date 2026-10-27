@@ -294,7 +294,8 @@ function BranchSecuritySection({ tenant, base, onSaved, onConflict }: SectionPro
   const online = useOnline();
   const cache = useSetupCache();
   const branchId = base.branch.id;
-  const allowed = tenant.status !== 'closed' && can(access, 'branch.security.edit', branchId);
+  // Read-only while suspended or closed, as the API refuses it then (S01 rule 8).
+  const allowed = isTenantWritable(tenant) && can(access, 'branch.security.edit', branchId);
   const form = useDraft(() => String(base.branch.idleLockMinutes));
   const [checking, setChecking] = useState(false);
   const parsed = idleLockMinutesSchema.safeParse(Number(form.draft));
