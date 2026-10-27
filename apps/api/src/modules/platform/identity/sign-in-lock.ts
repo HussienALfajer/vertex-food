@@ -2,8 +2,9 @@ import { signInPolicy } from '@vertex-food/contracts';
 import { accounts, type Database, type Transaction } from '@vertex-food/db';
 import { eq } from 'drizzle-orm';
 import { auditPlatform } from '../../../core/audit/audit.js';
-import { accountById } from './accounts.js';
-import { signInLocked } from './decoy-locks.js';
+import { type AccountRow, accountById } from './accounts.js';
+import { DecoyLocks, signInLocked } from './decoy-locks.js';
+import { verifyPassword } from './secrets.js';
 
 const MINUTE_MS = 60_000;
 
@@ -13,7 +14,29 @@ const MINUTE_MS = 60_000;
  * never get more than five guesses; a correct password clears the count. Copied from Vertex Shifa.
  */
 export class SignInLock {
+  /** Accounts without a password, locked like the others (keyed by account id). */
+  private readonly decoys = new DecoyLocks();
+
   constructor(private readonly db: Database) {}
+
+  /**
+   * Whether `password` is the account's, counted toward its lock. An account without a password
+   * pays the same Argon2id check and locks the same way, so a session's re-authentication or
+   * password change never tells a restaurant whether the account has a password (rule 1).
+   */
+  async check(account: AccountRow, password: string, now: Date): Promise<boolean> {
+    if (!account.passwordHash) {
+      await this.decoys.fail(`account:${account.id}`, password, now);
+      return false;
+    }
+    await this.claim(account.id, now);
+    if (!(await verifyPassword(password, account.passwordHash))) {
+      await this.failed(account.id, now);
+      return false;
+    }
+    await this.succeeded(account.id);
+    return true;
+  }
 
   async claim(accountId: string, now: Date): Promise<void> {
     const lockedUntil = await this.db.transaction(async (tx) => {

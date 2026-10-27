@@ -13,7 +13,16 @@ import { afterAll, beforeAll, describe, expect, inject, it, vi } from 'vitest';
 import { listRoutes } from '../src/core/routes.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
-import { client, OPERATOR, ORIGIN, PASSWORD, pinFor, proofOfWork, TestApi } from './staff.js';
+import {
+  client,
+  newPhone,
+  OPERATOR,
+  ORIGIN,
+  PASSWORD,
+  pinFor,
+  proofOfWork,
+  TestApi,
+} from './staff.js';
 
 // Spec S02, the reviews' gaps closed: every route refused before its body is read, device-only
 // routes refused to personal sessions, another tenant's ids on every write, what an added phone
@@ -210,6 +219,43 @@ describe('what adding a phone may reveal (rule 1, edge case 3)', () => {
 });
 
 describe('lockouts on every path (rules 11, 24)', () => {
+  it('answers re-entries alike whether the account has a password or not', async () => {
+    const elsewhere = await api.ownerOnDevice();
+    const { device, owner } = await api.ownerOnDevice();
+    const answersFor = async (phone?: string) => {
+      const added = await device
+        .as(owner)
+        .post('/api/staff')
+        .send({
+          ...(phone ? { phone } : { phone: newPhone() }),
+          displayName: 'عضو',
+          roles: ['cashier'],
+          branchScope: { allBranches: true },
+          grantedPermissions: [],
+          revokedPermissions: [],
+        })
+        .expect(201);
+      const pin = pinFor(phone ? 11 : 12);
+      await device.as(owner).put(`/api/staff/${added.body.id}/pin`).send({ pin }).expect(204);
+      const codes: string[] = [];
+      for (const tries of [5, 1]) {
+        const forged = await device.signIn(added.body.id, pin);
+        for (let i = 0; i < tries; i += 1) {
+          const response = await device
+            .as(forged)
+            .post('/api/sessions/current/reauth')
+            .send({ password: 'a-guess-of-the-password' });
+          codes.push(response.body.code);
+        }
+      }
+      return codes;
+    };
+    const withPassword = await answersFor(elsewhere.ownerPhone);
+    const withoutPassword = await answersFor();
+    expect(withPassword).toEqual([...Array(5).fill('INVALID_CREDENTIALS'), 'RATE_LIMITED']);
+    expect(withoutPassword).toEqual(withPassword);
+  });
+
   it('counts wrong re-authentications toward the sign-in lock', async () => {
     const { device, ownerMembershipId, ownerPhone } = await api.ownerOnDevice();
     const session = await device.signIn(ownerMembershipId, pinFor(0));

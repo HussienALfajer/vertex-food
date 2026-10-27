@@ -28,7 +28,6 @@ import { accountById } from './accounts.js';
 import { closeTenantAccess } from './device-access.js';
 import { tenantStatusAt } from './member-lists.js';
 import { checkOnlinePin, currentPin } from './pins.js';
-import { verifyPassword } from './secrets.js';
 import { SignInLock } from './sign-in-lock.js';
 import { endSessions, SessionIssuer } from './staff-sessions.js';
 import { Tickets } from './tickets.js';
@@ -198,13 +197,9 @@ export class SessionsService implements SessionVerifier {
     this.reauthsPerSession.take(actor.sessionId);
     const now = new Date();
     const account = await accountById(this.db, actor.accountId);
-    if (!account?.passwordHash) throw new DomainError('INVALID_CREDENTIALS', 'Wrong password');
-    await this.signInLock.claim(account.id, now);
-    if (!(await verifyPassword(password, account.passwordHash))) {
-      await this.signInLock.failed(account.id, now);
+    if (!account || !(await this.signInLock.check(account, password, now))) {
       throw new DomainError('INVALID_CREDENTIALS', 'Wrong password');
     }
-    await this.signInLock.succeeded(account.id);
     await withTenant(this.db, actor.tenantId, async (tx) => {
       await tx
         .update(staffSessions)

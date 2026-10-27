@@ -29,7 +29,7 @@ import { accountById } from './accounts.js';
 import { tenantStatusAt } from './member-lists.js';
 import { PersonalDeviceStore } from './personal-devices.js';
 import { checkOnlinePin, currentPin, MemberCredentialsStore, replacePin } from './pins.js';
-import { hashPassword, hashPin, verifyPassword } from './secrets.js';
+import { hashPassword, hashPin } from './secrets.js';
 import { SignInLock } from './sign-in-lock.js';
 
 const MINUTE_MS = 60_000;
@@ -102,13 +102,9 @@ export class MeService {
   async changePassword(actor: StaffActor, input: ChangePassword): Promise<void> {
     const now = new Date();
     const account = await accountById(this.db, actor.accountId);
-    if (!account?.passwordHash) throw invalidCredentials();
-    await this.signInLock.claim(account.id, now);
-    if (!(await verifyPassword(input.currentPassword, account.passwordHash))) {
-      await this.signInLock.failed(account.id, now);
+    if (!account || !(await this.signInLock.check(account, input.currentPassword, now))) {
       throw invalidCredentials();
     }
-    await this.signInLock.succeeded(account.id);
     assertPasswordStrong(input.newPassword, account.phone);
     const passwordHash = await hashPassword(input.newPassword);
     await this.db.transaction(async (tx) => {
