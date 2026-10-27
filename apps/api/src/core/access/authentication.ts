@@ -63,7 +63,9 @@ function matchers(routes: Route[]): Matcher[] {
         );
       return {
         method: route.method,
-        pattern: new RegExp(`^${segments.join('/')}/?$`),
+        // Express matches paths without regard to case: so does the step, or `/API/STAFF` would
+        // reach the body parser unchecked.
+        pattern: new RegExp(`^${segments.join('/')}/?$`, 'i'),
         params: segments.filter((segment) => segment === '[^/]+').length,
         access: route.access,
       };

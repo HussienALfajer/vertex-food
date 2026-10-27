@@ -44,6 +44,7 @@ import { readTenant, statusState, type TenantOwners } from '../tenancy/index.js'
 import {
   inScope,
   linkAccount,
+  linkedTenantIds,
   type Membership,
   permissionsOf,
   reach,
@@ -351,7 +352,12 @@ export class StaffService implements TenantOwners {
     });
   }
 
-  /** Rule 14: the member may set a new password through an OTP for 72 hours. */
+  /**
+   * Rule 14: the member may set a new password through an OTP for 72 hours. The answer is the same
+   * whatever the account: one without a password, or one that also belongs to another tenant,
+   * changes nothing (a password is the whole account's; another tenant's member is reset by
+   * Vertex support, rule 15), so a restaurant can neither probe accounts nor reach beyond itself.
+   */
   authorizePasswordReset(actor: StaffActor, id: string): Promise<void> {
     requirePermission(actor, 'staff.manage');
     return withTenant(this.db, actor.tenantId, async (tx) => {
@@ -361,15 +367,16 @@ export class StaffService implements TenantOwners {
       if (!member || !this.visible(actor, member)) throw notFound();
       if (!mayManageMember(reach(manager), reach(member))) throw outOfReach();
       const profile = (await this.accounts.profiles(tx, [member.accountId])).get(member.accountId);
-      if (!profile?.hasPassword) {
-        throw new DomainError('FORBIDDEN', 'The member signs in by PIN only and has no password');
+      const linked = await linkedTenantIds(tx, member.accountId);
+      const applies = profile?.hasPassword === true && linked.every((t) => t === actor.tenantId);
+      if (applies) {
+        await this.accounts.authorizePasswordReset(
+          tx,
+          member.accountId,
+          actor,
+          new Date(now.getTime() + passwordResetHours * HOUR_MS),
+        );
       }
-      await this.accounts.authorizePasswordReset(
-        tx,
-        member.accountId,
-        actor,
-        new Date(now.getTime() + passwordResetHours * HOUR_MS),
-      );
       await audit(tx, actor.tenantId, actor, {
         action: 'staff.password_reset_authorized',
         entityType: 'staff_membership',
@@ -540,13 +547,19 @@ export class StaffService implements TenantOwners {
       tx,
       members.map((member) => member.id),
     );
+    const present = await this.credentials.presentIn(
+      tx,
+      members.map((member) => member.id),
+    );
     return members.map((member) => {
-      const profile = profiles.get(member.accountId);
+      // Account-level facts only for members who have been present here (rule 1, edge case 3).
+      const profile = present.has(member.id) ? profiles.get(member.accountId) : undefined;
+      const phone = profiles.get(member.accountId)?.phone ?? '';
       const pin = pins.get(member.id);
       return {
         id: member.id,
         accountId: member.accountId,
-        phone: profile?.phone ?? '',
+        phone,
         displayName: member.displayName,
         nameAr: profile?.nameAr ?? null,
         roles: member.roles,

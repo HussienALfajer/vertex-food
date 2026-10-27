@@ -23,11 +23,12 @@ import type { StaffActor } from '../../../core/access/actor.js';
 import { audit, auditPlatform } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { emit } from '../../../core/events/outbox.js';
+import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { permissionsOf, reach, readMembership } from '../access/index.js';
 import { accountById } from './accounts.js';
 import { tenantStatusAt } from './member-lists.js';
 import { PersonalDeviceStore } from './personal-devices.js';
-import { currentPin, replacePin } from './pins.js';
+import { checkOnlinePin, currentPin, replacePin } from './pins.js';
 import { hashPassword, hashPin, verifyPassword } from './secrets.js';
 import { SignInLock } from './sign-in-lock.js';
 
@@ -42,6 +43,9 @@ const invalidCredentials = () => new DomainError('INVALID_CREDENTIALS', 'Wrong p
  */
 @Injectable()
 export class MeService {
+  /** PIN changes on a session: each one costs an Argon2id at 64 MiB (rule 22). */
+  private readonly pinChangesPerSession = new RateLimiter(10, 10 * MINUTE_MS);
+
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     @Inject(PersonalDeviceStore) private readonly personalDevices: PersonalDeviceStore,
@@ -128,15 +132,24 @@ export class MeService {
     const account = await accountById(this.db, actor.accountId);
     if (!account) throw new DomainError('UNAUTHENTICATED', 'The account is gone');
     assertPinStrong(input.newPin, account.phone);
+    this.pinChangesPerSession.take(actor.sessionId);
     const pin = await withTenant(this.db, actor.tenantId, (tx) =>
       currentPin(tx, actor.membershipId),
     );
     if (pin) {
-      if (input.currentPin !== undefined) {
-        if (pin.disabledAt) throw new DomainError('PIN_DISABLED', 'The PIN is disabled');
-        if (!(await verifyPassword(input.currentPin, pin.verifier))) {
-          throw new DomainError('INVALID_PIN', 'Wrong current PIN');
-        }
+      const typed = input.currentPin;
+      if (typed !== undefined) {
+        // A wrong current PIN counts as a wrong PIN at sign-in (rule 24).
+        const refusal = await withTenant(this.db, actor.tenantId, async (tx) =>
+          checkOnlinePin(
+            tx,
+            await currentPin(tx, actor.membershipId, { lock: 'update' }),
+            typed,
+            actor,
+            new Date(),
+          ),
+        );
+        if (refusal) throw new DomainError(refusal, 'The current PIN is refused');
       } else {
         const ownerOrManager = actor.roles.some((role) => role === 'owner' || role === 'manager');
         const enteredAt = actor.passwordVerifiedAt?.getTime() ?? 0;

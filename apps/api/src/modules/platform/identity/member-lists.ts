@@ -9,6 +9,7 @@ import { accounts, branches, devices, staffPins, type Transaction } from '@verte
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { inScope, permissionsOf, readMemberships } from '../access/index.js';
 import { readTenant, statusState } from '../tenancy/index.js';
+import { MemberCredentialsStore } from './pins.js';
 
 /** The status of the transaction's tenant in force at `now`, with its row. */
 export async function tenantStatusAt(
@@ -57,12 +58,17 @@ export async function memberListOf(
           .select({ id: accounts.id, nameAr: accounts.nameAr })
           .from(accounts)
           .where(inArray(accounts.id, accountIds));
+  const present = await new MemberCredentialsStore().presentIn(tx, ids);
   const listed: DeviceMember[] = members
     .map((member) => {
       const pin = pins.find((row) => row.membershipId === member.id);
+      // The name the person chose, once they have been present here (rule 1, edge case 3).
+      const chosen = present.has(member.id)
+        ? names.find((row) => row.id === member.accountId)?.nameAr
+        : undefined;
       return {
         membershipId: member.id,
-        name: names.find((row) => row.id === member.accountId)?.nameAr ?? member.displayName,
+        name: chosen ?? member.displayName,
         roles: member.roles,
         permissions: permissionsOf(member),
         pinVerifier: pin?.verifier ?? null,

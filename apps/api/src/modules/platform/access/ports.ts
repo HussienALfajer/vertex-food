@@ -40,6 +40,12 @@ export interface MemberCredentials {
     membershipIds: string[],
   ): Promise<Map<string, { set: boolean; disabled: boolean }>>;
   /**
+   * The members who have been present in this tenant: a PIN set on one of its PCs, or a session in
+   * it. Only for them may the tenant see account-level facts (the name the person chose, whether
+   * they have a password): adding a phone must tell nothing about the account (rule 1).
+   */
+  presentIn(tx: Transaction, membershipIds: string[]): Promise<Set<string>>;
+  /**
    * Rule 8: ends the member's open sessions, all of them, or only those on PCs of `branchIds`
    * (the branches that left the member's scope).
    */

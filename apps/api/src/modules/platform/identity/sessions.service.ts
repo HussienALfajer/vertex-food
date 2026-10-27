@@ -4,7 +4,6 @@ import {
   type ErrorCode,
   type OpenSession,
   ownerReadAccessEndsAt,
-  pinPolicy,
   type SessionTokens,
   type StaffSessionEndReason,
   staffSessionPolicy,
@@ -14,7 +13,6 @@ import {
   type Database,
   devices,
   personalDevices,
-  staffPins,
   staffSessions,
   type Transaction,
   withTenant,
@@ -29,8 +27,9 @@ import { inScope, type Membership, permissionsOf, readMembership } from '../acce
 import { accountById } from './accounts.js';
 import { closeTenantAccess } from './device-access.js';
 import { tenantStatusAt } from './member-lists.js';
-import { currentPin } from './pins.js';
+import { checkOnlinePin, currentPin } from './pins.js';
 import { verifyPassword } from './secrets.js';
+import { SignInLock } from './sign-in-lock.js';
 import { endSessions, SessionIssuer } from './staff-sessions.js';
 import { Tickets } from './tickets.js';
 import { TokenSigner } from './tokens.js';
@@ -103,6 +102,7 @@ export class SessionsService implements SessionVerifier {
     @Inject(TokenSigner) private readonly tokens: TokenSigner,
     @Inject(Tickets) private readonly tickets: Tickets,
     @Inject(SessionIssuer) private readonly issuer: SessionIssuer,
+    @Inject(SignInLock) private readonly signInLock: SignInLock,
   ) {}
 
   /** Rule 24: a member's PIN on this PC, checked online; ten wrong ones disable it everywhere. */
@@ -130,33 +130,8 @@ export class SessionsService implements SessionVerifier {
         return this.start(tx, device, member, now, now);
       }
       const pin = await currentPin(tx, member.id, { lock: 'update' });
-      if (!pin) return new Refusal('INVALID_PIN', 'The member has no PIN');
-      if (pin.disabledAt) return new Refusal('PIN_DISABLED', 'The PIN is disabled');
-      if (!(await verifyPassword((input as { pin: string }).pin, pin.verifier))) {
-        const attempts = pin.failedOnlineAttempts + 1;
-        const disable = attempts >= pinPolicy.maxOnlineFailures;
-        await tx
-          .update(staffPins)
-          .set({
-            failedOnlineAttempts: disable ? pinPolicy.maxOnlineFailures : attempts,
-            disabledAt: disable ? now : null,
-            updatedAt: now,
-          })
-          .where(eq(staffPins.id, pin.id));
-        if (!disable) return new Refusal('INVALID_PIN', 'Wrong PIN');
-        await audit(tx, device.tenantId, device, {
-          action: 'staff_pin.disabled',
-          entityType: 'staff_membership',
-          entityId: member.id,
-        });
-        return new Refusal('PIN_DISABLED', 'Ten wrong PINs in a row');
-      }
-      if (pin.failedOnlineAttempts > 0) {
-        await tx
-          .update(staffPins)
-          .set({ failedOnlineAttempts: 0, updatedAt: now })
-          .where(eq(staffPins.id, pin.id));
-      }
+      const refusal = await checkOnlinePin(tx, pin, (input as { pin: string }).pin, device, now);
+      if (refusal) return new Refusal(refusal, 'PIN refused');
       return this.start(tx, device, member, now, null);
     });
     return throwIfRefused(outcome);
@@ -214,15 +189,22 @@ export class SessionsService implements SessionVerifier {
     );
   }
 
-  /** Rule 26: the password again, for the sensitive actions of the next 5 minutes. */
+  /**
+   * Rule 26: the password again, for the sensitive actions of the next 5 minutes. A wrong one
+   * counts toward the account's sign-in lock (rule 11), as at sign-in, so new PIN sessions never
+   * give more guesses.
+   */
   async reauthenticate(actor: StaffActor, password: string): Promise<void> {
     this.reauthsPerSession.take(actor.sessionId);
-    const account = await accountById(this.db, actor.accountId);
-    const valid = account?.passwordHash
-      ? await verifyPassword(password, account.passwordHash)
-      : false;
-    if (!valid) throw new DomainError('INVALID_CREDENTIALS', 'Wrong password');
     const now = new Date();
+    const account = await accountById(this.db, actor.accountId);
+    if (!account?.passwordHash) throw new DomainError('INVALID_CREDENTIALS', 'Wrong password');
+    await this.signInLock.claim(account.id, now);
+    if (!(await verifyPassword(password, account.passwordHash))) {
+      await this.signInLock.failed(account.id, now);
+      throw new DomainError('INVALID_CREDENTIALS', 'Wrong password');
+    }
+    await this.signInLock.succeeded(account.id);
     await withTenant(this.db, actor.tenantId, async (tx) => {
       await tx
         .update(staffSessions)
