@@ -79,6 +79,11 @@ export class DeviceStore {
     }
   }
 
+  /** Whether a record can be sealed here (Windows: always, through DPAPI). */
+  canWrite(): boolean {
+    return this.sealer.isEncryptionAvailable();
+  }
+
   write(record: DeviceRecord): void {
     if (!this.sealer.isEncryptionAvailable()) {
       throw new Error('Encryption is not available on this PC');

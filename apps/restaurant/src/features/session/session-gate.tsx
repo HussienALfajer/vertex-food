@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Button } from '@vertex-food/ui';
-import { LockIcon } from 'lucide-react';
+import { Button, Callout } from '@vertex-food/ui';
+import { LockIcon, WifiIcon } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../../components/app-shell';
@@ -13,6 +13,7 @@ import { useOnline } from '../../lib/online';
 import { accessOfMe, type StaffAccess, StaffAccessContext } from '../../lib/staff-access';
 import { useRestaurantNavigation } from '../tenancy/restaurant-nav';
 import { TenantGate } from '../tenancy/tenant-gate';
+import { ApprovalTrial } from './approval-trial';
 import { ChoosePinDialog } from './choose-pin-dialog';
 import { activityEvents, createIdleTimer } from './idle-timer';
 import { LockScreen } from './lock-screen';
@@ -85,6 +86,8 @@ function DeviceSession({
   session: NonNullable<Registered['session']>;
 }) {
   const { t } = useTranslation('restaurant');
+  const online = useOnline();
+  const pathname = usePathname();
   const member = status.members.find((item) => item.membershipId === session.membershipId);
   // Online, the API's view of the member (all branches for owners); offline, the member list's.
   const me = useQuery({ ...meQuery(session.membershipId), enabled: session.online });
@@ -129,7 +132,33 @@ function DeviceSession({
             <span className="max-sm:sr-only">{t('switchMember')}</span>
           </Button>
         }
-        notices={<WindowWarning window={status.window} />}
+        notices={
+          <>
+            <WindowWarning window={status.window} />
+            {!session.online && online && (
+              // Opened offline: no access token, so the online screens wait for a new PIN entry.
+              <Callout
+                role="status"
+                tone="info"
+                icon={<WifiIcon aria-hidden />}
+                title={t('reconnected.title')}
+                description={t('reconnected.description')}
+                action={
+                  <Button type="button" onClick={() => void bridge.lock('locked')}>
+                    {t('reconnected.action')}
+                  </Button>
+                }
+              />
+            )}
+            {pathname === '/' && (
+              <ApprovalTrial
+                bridge={bridge}
+                status={status}
+                actingMembershipId={session.membershipId}
+              />
+            )}
+          </>
+        }
       />
     </StaffAccessContext.Provider>
   );

@@ -149,7 +149,7 @@ export async function approveLocally(
 }
 
 /**
- * Re-enables a PIN disabled on this PC (rule 25): a member of the branch who may manage the member
+ * Re-enables a PIN disabled on this PC (rule 25), never one disabled online (rule 24): a member of the branch who may manage the member
  * (rule 7, `staff.manage`) types their own PIN. On a PC both are members of its branch, so rule 7
  * compares their roles; the server checks the branches again when the audit arrives (S04).
  */
@@ -162,6 +162,8 @@ export async function reenableLocally(
   const target = findMember(record, input.membershipId);
   const manager = findMember(record, input.managerMembershipId);
   if (!target || !manager) return { record, ok: false, code: 'MEMBERSHIP_INACTIVE' };
+  // Disabled online (rule 24): only a PIN reset online brings it back, never this PC.
+  if (target.pinDisabled) return { record, ok: false, code: 'PIN_DISABLED' };
   const branch = { allBranches: false, branchIds: [record.registration.branchId] };
   const allowed =
     manager.membershipId !== target.membershipId &&

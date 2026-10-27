@@ -1,4 +1,10 @@
-import { deviceTokenMessage, type MemberList, type SessionTokens } from '@vertex-food/contracts';
+import {
+  deviceTokenMessage,
+  deviceTokenTtlSeconds,
+  type MemberList,
+  type SessionTokens,
+  staffSessionPolicy,
+} from '@vertex-food/contracts';
 import type {
   ApproveInput,
   BridgeResult,
@@ -27,7 +33,15 @@ import {
 
 type Registered = Extract<DeviceRecord, { state: 'registered' }>;
 
-type Session = { membershipId: string; tokens: SessionTokens | null };
+/**
+ * A PIN session; an online one holds its tokens and when its access token is due, on the
+ * monotonic clock (`elapsed`).
+ */
+type Session = {
+  membershipId: string;
+  tokens: SessionTokens | null;
+  accessDueAt: number;
+};
 
 export type DeviceServiceDeps = {
   store: DeviceStore;
@@ -35,7 +49,13 @@ export type DeviceServiceDeps = {
   verifyPin: VerifyPin;
   generateKey: () => DeviceKey;
   sign: (privateKey: string, message: string) => string;
+  /** The PC's clock: the offline window and the times it records (rules 30, 31). */
   now: () => Date;
+  /**
+   * Milliseconds on a monotonic clock. Token lifetimes are measured on it from when they arrived,
+   * never against the server's `expiresAt`: a PC clock that is off, or set back, keeps signing in.
+   */
+  elapsed: () => number;
   os: string;
   appVersion: string;
   /** The status may have changed: the renderer reads it again. */
@@ -45,12 +65,27 @@ export type DeviceServiceDeps = {
 /** A device token is fetched again this long before it expires. */
 const TOKEN_MARGIN_MS = 30_000;
 
+/** An access token is refreshed this long before it expires. */
+const ACCESS_MARGIN_MS = 60_000;
+
 function codeOf(error: unknown): string {
   return error instanceof DeviceApiError ? error.code : 'INTERNAL_ERROR';
 }
 
-function later(a: string, b: Date): string {
-  return Date.parse(a) > b.getTime() ? a : b.toISOString();
+/**
+ * The membership of an access token, from its payload (`mid`). The token came from the API over
+ * TLS and the server verifies it on every use; the PC reads it only to know whose session it is.
+ */
+export function membershipOfAccessToken(token: string): string | null {
+  try {
+    const payload: unknown = JSON.parse(
+      Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8'),
+    );
+    const mid = (payload as { mid?: unknown }).mid;
+    return typeof mid === 'string' ? mid : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -61,7 +96,7 @@ function later(a: string, b: Date): string {
 export class DeviceService {
   private record: DeviceRecord | null;
   private session: Session | null = null;
-  private deviceToken: { token: string; expiresAt: number } | null = null;
+  private deviceToken: { token: string; dueAt: number } | null = null;
   private online = false;
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -100,7 +135,8 @@ export class DeviceService {
         roles: member.roles,
         permissions: member.permissions,
         hasPin: member.pinVerifier !== null,
-        pinDisabled: pinDisabledHere(record, member),
+        pinDisabledOnline: member.pinDisabled,
+        pinDisabledHere: localMember(record, member.membershipId).disabled,
         usedThisDevice: localMember(record, member.membershipId).firstSessionAt !== null,
       })),
       window: windowOf(record, this.deps.now()),
@@ -115,6 +151,9 @@ export class DeviceService {
   register(input: RegisterInput): Promise<BridgeResult> {
     return this.run(async () => {
       if (this.record) return { ok: false, code: 'FORBIDDEN' };
+      // The key must be storable before the server registers it: a registration whose key is lost
+      // leaves an active device no one can sign for (rules 16, 21).
+      if (!this.deps.store.canWrite()) return { ok: false, code: 'INTERNAL_ERROR' };
       const key = this.deps.generateKey();
       try {
         const result = await this.deps.client.register(input.ticket, {
@@ -125,7 +164,6 @@ export class DeviceService {
           os: this.deps.os,
           appVersion: this.deps.appVersion,
         });
-        const me = await this.deps.client.me(result.session.accessToken);
         const now = this.deps.now();
         const registration: Registration = {
           tenantId: input.tenantId,
@@ -135,10 +173,11 @@ export class DeviceService {
           publicKey: key.publicKey,
         };
         this.online = true;
-        this.save(
-          recordSession(this.withList(registration, result.members, now), me.membershipId, now),
-        );
-        this.session = { membershipId: me.membershipId, tokens: result.session };
+        const registered = this.withList(registration, result.members);
+        const membershipId = membershipOfAccessToken(result.session.accessToken);
+        // Saved at once, with the key; the registering member's session follows from the token.
+        this.save(membershipId ? recordSession(registered, membershipId, now) : registered);
+        if (membershipId) this.session = this.onlineSession(membershipId, result.session);
         return { ok: true };
       } catch (error) {
         if (isUnreachable(error)) this.online = false;
@@ -149,27 +188,55 @@ export class DeviceService {
     });
   }
 
-  private withList(registration: Registration, list: MemberList, now: Date): Registered {
+  private onlineSession(membershipId: string, tokens: SessionTokens): Session {
+    return {
+      membershipId,
+      tokens,
+      accessDueAt:
+        this.deps.elapsed() + staffSessionPolicy.accessTokenMinutes * 60_000 - ACCESS_MARGIN_MS,
+    };
+  }
+
+  /**
+   * A confirmed member list. The highest time seen starts again from the server's time: the server
+   * is the authority at that moment, so a PC clock that once ran ahead does not keep the window
+   * closed (rules 30, 31); between syncs the PC's clock only raises it.
+   */
+  private withList(registration: Registration, list: MemberList): Registered {
     const previous = this.registered();
     return {
       state: 'registered',
       registration,
       memberList: list,
       membersSyncedAt: list.issuedAt,
-      highestSeenAt: later(
-        later(previous?.highestSeenAt ?? list.issuedAt, now),
-        new Date(list.issuedAt),
-      ),
+      highestSeenAt: list.issuedAt,
       local: previous?.local ?? {},
     };
   }
 
+  /**
+   * Runs a device route with a device token; a token the server no longer accepts (expired on
+   * its side, or the API restarted with new keys) is fetched again once.
+   */
+  private async withToken<T>(
+    registration: Registration,
+    call: (token: string) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await call(await this.token(registration));
+    } catch (error) {
+      if (codeOf(error) !== 'UNAUTHENTICATED') throw error;
+      this.deviceToken = null;
+      return call(await this.token(registration));
+    }
+  }
+
   /** Rule 44: a 5-minute device token for the device key's signature of a server nonce. */
   private async token(registration: Registration): Promise<string> {
-    const now = this.deps.now().getTime();
-    if (this.deviceToken && this.deviceToken.expiresAt - TOKEN_MARGIN_MS > now) {
+    if (this.deviceToken && this.deviceToken.dueAt > this.deps.elapsed()) {
       return this.deviceToken.token;
     }
+    const requestedAt = this.deps.elapsed();
     const { tenantId, deviceId } = registration;
     const { nonce } = await this.deps.client.challenge(tenantId, deviceId);
     const signed = await this.deps.client.token({
@@ -179,7 +246,10 @@ export class DeviceService {
       signature: this.deps.sign(registration.privateKey, deviceTokenMessage(nonce, deviceId)),
       appVersion: this.deps.appVersion,
     });
-    this.deviceToken = { token: signed.deviceToken, expiresAt: Date.parse(signed.expiresAt) };
+    this.deviceToken = {
+      token: signed.deviceToken,
+      dueAt: requestedAt + deviceTokenTtlSeconds * 1000 - TOKEN_MARGIN_MS,
+    };
     return signed.deviceToken;
   }
 
@@ -196,11 +266,12 @@ export class DeviceService {
       if (member && pinDisabledHere(record, member)) return { ok: false, code: 'PIN_DISABLED' };
       const now = this.deps.now();
       try {
-        const token = await this.token(record.registration);
-        const tokens = await this.deps.client.openSession(token, input);
+        const tokens = await this.withToken(record.registration, (token) =>
+          this.deps.client.openSession(token, input),
+        );
         this.online = true;
         this.save(recordSession(seeTime(record, now), input.membershipId, now));
-        this.session = { membershipId: input.membershipId, tokens };
+        this.session = this.onlineSession(input.membershipId, tokens);
         return { ok: true };
       } catch (error) {
         if (isUnreachable(error)) {
@@ -234,7 +305,8 @@ export class DeviceService {
       this.deps.verifyPin,
     );
     this.save(outcome.record);
-    if (outcome.ok) this.session = { membershipId: input.membershipId, tokens: null };
+    if (outcome.ok)
+      this.session = { membershipId: input.membershipId, tokens: null, accessDueAt: 0 };
     return this.result(outcome);
   }
 
@@ -258,16 +330,15 @@ export class DeviceService {
     return this.run(async () => {
       const record = this.registered();
       const session = this.session;
-      if (!record || !session?.tokens) return null;
-      const now = this.deps.now().getTime();
-      if (Date.parse(session.tokens.accessTokenExpiresAt) - 60_000 > now) {
-        return session.tokens.accessToken;
-      }
+      const current = session?.tokens;
+      if (!(record && session && current)) return null;
+      if (session.accessDueAt > this.deps.elapsed()) return current.accessToken;
       try {
-        const token = await this.token(record.registration);
-        const tokens = await this.deps.client.refreshSession(token, session.tokens.refreshToken);
+        const tokens = await this.withToken(record.registration, (token) =>
+          this.deps.client.refreshSession(token, current.refreshToken),
+        );
         this.online = true;
-        session.tokens = tokens;
+        this.session = this.onlineSession(session.membershipId, tokens);
         return tokens.accessToken;
       } catch (error) {
         if (isUnreachable(error)) {
@@ -294,16 +365,17 @@ export class DeviceService {
       if (record?.state === 'wiping') return this.confirmWipe(record);
       if (record?.state !== 'registered') return;
       try {
-        const token = await this.token(record.registration);
-        const result = await this.deps.client.members(token, record.memberList.version);
-        const now = this.deps.now();
-        const list =
-          result.status === 'current'
-            ? result.list
-            : { ...record.memberList, issuedAt: result.issuedAt };
-        await this.deps.client.acknowledge(token, list.version);
+        const list = await this.withToken(record.registration, async (token) => {
+          const result = await this.deps.client.members(token, record.memberList.version);
+          const current =
+            result.status === 'current'
+              ? result.list
+              : { ...record.memberList, issuedAt: result.issuedAt };
+          await this.deps.client.acknowledge(token, current.version);
+          return current;
+        });
         this.online = true;
-        this.save(this.withList(record.registration, list, now));
+        this.save(this.withList(record.registration, list));
         const member = list.members.find((m) => m.membershipId === this.session?.membershipId);
         if (this.session && !member) this.session = null;
       } catch (error) {
@@ -332,8 +404,7 @@ export class DeviceService {
 
   private async confirmWipe(record: Extract<DeviceRecord, { state: 'wiping' }>): Promise<void> {
     try {
-      const token = await this.token(record.registration);
-      await this.deps.client.wiped(token);
+      await this.withToken(record.registration, (token) => this.deps.client.wiped(token));
     } catch (error) {
       // Already wiped on the server: it refuses the token. Anything else is tried again later.
       if (codeOf(error) !== 'DEVICE_REVOKED') return;
@@ -342,8 +413,13 @@ export class DeviceService {
     this.save({ state: 'wiped', tenantName: record.tenantName });
   }
 
+  /** Rule 27: the acting member is the one whose session is open on this PC. */
   approve(input: ApproveInput): Promise<BridgeResult> {
-    return this.local((record) => approveLocally(record, input, input.pin, this.deps.verifyPin));
+    return this.local((record) =>
+      this.session?.membershipId === input.actingMembershipId
+        ? approveLocally(record, input, input.pin, this.deps.verifyPin)
+        : Promise.resolve({ record, ok: false, code: 'FORBIDDEN' }),
+    );
   }
 
   reenablePin(input: ReenableInput): Promise<BridgeResult> {

@@ -402,6 +402,9 @@ export const restaurant = {
     pinDisabled: 'الرمز موقوف على هذا الحاسوب',
     pinDisabledHint:
       'أُوقف رمز {{name}} على هذا الحاسوب بعد 5 محاولات خاطئة. يعيد تفعيله مدير برمزه السري.',
+    pinDisabledOnline: 'الرمز موقوف',
+    pinDisabledOnlineHint:
+      'أُوقف رمز {{name}} على كل الحواسيب بعد 10 محاولات خاطئة. يعيد المالك أو المدير تعيينه عبر الإنترنت.',
     reenable: 'إعادة التفعيل بواسطة مدير',
     reenableTitle: 'إعادة تفعيل رمز {{name}}',
     reenableDescription: 'يختار المدير اسمه ويكتب رمزه السري على هذا الحاسوب.',
@@ -438,6 +441,12 @@ export const restaurant = {
     signOut: 'قفل الحاسوب',
   },
   switchMember: 'تبديل الكاشير',
+  reconnected: {
+    title: 'عاد الاتصال بالإنترنت',
+    description:
+      'دخلت دون اتصال، فالشاشات التي تحتاج الإنترنت لا تعمل في هذه الجلسة. أعد الدخول برمزك السري لفتحها.',
+    action: 'أعد الدخول',
+  },
   approval: {
     title: 'موافقة مسؤول',
     description:

@@ -23,8 +23,10 @@ export type DeviceMemberView = {
   roles: StaffRole[];
   permissions: StaffPermission[];
   hasPin: boolean;
-  /** Disabled online (rule 24) or on this PC (rule 25). */
-  pinDisabled: boolean;
+  /** Disabled online after 10 wrong PINs (rule 24): only a PIN reset online brings it back. */
+  pinDisabledOnline: boolean;
+  /** Disabled on this PC after 5 wrong PINs (rule 25): a manager re-enables it here. */
+  pinDisabledHere: boolean;
   /** Opened a PIN session on this PC before: may sign in after the window (rule 30). */
   usedThisDevice: boolean;
 };

@@ -65,7 +65,16 @@ export function LockScreen({ bridge, status }: { bridge: DeviceBridge; status: R
               <MemberRoles member={selected} />
             </div>
             {error && <Callout role="alert" tone="danger" title={error} className="w-full" />}
-            {selected.pinDisabled ? (
+            {selected.pinDisabledOnline ? (
+              <Callout
+                role="status"
+                tone="warning"
+                icon={<BanIcon aria-hidden />}
+                title={t('lock.pinDisabledOnline')}
+                description={t('lock.pinDisabledOnlineHint', { name: selected.name })}
+                className="w-full"
+              />
+            ) : selected.pinDisabledHere ? (
               <Callout
                 role="status"
                 tone="warning"
@@ -120,11 +129,13 @@ export function LockScreen({ bridge, status }: { bridge: DeviceBridge; status: R
                 members={members}
                 onSelect={choose}
                 note={(member) =>
-                  member.pinDisabled
-                    ? t('lock.pinDisabled')
-                    : expiredFor(member)
-                      ? t('lock.expiredForMember')
-                      : null
+                  member.pinDisabledOnline
+                    ? t('lock.pinDisabledOnline')
+                    : member.pinDisabledHere
+                      ? t('lock.pinDisabled')
+                      : expiredFor(member)
+                        ? t('lock.expiredForMember')
+                        : null
                 }
               />
             )}

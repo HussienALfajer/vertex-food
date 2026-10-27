@@ -2,7 +2,6 @@ import {
   deviceTokenSchema,
   errorResponseSchema,
   memberListResultSchema,
-  meSchema,
   nonceSchema,
   registeredDeviceSchema,
   sessionTokensSchema,
@@ -148,12 +147,6 @@ export class DeviceClient {
       body: { reason },
     });
   }
-
-  me(accessToken: string) {
-    return this.request('GET', '/api/me', meSchema, {
-      headers: { authorization: `Bearer ${accessToken}` },
-    });
-  }
 }
 
 /** What `DeviceService` calls; tests give a fake. */
@@ -168,5 +161,4 @@ export type DeviceApi = Pick<
   | 'openSession'
   | 'refreshSession'
   | 'endSession'
-  | 'me'
 >;

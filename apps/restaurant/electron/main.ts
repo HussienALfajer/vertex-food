@@ -79,6 +79,7 @@ function startDeviceService(): DeviceService {
     generateKey: generateDeviceKey,
     sign: signWithDeviceKey,
     now: () => new Date(),
+    elapsed: () => performance.now(),
     os: `${platform()} ${release()}`,
     appVersion: app.getVersion(),
     onChange: () => {

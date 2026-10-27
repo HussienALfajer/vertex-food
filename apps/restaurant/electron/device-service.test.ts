@@ -5,7 +5,7 @@ import { deviceChannels } from './bridge.js';
 import { type DeviceApi, DeviceApiError } from './device-client.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
-import { member, memberList, tempStore, uuid7, verifyPin } from './device-test-kit.js';
+import { fakeSealer, member, memberList, tempStore, uuid7, verifyPin } from './device-test-kit.js';
 
 const start = new Date('2026-10-20T08:00:00.000Z');
 
@@ -29,13 +29,18 @@ async function fakeApi() {
     acked: [] as string[],
     ended: [] as string[],
     refreshed: 0,
+    // The PC's clock against the server's (a power cut can set it back).
+    pcClockOffsetMs: 0,
+    tokenIssuedAt: 0,
   };
   let sessions = 0;
-  const tokens = (): SessionTokens => {
+  // JWT-shaped: the PC reads the membership from the payload.
+  const tokens = (membershipId: string): SessionTokens => {
     sessions += 1;
+    const payload = Buffer.from(JSON.stringify({ mid: membershipId })).toString('base64url');
     return {
       sessionId: uuid7(),
-      accessToken: `access-${sessions}`,
+      accessToken: `access-${sessions}.${payload}.signature`,
       accessTokenExpiresAt: new Date(server.now.getTime() + 15 * 60_000).toISOString(),
       refreshToken: `refresh-${sessions}`,
       expiresAt: new Date(server.now.getTime() + 12 * 3600_000).toISOString(),
@@ -46,6 +51,10 @@ async function fakeApi() {
   };
   const device = () => {
     reach();
+    // The server's own clock decides when a device token expires.
+    if (server.now.getTime() - server.tokenIssuedAt > 300_000) {
+      throw new DeviceApiError('UNAUTHENTICATED');
+    }
     if (server.revoked) throw new DeviceApiError('DEVICE_REVOKED');
   };
   const api: DeviceApi = {
@@ -68,7 +77,7 @@ async function fakeApi() {
           updatedAt: server.now.toISOString(),
         },
         members: server.list,
-        session: tokens(),
+        session: tokens(owner.membershipId),
       };
     }),
     challenge: vi.fn(async () => {
@@ -78,6 +87,7 @@ async function fakeApi() {
     token: vi.fn(async () => {
       reach();
       if (server.wipedConfirmed) throw new DeviceApiError('DEVICE_REVOKED');
+      server.tokenIssuedAt = server.now.getTime();
       return {
         deviceToken: 'device-token',
         expiresAt: new Date(server.now.getTime() + 300_000).toISOString(),
@@ -103,21 +113,17 @@ async function fakeApi() {
     openSession: vi.fn(async (_token, body) => {
       device();
       if (pins.get(body.membershipId) !== body.pin) throw new DeviceApiError('INVALID_PIN');
-      return tokens();
+      return tokens(body.membershipId);
     }),
     refreshSession: vi.fn(async (_token, refreshToken) => {
       device();
       if (refreshToken !== `refresh-${sessions}`) throw new DeviceApiError('SESSION_ENDED');
       server.refreshed += 1;
-      return tokens();
+      return tokens('');
     }),
     endSession: vi.fn(async (accessToken) => {
       reach();
       server.ended.push(accessToken);
-    }),
-    me: vi.fn(async () => {
-      reach();
-      return { membershipId: owner.membershipId } as Awaited<ReturnType<DeviceApi['me']>>;
     }),
   };
   return { api, server, owner, cashier };
@@ -134,7 +140,8 @@ async function setup() {
       verifyPin,
       generateKey: generateDeviceKey,
       sign: signWithDeviceKey,
-      now: () => fake.server.now,
+      now: () => new Date(fake.server.now.getTime() + fake.server.pcClockOffsetMs),
+      elapsed: () => fake.server.now.getTime(),
       os: 'win32 10.0',
       appVersion: '0.0.0',
       onChange: changed,
@@ -230,7 +237,7 @@ describe('DeviceService PIN sessions (rules 24, 25, 32)', () => {
     const status = service.status();
     expect(
       status.state === 'registered' &&
-        status.members.find((m) => m.membershipId === cashier.membershipId)?.pinDisabled,
+        status.members.find((m) => m.membershipId === cashier.membershipId)?.pinDisabledHere,
     ).toBe(true);
   });
 
@@ -238,18 +245,18 @@ describe('DeviceService PIN sessions (rules 24, 25, 32)', () => {
     const { service, server } = await registered();
     await service.lock('idle');
     expect(service.status()).toMatchObject({ session: null });
-    expect(server.ended).toEqual(['access-1']);
+    expect(server.ended).toEqual([expect.stringMatching(/^access-1./)]);
   });
 
   it('refreshes the access token before it expires and locks when the session ended', async () => {
     const { service, server } = await registered();
     server.now = later(14.5);
-    expect(await service.accessToken()).toBe('access-2');
+    expect(await service.accessToken()).toMatch(/^access-2./);
     expect(server.refreshed).toBe(1);
     // Still fresh: no refresh. Then due again: the rotated refresh token is the one sent.
-    expect(await service.accessToken()).toBe('access-2');
+    expect(await service.accessToken()).toMatch(/^access-2./);
     server.now = later(29.5);
-    expect(await service.accessToken()).toBe('access-3');
+    expect(await service.accessToken()).toMatch(/^access-3./);
     expect(server.refreshed).toBe(2);
   });
 
@@ -287,6 +294,98 @@ describe('DeviceService member list (rules 28, 30, 33)', () => {
     server.list = { ...server.list, version: 'v2', members: remaining } satisfies MemberList;
     await service.refresh();
     expect(service.status()).toMatchObject({ session: null });
+  });
+});
+
+describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () => {
+  it('keeps signing in online with the clock hours behind: lifetimes run on the PC itself', async () => {
+    const { service, server, cashier } = await registered();
+    server.pcClockOffsetMs = -10 * 3600_000;
+    await service.lock('locked');
+    for (const minutes of [6, 12, 30]) {
+      server.now = later(minutes);
+      expect(await service.signIn({ membershipId: cashier.membershipId, pin: '482916' })).toEqual({
+        ok: true,
+      });
+      expect(service.status()).toMatchObject({ session: { online: true } });
+      server.now = later(minutes + 15);
+      expect(await service.accessToken()).toMatch(/^access-\d+\./);
+      await service.lock('locked');
+    }
+  });
+
+  it('fetches a device token again when the server no longer accepts it', async () => {
+    const { service, server, api } = await registered();
+    await service.refresh();
+    // The API restarted, or its clock moved on: the token held here is refused once.
+    server.tokenIssuedAt = -1_000_000;
+    const before = vi.mocked(api.token).mock.calls.length;
+    await service.refresh();
+    expect(vi.mocked(api.token).mock.calls.length).toBe(before + 1);
+    expect(service.status()).toMatchObject({ online: true });
+  });
+
+  it('a clock that ran ahead and was corrected leaves the window open once synced', async () => {
+    const { service, server, cashier } = await registered();
+    await service.lock('locked');
+    // Offline with the clock 8 days ahead: the window reads closed, the PC remembers that time.
+    server.reachable = false;
+    server.pcClockOffsetMs = 8 * 24 * 3600_000;
+    await service.signIn({ membershipId: cashier.membershipId, pin: '482916' });
+    expect(service.status()).toMatchObject({ window: { open: false } });
+    // The clock is corrected and the PC connects: the server's time is the authority again.
+    server.pcClockOffsetMs = 0;
+    server.reachable = true;
+    server.now = later(5);
+    await service.refresh();
+    expect(service.status()).toMatchObject({
+      window: { open: true, warn: false, clockBehind: false },
+    });
+  });
+});
+
+describe('DeviceService safeguards', () => {
+  it('never registers when the record could not be sealed', async () => {
+    const fake = await fakeApi();
+    const { store } = tempStore({ ...fakeSealer, isEncryptionAvailable: () => false });
+    const service = new DeviceService({
+      store,
+      client: fake.api,
+      verifyPin,
+      generateKey: generateDeviceKey,
+      sign: signWithDeviceKey,
+      now: () => fake.server.now,
+      elapsed: () => fake.server.now.getTime(),
+      os: 'win32 10.0',
+      appVersion: '0.0.0',
+      onChange: () => undefined,
+    });
+    const result = await service.register({
+      ticket: 'ticket',
+      tenantId: fake.server.list.tenant.id,
+      branchId: fake.server.list.branch.id,
+      name: 'الكاشير 1',
+    });
+    expect(result).toEqual({ ok: false, code: 'INTERNAL_ERROR' });
+    expect(fake.api.register).not.toHaveBeenCalled();
+  });
+
+  it('approves only for the member whose session is open here (rule 27)', async () => {
+    const { service, owner, cashier } = await registered();
+    const input = {
+      permission: 'staff.manage' as const,
+      approverMembershipId: owner.membershipId,
+      pin: '602847',
+    };
+    expect(await service.approve({ ...input, actingMembershipId: cashier.membershipId })).toEqual({
+      ok: false,
+      code: 'FORBIDDEN',
+    });
+    await service.lock('locked');
+    await service.signIn({ membershipId: cashier.membershipId, pin: '482916' });
+    expect(await service.approve({ ...input, actingMembershipId: cashier.membershipId })).toEqual({
+      ok: true,
+    });
   });
 });
 

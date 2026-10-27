@@ -126,7 +126,7 @@ function asMember(member: DeviceMemberView): DeviceMember {
     roles: member.roles,
     permissions: member.permissions,
     pinVerifier: member.hasPin ? 'set' : null,
-    pinDisabled: member.pinDisabled,
+    pinDisabled: member.pinDisabledOnline || member.pinDisabledHere,
   };
 }
 
@@ -196,7 +196,8 @@ export function ReenableDialog({
     (manager) =>
       manager.membershipId !== member.membershipId &&
       manager.hasPin &&
-      !manager.pinDisabled &&
+      !manager.pinDisabledOnline &&
+      !manager.pinDisabledHere &&
       manager.permissions.includes('staff.manage') &&
       mayManageMember(reach(manager.roles), reach(member.roles)),
   );

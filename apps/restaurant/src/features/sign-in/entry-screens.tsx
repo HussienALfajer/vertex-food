@@ -234,6 +234,8 @@ function RegisterForm({ bridge, ticket }: { bridge: DeviceBridge; ticket: string
           setError(null);
           void bridge
             .register({ ticket, tenantId: tenant.tenantId, branchId: branch.id, name: name.trim() })
+            // The main process failing outright (IPC refused) is a refusal like any other.
+            .catch(() => ({ ok: false as const, code: 'INTERNAL_ERROR' }))
             .then((result) => {
               setBusy(false);
               if (result.ok) {

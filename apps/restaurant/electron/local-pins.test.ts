@@ -231,6 +231,21 @@ describe('reenableLocally (rule 25)', () => {
     ).toBe(true);
   });
 
+  it('never re-enables a PIN disabled online: that needs a reset online (rule 24)', async () => {
+    const disabled = await member('موقوف', '482916', { pinDisabled: true });
+    const manager = await member('مدير', '517390', {
+      roles: ['manager'],
+      permissions: ['tenant.view', 'staff.manage'],
+    });
+    const outcome = await reenableLocally(
+      recordOf([disabled, manager]),
+      { membershipId: disabled.membershipId, managerMembershipId: manager.membershipId },
+      '517390',
+      verifyPin,
+    );
+    expect(outcome).toMatchObject({ ok: false, code: 'PIN_DISABLED' });
+  });
+
   it('refuses a member who may not manage them (rule 7)', async () => {
     const { cashier, manager, owner, newcomer, record } = await lockedOut();
     const byCashier = await reenableLocally(

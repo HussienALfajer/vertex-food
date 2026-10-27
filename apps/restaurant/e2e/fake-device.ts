@@ -136,7 +136,8 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
             roles: member.roles,
             permissions: member.permissions,
             hasPin: member.pin !== null,
-            pinDisabled: disabled(member),
+            pinDisabledOnline: Boolean(member.pinDisabled),
+            pinDisabledHere: member.localDisabled,
             usedThisDevice: Boolean(member.usedThisDevice),
           })),
           window: state.window,
@@ -203,6 +204,7 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
         if (!(target && manager?.permissions.includes('staff.manage'))) {
           return { ok: false, code: 'FORBIDDEN' };
         }
+        if (target.pinDisabled) return { ok: false, code: 'PIN_DISABLED' };
         const result = check(manager, input.pin);
         if (result.ok) {
           target.localDisabled = false;
