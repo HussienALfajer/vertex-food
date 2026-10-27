@@ -98,7 +98,33 @@ Sonnet and Haiku never write code. Avoid `max` unless a gain is measured.
 
 - Switch Claude accounts between tasks, never in the middle of one.
 - Other agents read `AGENTS.md` directly and can continue work.
-- Cloud sessions get skills, subagents, hooks and settings from the repository; production deploys, owner acceptance, the Electron app on Windows, printers, real WhatsApp sessions and real secrets stay local.
+- Cloud sessions get skills, subagents, hooks and settings from the repository; production deploys, owner acceptance, the Electron app on Windows, printers, real WhatsApp sessions and real secrets stay local (next section).
+
+## Cloud sessions
+
+Claude Code cloud sessions run in the shared cloud environment `vertex`, which this repository does not edit.
+
+**What the environment provides:** Node 24 (default on `PATH`), Corepack with pnpm, Docker with the `postgres:17` and `axllent/mailpit` images, Playwright Chromium in `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`, telemetry turned off (Next.js, Turborepo, Expo), `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, a 6 GB Node heap and full network access. It also provides the command `vertex-session [repo-dir]`, which starts one PostgreSQL 17 on `127.0.0.1:5432` (or reuses one already answering there), then runs `pnpm install --frozen-lockfile`, creates `.env` from `.env.example` when missing (with the local superuser password in `DATABASE_ADMIN_URL`), `pnpm db:setup-local`, `pnpm db:migrate` and the Playwright Chromium install. It prints `Vertex cloud session ready: ...` plus any problems, logs to `/tmp/vertex-session.log` and always exits 0.
+
+**What the hook does:** `.claude/settings.json` runs `scripts/cloud-session.sh` at session start, after the session-start note. It does nothing unless `CLAUDE_CODE_REMOTE=true`, so local Windows sessions are unaffected. In a cloud session it runs `vertex-session "$CLAUDE_PROJECT_DIR"`; if the command is missing, the session is not in the `vertex` environment and the hook prints a one-line hint pointing here. After it, `pnpm verify` runs as it does locally.
+
+**Sessions with several repositories** do not run repository hooks. Run the setup by hand before the first check:
+
+```bash
+vertex-session /path/to/vertex-food
+```
+
+**What stays local:**
+
+- Anything that needs real secrets (production `.env` values, deploys, real WhatsApp sessions).
+- The Electron POS window: there is no display. Its typecheck, tests, build and E2E specs do run in the cloud.
+- The owner's manual acceptance test.
+
+**Other differences:**
+
+- `gh pr create` is refused (GitHub's GraphQL API is blocked); open the PR with the Create PR button.
+- The reference repositories under `D:\` (`D:\vertex-shifa`, `D:\vertex-hub`) do not exist there; add them to the session when a task needs them.
+- The backend apps (`api`, `worker`, `whatsapp-gateway`) have no `dev` script: run `pnpm --filter @vertex-food/<app> build`, then `pnpm --filter @vertex-food/<app> start`.
 
 ## References
 
