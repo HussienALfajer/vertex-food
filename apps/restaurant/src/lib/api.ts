@@ -1,13 +1,49 @@
 import { type ErrorCode, errorResponseSchema } from '@vertex-food/contracts';
 import createClient from 'openapi-fetch';
 import type { paths } from './api-schema.gen';
+import { deviceBridge } from './device';
 
 /**
  * The API client of the online-only screens (S01, ADR 0020), typed from `apps/api/openapi.json`.
  * `VITE_API_URL` is the API's origin; unset, requests go to the renderer's own origin, which only
- * the E2E uses. The staff session joins every request with S02.
+ * the E2E uses. On a registered PC every request carries the PIN session's access token from the
+ * main process; in a browser the personal session is an `HttpOnly` cookie (spec S02 rules 24, 35).
  */
 export const api = createClient<paths>({ baseUrl: import.meta.env.VITE_API_URL ?? '' });
+
+const sessionLostListeners = new Set<() => void>();
+
+/** Called when the API answers that the session is gone (`UNAUTHENTICATED`, `SESSION_ENDED`). */
+export function onSessionLost(listener: () => void): () => void {
+  sessionLostListeners.add(listener);
+  return () => sessionLostListeners.delete(listener);
+}
+
+api.use({
+  async onRequest({ request }) {
+    if (!deviceBridge || request.headers.has('authorization')) return request;
+    const token = await deviceBridge.accessToken();
+    if (token) request.headers.set('authorization', `Bearer ${token}`);
+    return request;
+  },
+  async onResponse({ request, response }) {
+    // A personal session's cookie, or a token the PC sent: the session ended on the server.
+    if (response.status !== 401 || (deviceBridge && !request.headers.has('authorization'))) {
+      return response;
+    }
+    const refusal = errorResponseSchema.safeParse(
+      await response
+        .clone()
+        .json()
+        .catch(() => null),
+    );
+    const code = refusal.success ? refusal.data.code : undefined;
+    if (code === 'UNAUTHENTICATED' || code === 'SESSION_ENDED') {
+      for (const listener of sessionLostListeners) listener();
+    }
+    return response;
+  },
+});
 
 /** The code of a refusal; `NETWORK_ERROR` when the API could not be reached at all. */
 export type ApiErrorCode = ErrorCode | 'NETWORK_ERROR';

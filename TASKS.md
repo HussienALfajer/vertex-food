@@ -27,14 +27,14 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 
 ### PR 3 — restaurant app: device, sign-in and PIN (`feat/S02-restaurant-devices`)
 
-- [ ] Electron main: Ed25519 device key in `safeStorage`, device token, encrypted member list file, local PIN check and lockout, offline window and post-window rule, highest-seen clock, wipe; IPC without verifiers to the renderer; unit tests
-- [ ] screens: welcome, sign-in (OTP, first sign-in, lock message), register this PC, member picker and lock screen (all states), choose PIN, switch cashier, idle lock, manager approval dialog, password re-auth dialog; session handling replacing the S01 owner view
-- [ ] i18n keys; E2E with the mocked API (incl. offline and window states); RTL screenshots light and dark, looked at
-- [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
+- [x] Electron main: Ed25519 device key in `safeStorage`, device token, encrypted member list file, local PIN check and lockout, offline window and post-window rule, highest-seen clock, wipe; IPC without verifiers to the renderer; unit tests
+- [x] screens: welcome, sign-in (OTP, first sign-in, lock message), register this PC, member picker and lock screen (all states), choose PIN, switch cashier, idle lock, manager approval dialog (tried from the home screen until S09); session handling replacing the S01 owner view, the browser signing in to a personal session (one tenant chosen; the switcher is PR 4); the password re-auth dialog moved to PR 4, with its first sensitive action
+- [x] i18n keys; E2E with the mocked API (incl. offline and window states); RTL screenshots light and dark, looked at
+- [x] checks, `reviewer` (two rounds, every blocking finding fixed), owner acceptance (2026-10-27), PR with auto-merge
 
 ### PR 4 — restaurant app: staff, devices, my account, personal mode (`feat/S02-restaurant-staff`)
 
-- [ ] screens: staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
+- [ ] screens: password re-auth dialog (rule 26); an owner or manager replacing a forgotten PIN on the lock screen by password (rule 22, `POST /api/sessions` with a ticket); staff list, add member and member detail (permissions for owners), devices (rename, revoke), branch security, my account (password, PIN, personal devices); personal-device (browser) mode with the tenant switcher
 - [ ] i18n keys; E2E as owner and manager, personal mode; RTL screenshots light and dark, looked at
 - [ ] ROADMAP marks S02 done once PR 5 has merged too; docs
 - [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
@@ -47,6 +47,8 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 
 ## Follow-ups (not this spec)
 
+- The restaurant's logo on the lock screen (spec S02 screen 4): the PC has no session there, so the main process must fetch and keep the logo (a device route for it, or the local database of S04); until then the lock screen shows the name. Do it with S04 or S08 branding
+- The sign-in lock message shows the policy's 15 minutes: the API answers `RATE_LIMITED` without the retry time, and a per-address limit reads the same (PR 1 API)
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
 - Store icons wired into `app.config.ts` with the first store build (Q3); the files are in `brand/logo/png/`
 - Madani Arabic: provisioned only when its licence is bought (outside the repository)

@@ -10,7 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LockRouteImport } from './routes/lock'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SettingsRestaurantRouteImport } from './routes/settings/restaurant'
 import { Route as SettingsBranchesIndexRouteImport } from './routes/settings/branches/index'
 import { Route as SettingsBranchesBranchIdIndexRouteImport } from './routes/settings/branches/$branchId/index'
@@ -21,9 +25,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LockRoute = LockRouteImport.update({
+  id: '/lock',
+  path: '/lock',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
   path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRestaurantRoute = SettingsRestaurantRouteImport.update({
@@ -51,7 +75,11 @@ const SettingsBranchesBranchIdHoursRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/lock': typeof LockRoute
+  '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
@@ -59,7 +87,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/lock': typeof LockRoute
+  '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
   '/settings/branches': typeof SettingsBranchesIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
@@ -68,7 +100,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/lock': typeof LockRoute
+  '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
@@ -78,7 +114,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/lock'
+    | '/register'
     | '/setup'
+    | '/sign-in'
+    | '/welcome'
     | '/settings/restaurant'
     | '/settings/branches/'
     | '/settings/branches/$branchId/hours'
@@ -86,7 +126,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/lock'
+    | '/register'
     | '/setup'
+    | '/sign-in'
+    | '/welcome'
     | '/settings/restaurant'
     | '/settings/branches'
     | '/settings/branches/$branchId/hours'
@@ -94,7 +138,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/lock'
+    | '/register'
     | '/setup'
+    | '/sign-in'
+    | '/welcome'
     | '/settings/restaurant'
     | '/settings/branches/'
     | '/settings/branches/$branchId/hours'
@@ -103,7 +151,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LockRoute: typeof LockRoute
+  RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
+  SignInRoute: typeof SignInRoute
+  WelcomeRoute: typeof WelcomeRoute
   SettingsRestaurantRoute: typeof SettingsRestaurantRoute
   SettingsBranchesIndexRoute: typeof SettingsBranchesIndexRoute
   SettingsBranchesBranchIdHoursRoute: typeof SettingsBranchesBranchIdHoursRoute
@@ -119,11 +171,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lock': {
+      id: '/lock'
+      path: '/lock'
+      fullPath: '/lock'
+      preLoaderRoute: typeof LockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setup': {
       id: '/setup'
       path: '/setup'
       fullPath: '/setup'
       preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/restaurant': {
@@ -159,7 +239,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LockRoute: LockRoute,
+  RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
+  SignInRoute: SignInRoute,
+  WelcomeRoute: WelcomeRoute,
   SettingsRestaurantRoute: SettingsRestaurantRoute,
   SettingsBranchesIndexRoute: SettingsBranchesIndexRoute,
   SettingsBranchesBranchIdHoursRoute: SettingsBranchesBranchIdHoursRoute,

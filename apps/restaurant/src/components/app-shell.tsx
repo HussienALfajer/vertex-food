@@ -9,9 +9,12 @@ import { useTranslation } from 'react-i18next';
  */
 export function AppShell({
   navigation,
+  actions,
   children,
 }: {
   navigation?: ((close: () => void) => ReactNode) | undefined;
+  /** Controls before the theme button: "Switch cashier" on a registered PC. */
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation(['common', 'restaurant']);
@@ -25,7 +28,12 @@ export function AppShell({
         navigation: t('restaurant:nav.label'),
         openNavigation: t('shell.openNavigation'),
       }}
-      actions={<ThemeToggle labels={{ toDark: t('theme.toDark'), toLight: t('theme.toLight') }} />}
+      actions={
+        <>
+          {actions}
+          <ThemeToggle labels={{ toDark: t('theme.toDark'), toLight: t('theme.toLight') }} />
+        </>
+      }
       footer={<PoweredBy label={t('poweredBy')} />}
     >
       {children}

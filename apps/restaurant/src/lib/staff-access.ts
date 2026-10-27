@@ -1,4 +1,4 @@
-import { type StaffPermission, staffPermissions } from '@vertex-food/contracts';
+import { type Me, type StaffPermission, staffPermissions } from '@vertex-food/contracts';
 import { createContext, useContext } from 'react';
 
 /**
@@ -16,17 +16,25 @@ export const ownerAccess: StaffAccess = {
   branchIds: null,
 };
 
+/** Nothing: no session. */
+export const noAccess: StaffAccess = { permissions: new Set(), branchIds: [] };
+
+/** The access `GET /api/me` answers for the session. */
+export function accessOfMe(me: Me): StaffAccess {
+  return {
+    permissions: new Set(me.permissions),
+    branchIds: me.allBranches ? null : me.branchIds,
+  };
+}
+
 /** Whether the member holds `permission`, on `branchId` when the action is a branch's. */
 export function can(access: StaffAccess, permission: StaffPermission, branchId?: string): boolean {
   if (!access.permissions.has(permission)) return false;
   return !branchId || access.branchIds === null || access.branchIds.includes(branchId);
 }
 
-/**
- * The signed-in member's access. Sessions arrive with S02, which provides the member's own; until
- * then the app has no session (the API refuses every staff route) and shows the owner's screens.
- */
-export const StaffAccessContext = createContext<StaffAccess>(ownerAccess);
+/** The signed-in member's access, provided by the session gate (`features/session/`). */
+export const StaffAccessContext = createContext<StaffAccess>(noAccess);
 
 export function useStaffAccess(): StaffAccess {
   return useContext(StaffAccessContext);
