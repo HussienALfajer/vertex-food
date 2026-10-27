@@ -41,8 +41,8 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 
 ### PR 5 — console screens (`feat/S02-console-screens`)
 
-- [ ] API client; sign-in with setup (TOTP QR, recovery codes once) and TOTP step; re-auth dialog; platform users; my account
-- [ ] i18n keys; E2E with the mocked API; RTL screenshots light and dark, looked at
+- [x] API client; sign-in with setup (TOTP QR, recovery codes once) and TOTP step; re-auth dialog; platform users (role and adjustments within the console limits); my account; docs (`apps/console/CLAUDE.md`, AGENTS commands table, `docs/testing.md`)
+- [x] i18n keys; E2E with the mocked API; RTL screenshots light and dark, looked at
 - [ ] checks, `reviewer`, owner acceptance (numbered steps), PR with auto-merge
 
 ## Follow-ups (not this spec)
