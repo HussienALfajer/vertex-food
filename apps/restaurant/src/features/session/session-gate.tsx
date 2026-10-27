@@ -118,9 +118,15 @@ function DeviceSession({
     <StaffAccessContext.Provider value={access}>
       <SignedIn
         actions={
-          <Button type="button" variant="secondary" onClick={() => void bridge.lock('locked')}>
+          <Button
+            type="button"
+            variant="secondary"
+            aria-label={t('switchMember')}
+            onClick={() => void bridge.lock('locked')}
+          >
             <LockIcon aria-hidden />
-            {t('switchMember')}
+            {/* The icon alone on a phone, so the product name keeps its room. */}
+            <span className="max-sm:sr-only">{t('switchMember')}</span>
           </Button>
         }
         notices={<WindowWarning window={status.window} />}

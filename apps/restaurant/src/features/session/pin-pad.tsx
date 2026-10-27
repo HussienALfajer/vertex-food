@@ -53,7 +53,7 @@ export function PinPad({
       key={digit}
       type="button"
       variant="secondary"
-      className="h-16 min-w-16 text-2xl"
+      className="h-16 min-w-16 text-2xl lg:pointer-fine:h-16"
       disabled={disabled}
       onClick={() => press(digit)}
     >
@@ -96,7 +96,7 @@ export function PinPad({
         <Button
           type="button"
           variant="ghost"
-          className="h-16 min-w-16"
+          className="h-16 min-w-16 lg:pointer-fine:h-16"
           disabled={disabled || pin.length === 0}
           onClick={erase}
           aria-label={t('pin.delete')}

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { fakeDevice, installFakeDevice, team } from './fake-device.js';
 import { branch, completeBranch, everyDay, mockApi, tenant } from './mock-api.js';
 import {
   expectNoHorizontalOverflow,
@@ -117,6 +118,48 @@ for (const viewport of viewports) {
       await expect(page.getByRole('button', { name: 'افتح القائمة' })).toHaveCount(0);
       await expect(page.locator('[data-slot="app-brand"]')).toBeVisible();
       await laidOut(page, testInfo, 'setup');
+    });
+
+    test('lays out the sign-in, lock and PIN screens of a PC', async ({ page }, testInfo) => {
+      const restaurant = active();
+      await mockApi(page, { tenant: restaurant, me: null });
+      const cashier = team.cashier();
+      await installFakeDevice(
+        page,
+        fakeDevice(restaurant.id, {
+          members: [team.owner(), team.manager(), cashier],
+          window: { open: true, daysSinceSync: 5, warn: true, clockBehind: false },
+        }),
+      );
+      await page.goto('/lock');
+      await expect(page.getByRole('list', { name: 'أعضاء الفريق' })).toBeVisible();
+      await laidOut(page, testInfo, 'lock');
+      await page.getByRole('button', { name: /أحمد الكاشير/ }).click();
+      await expect(page.locator('[data-slot="pin-pad"]')).toBeVisible();
+      await laidOut(page, testInfo, 'lock-pin');
+      await page.locator('[data-slot="pin-pad"]').focus();
+      await page.keyboard.type(cashier.pin as string);
+      await page.getByRole('button', { name: 'تجربة الموافقة' }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+      // The dialog grows in from 95%: measured once it has (a string: no DOM types here).
+      await expect
+        .poll(() =>
+          page.evaluate(
+            "getComputedStyle(document.querySelector('[data-slot=dialog-content]')).scale",
+          ),
+        )
+        .toBe('none');
+      await laidOut(page, testInfo, 'approval');
+    });
+
+    test('lays out the welcome and sign-in of a browser', async ({ page }, testInfo) => {
+      await mockApi(page, { tenant: active(), me: null });
+      await page.goto('/welcome');
+      await expect(page.getByRole('link', { name: 'تسجيل الدخول' })).toBeVisible();
+      await laidOut(page, testInfo, 'welcome');
+      await page.getByRole('link', { name: 'تسجيل الدخول' }).click();
+      await expect(page.getByLabel('رقم الهاتف')).toBeVisible();
+      await laidOut(page, testInfo, 'sign-in');
     });
   });
 }

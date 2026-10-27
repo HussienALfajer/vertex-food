@@ -48,7 +48,7 @@ export function MemberPicker({
             <Button
               type="button"
               variant="secondary"
-              className="h-auto min-h-16 w-full flex-col items-start gap-1 py-3 text-start"
+              className="h-auto min-h-16 w-full flex-col items-start gap-1 py-3 text-start lg:pointer-fine:h-auto"
               onClick={() => onSelect(member)}
             >
               <span className="flex items-center gap-2 text-base font-semibold">

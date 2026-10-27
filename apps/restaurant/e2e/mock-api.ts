@@ -10,11 +10,17 @@ import {
   errorStatus,
   type Governorate,
   type HourException,
+  isWeakPin,
+  type Me,
   onboardingCompleteness,
+  otpRequestSchema,
+  otpVerifySchema,
   ownerReadAccessEndsAt,
   replaceBranchChargesSchema,
   replaceBranchHoursSchema,
   type StoredFile,
+  signInSchema,
+  staffPermissions,
   type Tenant,
   updateBranchSchema,
   updateHourExceptionSchema,
@@ -25,10 +31,13 @@ import {
 } from '@vertex-food/contracts';
 
 /**
- * An in-memory stand-in for the API until S02 adds sessions. It answers the restaurant routes of
- * `apps/api/openapi.json`, validates bodies with the same contracts, and applies the rules the
- * screens react to: suspended or closed writes refused, `CONFLICT` on a stale `updatedAt`,
- * `INVALID_HOURS`, `ONBOARDING_INCOMPLETE`, onboarding completeness. Synthetic data only.
+ * An in-memory stand-in for the API. It answers the restaurant routes of `apps/api/openapi.json`,
+ * validates bodies with the same contracts, and applies the rules the screens react to: suspended
+ * or closed writes refused, `CONFLICT` on a stale `updatedAt`, `INVALID_HOURS`,
+ * `ONBOARDING_INCOMPLETE`, onboarding completeness; the sign-in steps of spec S02 (an OTP on every
+ * new device, the first password, the tenant choice) and the browser's personal session, the
+ * owner's unless a test says otherwise. Staff routes do not check the session: the API's own tests
+ * do. Synthetic data only.
  */
 export type MockApi = {
   tenant: Tenant;
@@ -55,7 +64,45 @@ export type MockApi = {
   editBehind: (change: (state: MockApi) => void) => void;
   /** The `updatedAt` of the next change. */
   now: () => string;
+  /** The browser's personal session (`GET /api/me`), or null when signed out (spec S02). */
+  me: Me | null;
+  /** The member of a registered PC's PIN session, as `GET /api/me` answers it there. */
+  deviceMe: Me;
+  /** Accounts that may sign in, by E.164 phone. */
+  accounts: Map<string, MockAccount>;
+  /** The next password sign-in answers `RATE_LIMITED` (rule 11's lock). */
+  signInLocked: boolean;
 };
+
+/** A synthetic account; `password` null until its first sign-in (rule 13). */
+export type MockAccount = { password: string | null; name: string; me: Me };
+
+/** The OTP the mocked sender "sends" (spec S02: the fake sender until S03). */
+export const mockOtp = '246810';
+
+/** A personal session as `GET /api/me` answers it (rule 34): an owner by default. */
+export function me(tenantOf: Tenant, overrides: Partial<Me> = {}): Me {
+  return {
+    account: {
+      id: syntheticId(),
+      phone: '+963900000010',
+      nameAr: 'مالك تجريبي',
+      hasPassword: true,
+    },
+    tenant: { id: tenantOf.id, nameAr: tenantOf.nameAr, status: tenantOf.status },
+    membershipId: syntheticId(),
+    displayName: 'مالك تجريبي',
+    roles: ['owner'],
+    allBranches: true,
+    branchIds: [],
+    permissions: [...staffPermissions],
+    sessionKind: 'personal',
+    deviceId: null,
+    branchId: null,
+    pinSet: false,
+    ...overrides,
+  };
+}
 
 let clock = Date.parse('2026-10-19T09:00:00.000Z');
 
@@ -220,6 +267,9 @@ export async function mockApi(
     hours?: Record<string, WeeklyPeriod[]>;
     exceptions?: Record<string, HourException[]>;
     charges?: Record<string, BranchCharge[]>;
+    /** The browser's session: the owner's unless null (signed out) or another member's. */
+    me?: Me | null;
+    accounts?: Record<string, MockAccount>;
   },
 ): Promise<MockApi> {
   const files = new Map<string, StoredFile>();
@@ -237,6 +287,24 @@ export async function mockApi(
     refuseOnce: undefined,
     editBehind: (change) => change(state),
     now,
+    me: seed.me === undefined ? me(seed.tenant) : seed.me,
+    deviceMe: me(seed.tenant, {
+      sessionKind: 'device',
+      roles: ['cashier'],
+      allBranches: false,
+      branchIds: (seed.branches ?? []).map((item) => item.id),
+      permissions: ['tenant.view'],
+    }),
+    accounts: new Map(Object.entries(seed.accounts ?? {})),
+    signInLocked: false,
+  };
+  // Challenges and tickets of the sign-in steps, by id: the phone they belong to.
+  const challenges = new Map<string, string>();
+  const tickets = new Map<string, string>();
+  const ticketFor = (phone: string) => {
+    const ticket = `ticket-${syntheticId()}`;
+    tickets.set(ticket, phone);
+    return ticket;
   };
 
   const inUse = () => state.branches.filter((item) => item.archivedAt === null);
@@ -324,6 +392,95 @@ export async function mockApi(
         state.refuseOnce = undefined;
         return refuse(route, once.code);
       }
+    }
+
+    // Identity (spec S02): the browser's session and the sign-in steps.
+    if (path === '/api/me' && method === 'GET') {
+      // A registered PC's PIN session (the fake device's token) or the browser's cookie session.
+      const session = request.headers().authorization ? state.deviceMe : state.me;
+      return session ? route.fulfill({ json: session }) : refuse(route, 'UNAUTHENTICATED');
+    }
+    if (path === '/api/me/pin' && method === 'PUT') {
+      const { newPin } = body() as { newPin: string };
+      const phone = state.me?.account.phone ?? '';
+      return isWeakPin(newPin, phone)
+        ? refuse(route, 'PIN_TOO_WEAK')
+        : route.fulfill({ status: 204 });
+    }
+    if (path === '/api/auth/pow' && method === 'POST') {
+      return route.fulfill({
+        json: { challenge: `pow.${syntheticId()}`, difficulty: 4, expiresAt: at.toISOString() },
+      });
+    }
+    if (path === '/api/auth/sign-in' && method === 'POST') {
+      const input = signInSchema.parse(body());
+      if (state.signInLocked) return refuse(route, 'RATE_LIMITED');
+      const account = state.accounts.get(input.phone);
+      if (!account?.password || account.password !== input.password) {
+        return refuse(route, 'INVALID_CREDENTIALS');
+      }
+      // A device new to the person: the OTP (rule 12).
+      const challengeId = syntheticId();
+      challenges.set(challengeId, input.phone);
+      return route.fulfill({ json: { step: 'otp', challengeId } });
+    }
+    if (path === '/api/auth/otp/request' && method === 'POST') {
+      const input = otpRequestSchema.parse(body());
+      const challengeId = syntheticId();
+      challenges.set(challengeId, input.phone);
+      return route.fulfill({ json: { challengeId } });
+    }
+    if (path === '/api/auth/otp/resend' && method === 'POST') {
+      const { challengeId } = body() as { challengeId: string };
+      return route.fulfill({ json: { challengeId } });
+    }
+    if (path === '/api/auth/otp/verify' && method === 'POST') {
+      const input = otpVerifySchema.parse(body());
+      const phone = challenges.get(input.challengeId);
+      if (!phone || input.code !== mockOtp) return refuse(route, 'OTP_INVALID');
+      const account = state.accounts.get(phone);
+      const first = account !== undefined && account.password === null;
+      return route.fulfill({
+        json: {
+          ticket: ticketFor(phone),
+          needsPassword: first,
+          needsName: first,
+          suggestedName: first ? (account?.name ?? null) : null,
+        },
+      });
+    }
+    const ticketPhone = tickets.get(request.headers()['x-sign-in-ticket'] ?? '');
+    if (path === '/api/auth/password' && method === 'POST') {
+      if (!ticketPhone) return refuse(route, 'TICKET_INVALID');
+      const { password } = body() as { password: string };
+      const account = state.accounts.get(ticketPhone);
+      if (account) account.password = password;
+      return route.fulfill({ json: { ticket: ticketFor(ticketPhone) } });
+    }
+    if (path === '/api/auth/tenant-options' && method === 'GET') {
+      if (!ticketPhone) return refuse(route, 'TICKET_INVALID');
+      return route.fulfill({
+        json: {
+          intent: 'personal',
+          tenants: [
+            {
+              tenantId: state.tenant.id,
+              nameAr: state.tenant.nameAr,
+              status: state.tenant.status,
+              logoFileId: null,
+              branches: inUse().map((item) => ({ id: item.id, nameAr: item.nameAr })),
+            },
+          ],
+        },
+      });
+    }
+    if (path === '/api/auth/personal-session' && method === 'POST') {
+      const account = ticketPhone ? state.accounts.get(ticketPhone) : undefined;
+      if (!account) return refuse(route, 'TICKET_INVALID');
+      if (!account.me.permissions.includes('backoffice.remote')) return refuse(route, 'FORBIDDEN');
+      tickets.delete(request.headers()['x-sign-in-ticket'] ?? '');
+      state.me = account.me;
+      return route.fulfill({ json: account.me });
     }
 
     if (path === '/api/tenant') {

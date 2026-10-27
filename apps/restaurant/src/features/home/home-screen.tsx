@@ -1,4 +1,5 @@
-import { Button } from '@vertex-food/ui';
+import { Button, Callout } from '@vertex-food/ui';
+import { ShieldCheckIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StateCard } from '../../components/state-card';
@@ -28,7 +29,9 @@ function ApprovalTrial({ bridge }: { bridge: DeviceBridge }) {
   if (status?.state !== 'registered' || !status.session) return null;
   return (
     <>
-      <StateCard
+      <Callout
+        className="max-w-2xl"
+        icon={<ShieldCheckIcon aria-hidden />}
         title={t('approval.tryTitle')}
         description={t('approval.tryDescription')}
         action={
