@@ -10,18 +10,21 @@ import { useTranslation } from 'react-i18next';
 export function AppShell({
   navigation,
   actions,
+  personal = false,
   children,
 }: {
   navigation?: ((close: () => void) => ReactNode) | undefined;
-  /** Controls before the theme button: "Switch cashier" on a registered PC. */
+  /** Controls before the theme button: "Switch cashier" on a registered PC, sign-out elsewhere. */
   actions?: ReactNode;
+  /** A personal device (spec S02 rule 34): the product label says "back office". */
+  personal?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation(['common', 'restaurant']);
   return (
     <AppLayout
       productName={t('productName')}
-      productLabel={t('restaurant:productLabel')}
+      productLabel={personal ? t('restaurant:productLabelPersonal') : t('restaurant:productLabel')}
       navigation={navigation}
       labels={{
         skip: t('shell.skip'),

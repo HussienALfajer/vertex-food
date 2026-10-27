@@ -1,4 +1,9 @@
-import type { BranchDetail, Tenant, UpdateBranch } from '@vertex-food/contracts';
+import {
+  type BranchDetail,
+  idleLockMinutesSchema,
+  type Tenant,
+  type UpdateBranch,
+} from '@vertex-food/contracts';
 import {
   Callout,
   Card,
@@ -12,8 +17,10 @@ import {
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { deviceBridge } from '../../lib/device';
 import { useOnline } from '../../lib/online';
 import { can, useStaffAccess } from '../../lib/staff-access';
+import { TextField } from '../sign-in/sign-in-flow';
 import {
   changesSomething,
   chargeLines,
@@ -25,10 +32,14 @@ import {
   moneyErrors,
   updateErrors,
 } from '../tenancy/branch-draft';
-
 import { LocationFields, usePinStates } from '../tenancy/location-fields';
 import { MoneyFields } from '../tenancy/money-fields';
-import { replaceCharges, updateBranch, useSetupCache } from '../tenancy/queries';
+import {
+  replaceCharges,
+  updateBranch,
+  updateBranchSecurity,
+  useSetupCache,
+} from '../tenancy/queries';
 import { isTenantWritable } from '../tenancy/tenant-status';
 import { SaveActions } from './save-actions';
 import { useSettingsSave } from './use-settings-save';
@@ -92,6 +103,7 @@ export function BranchSections({ tenant, detail }: { tenant: Tenant; detail: Bra
       {reloaded && <Callout role="alert" tone="warning" title={t('states.conflictReloaded')} />}
       <BranchLocationSection key={`location-${generation}`} {...props} />
       <BranchMoneySection key={`money-${generation}`} {...props} />
+      <BranchSecuritySection key={`security-${generation}`} {...props} />
     </>
   );
 }
@@ -254,6 +266,84 @@ function BranchMoneySection({ tenant, base, onSaved, onConflict }: SectionProps)
             errors={errors}
             disabled={!allowed || !online}
             currencyLocked={base.branch.currencyLockedAt !== null}
+          />
+        </FormFields>
+        <SaveActions
+          dirty={form.dirty}
+          canSave={online && allowed}
+          busy={save.busy}
+          onDiscard={() => {
+            form.discard();
+            setChecking(false);
+            save.clearNotice();
+          }}
+          notice={save.notice}
+        />
+      </Form>
+    </Card>
+  );
+}
+
+/**
+ * Branch security (spec S02 screen 12, rule 32): the minutes without input after which a PC of
+ * the branch locks, 1 to 60 (`branch.security.edit`: the owner, or a manager of the branch).
+ */
+function BranchSecuritySection({ tenant, base, onSaved, onConflict }: SectionProps) {
+  const { t } = useTranslation('restaurant');
+  const access = useStaffAccess();
+  const online = useOnline();
+  const cache = useSetupCache();
+  const branchId = base.branch.id;
+  const allowed = tenant.status !== 'closed' && can(access, 'branch.security.edit', branchId);
+  const form = useDraft(() => String(base.branch.idleLockMinutes));
+  const [checking, setChecking] = useState(false);
+  const parsed = idleLockMinutesSchema.safeParse(Number(form.draft));
+  const invalid = form.draft.trim() === '' || !parsed.success;
+
+  const save = useSettingsSave({
+    save: async () => {
+      if (!parsed.success) return;
+      const branch = await updateBranchSecurity(branchId, {
+        idleLockMinutes: parsed.data,
+        updatedAt: base.branch.updatedAt,
+      });
+      cache.branchSaved(branch);
+      onSaved({ ...base, branch });
+      form.reset(String(branch.idleLockMinutes));
+      setChecking(false);
+      // This PC's idle lock follows its member list (rule 28): read it now.
+      await deviceBridge?.refresh();
+    },
+    reload: onConflict,
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('settings.branch.security')}</CardTitle>
+        <CardDescription>{t('settings.branch.securityDescription')}</CardDescription>
+      </CardHeader>
+      <Form
+        onSubmit={() => {
+          setChecking(true);
+          if (invalid) return false;
+          save.run();
+          return true;
+        }}
+        busy={save.busy}
+        className="flex flex-col gap-6"
+      >
+        <FormFields>
+          <TextField
+            label={t('settings.branch.idleLockMinutes')}
+            description={t('settings.branch.idleLockHint')}
+            inputMode="numeric"
+            dir="ltr"
+            maxLength={2}
+            value={form.draft}
+            disabled={!allowed || !online}
+            onChange={(event) => form.setDraft(event.currentTarget.value.replace(/\D/g, ''))}
+            error={checking && invalid ? t('settings.branch.idleLockInvalid') : undefined}
           />
         </FormFields>
         <SaveActions

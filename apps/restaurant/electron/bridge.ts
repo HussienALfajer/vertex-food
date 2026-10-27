@@ -1,7 +1,10 @@
 import {
   deviceNameSchema,
   idSchema,
+  mobilePhoneNumberSchema,
+  passwordPolicy,
   pinSchema,
+  proofOfWorkSolutionSchema,
   type StaffPermission,
   type StaffRole,
   staffPermissionSchema,
@@ -42,6 +45,11 @@ export type DeviceSessionView = {
   membershipId: string;
   /** Opened online, with an access token for the API; offline sessions have none (rule 25). */
   online: boolean;
+  /**
+   * Opened by password to replace a forgotten PIN (rule 22): the member chooses a new PIN before
+   * anything else; it clears once the member list carries the new one.
+   */
+  choosePin: boolean;
 };
 
 export type DeviceStatus =
@@ -76,6 +84,19 @@ export const signInInputSchema = z.object({ membershipId: idSchema, pin: pinSche
 
 export type SignInInput = z.infer<typeof signInInputSchema>;
 
+/**
+ * Rule 22: an owner or manager who forgot their PIN enters their phone and password here; the
+ * main process signs in with the PC's device token (so no OTP) and opens their session by ticket.
+ */
+export const passwordSignInInputSchema = z.object({
+  membershipId: idSchema,
+  phone: mobilePhoneNumberSchema,
+  password: z.string().min(1).max(passwordPolicy.maxLength),
+  proofOfWork: proofOfWorkSolutionSchema,
+});
+
+export type PasswordSignInInput = z.infer<typeof passwordSignInInputSchema>;
+
 export const lockReasonSchema = z.enum(['signed_out', 'locked', 'idle']);
 
 export type LockReason = z.infer<typeof lockReasonSchema>;
@@ -103,6 +124,8 @@ export type DeviceBridge = {
   register(input: RegisterInput): Promise<BridgeResult>;
   /** A PIN session: online when the API answers, otherwise checked here (rules 24, 25, 30). */
   signIn(input: SignInInput): Promise<BridgeResult>;
+  /** Rule 22: an owner's or manager's session by password, online only, to choose a new PIN. */
+  signInByPassword(input: PasswordSignInInput): Promise<BridgeResult>;
   /** Locks the PC: the session ends (rule 32). */
   lock(reason: LockReason): Promise<void>;
   /** The online session's access token, refreshed when due; null offline or without one. */
@@ -122,6 +145,7 @@ export const deviceChannels = {
   status: 'device:status',
   register: 'device:register',
   signIn: 'device:sign-in',
+  signInByPassword: 'device:sign-in-by-password',
   lock: 'device:lock',
   accessToken: 'device:access-token',
   refresh: 'device:refresh',

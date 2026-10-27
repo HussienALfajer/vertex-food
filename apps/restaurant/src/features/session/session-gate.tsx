@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import type { Me } from '@vertex-food/contracts';
 import { Button, Callout } from '@vertex-food/ui';
 import { LockIcon, WifiIcon } from 'lucide-react';
 import { type ReactNode, useEffect } from 'react';
@@ -17,7 +18,9 @@ import { ApprovalTrial } from './approval-trial';
 import { ChoosePinDialog } from './choose-pin-dialog';
 import { activityEvents, createIdleTimer } from './idle-timer';
 import { LockScreen } from './lock-screen';
-import { meQuery, useDeviceStatus, useSessionLost } from './queries';
+import { PersonalActions } from './personal-actions';
+import { MeContext, meQuery, useDeviceStatus, useSessionLost } from './queries';
+import { ReauthProvider } from './reauth';
 import { WindowWarning } from './window-warning';
 
 type Registered = Extract<DeviceStatus, { state: 'registered' }>;
@@ -100,8 +103,9 @@ function DeviceSession({
         branchIds: [status.branch.id],
       };
 
-  if (member && !member.hasPin) {
-    // The member signed in by password (registration) and has no PIN yet: they choose one first.
+  if (member && (!member.hasPin || session.choosePin)) {
+    // The member signed in by password (registration, or a forgotten PIN, rule 22) and needs a
+    // PIN: they choose one first. Their password was just entered, so no current PIN is asked.
     return (
       <Bare>
         <ChoosePinDialog
@@ -120,6 +124,7 @@ function DeviceSession({
   return (
     <StaffAccessContext.Provider value={access}>
       <SignedIn
+        me={me.data ?? null}
         actions={
           <Button
             type="button"
@@ -174,7 +179,7 @@ function PersonalGate() {
     if (entry || pathname === '/lock') return <Navigate to="/" replace />;
     return (
       <StaffAccessContext.Provider value={accessOfMe(me.data)}>
-        <SignedIn />
+        <SignedIn me={me.data} personal actions={<PersonalActions />} />
       </StaffAccessContext.Provider>
     );
   }
@@ -189,18 +194,35 @@ function PersonalGate() {
   return <Bare>{me.isPending && online ? <LoadingState /> : <OfflineState />}</Bare>;
 }
 
-/** The app with a session: the sidebar, the tenant gate, the screen. */
-function SignedIn({ actions, notices }: { actions?: ReactNode; notices?: ReactNode }) {
+/**
+ * The app with a session: the sidebar, the tenant gate, the screen, and the password dialog of
+ * sensitive actions (rule 26). On a personal device the shell says "back office" (rule 34).
+ */
+function SignedIn({
+  me,
+  personal = false,
+  actions,
+  notices,
+}: {
+  me: Me | null;
+  personal?: boolean;
+  actions?: ReactNode;
+  notices?: ReactNode;
+}) {
   const navigation = useRestaurantNavigation();
   return (
-    <AppShell navigation={navigation} actions={actions}>
-      <div className="flex flex-col gap-6">
-        {notices}
-        <TenantGate>
-          <Outlet />
-        </TenantGate>
-      </div>
-    </AppShell>
+    <MeContext.Provider value={me}>
+      <ReauthProvider hasPassword={me?.account.hasPassword ?? false}>
+        <AppShell navigation={navigation} actions={actions} personal={personal}>
+          <div className="flex flex-col gap-6">
+            {notices}
+            <TenantGate>
+              <Outlet />
+            </TenantGate>
+          </div>
+        </AppShell>
+      </ReauthProvider>
+    </MeContext.Provider>
   );
 }
 

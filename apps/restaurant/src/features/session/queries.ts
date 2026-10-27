@@ -1,5 +1,6 @@
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import type { Me } from '@vertex-food/contracts';
+import { createContext, useContext, useEffect } from 'react';
 import { api, onSessionLost, unwrap } from '../../lib/api';
 import { type DeviceBridge, deviceBridge } from '../../lib/device';
 
@@ -43,6 +44,13 @@ export function meQuery(sessionKey: string) {
     queryFn: () => unwrap(api.GET('/api/me')),
     retry: false,
   });
+}
+
+/** The signed-in member as the API answered (`GET /api/me`); null in a PIN session opened offline. */
+export const MeContext = createContext<Me | null>(null);
+
+export function useMe(): Me | null {
+  return useContext(MeContext);
 }
 
 /**

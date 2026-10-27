@@ -17,6 +17,8 @@ export type FakeMember = {
   pin: string | null;
   pinDisabled?: boolean;
   usedThisDevice?: boolean;
+  /** Owners and managers sign in by password to replace a forgotten PIN (rule 22). */
+  password?: string;
 };
 
 export type FakeDevice = {
@@ -30,6 +32,8 @@ export type FakeDevice = {
   registrantId: string | null;
   window: { open: boolean; daysSinceSync: number; warn: boolean; clockBehind: boolean };
   sessionMemberId: string | null;
+  /** The open session came by password: the member chooses a new PIN first (rule 22). */
+  choosePin?: boolean;
 };
 
 export function fakeMember(
@@ -117,6 +121,8 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
         const { newPin } = (await request.json()) as { newPin: string };
         const member = state.sessionMemberId ? find(state.sessionMemberId) : undefined;
         if (member) member.pin = newPin;
+        state.choosePin = false;
+        changed();
       }
       return response;
     };
@@ -143,7 +149,11 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
           window: state.window,
           online: scope.navigator.onLine,
           session: state.sessionMemberId
-            ? { membershipId: state.sessionMemberId, online: scope.navigator.onLine }
+            ? {
+                membershipId: state.sessionMemberId,
+                online: scope.navigator.onLine,
+                choosePin: Boolean(state.choosePin),
+              }
             : null,
         };
       },
@@ -169,8 +179,20 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
         changed();
         return result;
       },
+      signInByPassword: async (input: { membershipId: string; password: string }) => {
+        if (!scope.navigator.onLine) return { ok: false, code: 'NETWORK_ERROR' };
+        const member = find(input.membershipId);
+        if (!member?.password || member.password !== input.password) {
+          return { ok: false, code: 'INVALID_CREDENTIALS' };
+        }
+        state.sessionMemberId = member.membershipId;
+        state.choosePin = true;
+        changed();
+        return { ok: true };
+      },
       lock: async () => {
         state.sessionMemberId = null;
+        state.choosePin = false;
         changed();
       },
       accessToken: async () =>

@@ -14,6 +14,7 @@ import type {
   StoredFile,
   Tenant,
   UpdateBranch,
+  UpdateBranchSecurity,
   UpdateHourException,
   UpdateTenant,
 } from '@vertex-food/contracts';
@@ -103,6 +104,13 @@ export function completeOnboarding(): Promise<Tenant> {
 
 export function updateBranch(id: string, input: UpdateBranch): Promise<Branch> {
   return unwrap(api.PATCH('/api/branches/{id}', { params: { path: { id } }, body: body(input) }));
+}
+
+/** Spec S02 rule 32: the branch's idle-lock minutes (`branch.security.edit`). */
+export function updateBranchSecurity(id: string, input: UpdateBranchSecurity): Promise<Branch> {
+  return unwrap(
+    api.PATCH('/api/branches/{id}/security', { params: { path: { id } }, body: input }),
+  );
 }
 
 export function replaceHours(id: string, input: ReplaceBranchHours): Promise<BranchHours> {

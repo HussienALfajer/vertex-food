@@ -10,6 +10,7 @@ import type {
   BridgeResult,
   DeviceStatus,
   LockReason,
+  PasswordSignInInput,
   ReenableInput,
   RegisterInput,
   SignInInput,
@@ -41,6 +42,11 @@ type Session = {
   membershipId: string;
   tokens: SessionTokens | null;
   accessDueAt: number;
+  /**
+   * Opened by password to replace a forgotten PIN (rule 22): the verifier the member list held
+   * then, so a list with another one shows the new PIN was set.
+   */
+  replacing?: { pinVerifier: string | null };
 };
 
 export type DeviceServiceDeps = {
@@ -142,7 +148,11 @@ export class DeviceService {
       window: windowOf(record, this.deps.now()),
       online: this.online,
       session: this.session
-        ? { membershipId: this.session.membershipId, online: this.session.tokens !== null }
+        ? {
+            membershipId: this.session.membershipId,
+            online: this.session.tokens !== null,
+            choosePin: this.session.replacing !== undefined,
+          }
         : null,
     };
   }
@@ -296,6 +306,53 @@ export class DeviceService {
     });
   }
 
+  /**
+   * Rule 22: an owner or manager who forgot their PIN signs in by password with this PC's device
+   * token (a member of this PC skips the OTP), then opens their session by that ticket. Online
+   * only; the server refuses anyone but an owner or manager of this PC.
+   */
+  signInByPassword(input: PasswordSignInInput): Promise<BridgeResult> {
+    return this.run(async () => {
+      const record = this.registered();
+      if (!record) return { ok: false, code: 'DEVICE_UNKNOWN' };
+      const member = record.memberList.members.find((m) => m.membershipId === input.membershipId);
+      if (!member) return { ok: false, code: 'MEMBERSHIP_INACTIVE' };
+      try {
+        const tokens = await this.withToken(record.registration, async (token) => {
+          const result = await this.deps.client.signIn(token, {
+            phone: input.phone,
+            password: input.password,
+            intent: 'register_device',
+            proofOfWork: input.proofOfWork,
+          });
+          // An OTP is asked only of someone who is not a member of this PC.
+          if (result.step !== 'done') throw new DeviceApiError('FORBIDDEN');
+          return this.deps.client.openSession(token, {
+            membershipId: input.membershipId,
+            ticket: result.ticket,
+          });
+        });
+        this.online = true;
+        const now = this.deps.now();
+        this.save(recordSession(seeTime(record, now), input.membershipId, now));
+        this.session = {
+          ...this.onlineSession(input.membershipId, tokens),
+          replacing: { pinVerifier: member.pinVerifier },
+        };
+        return { ok: true };
+      } catch (error) {
+        this.online = !isUnreachable(error);
+        if (codeOf(error) === 'DEVICE_REVOKED') {
+          await this.wipe(record);
+          return { ok: false, code: 'DEVICE_REVOKED' };
+        }
+        return { ok: false, code: codeOf(error) };
+      } finally {
+        this.deps.onChange();
+      }
+    });
+  }
+
   private async signInHere(record: Registered, input: SignInInput, now: Date) {
     const outcome = await signInOffline(
       record,
@@ -378,6 +435,11 @@ export class DeviceService {
         this.save(this.withList(record.registration, list));
         const member = list.members.find((m) => m.membershipId === this.session?.membershipId);
         if (this.session && !member) this.session = null;
+        // Rule 22: the replaced PIN arrived; the session goes on as any other.
+        if (this.session?.replacing && member?.pinVerifier !== this.session.replacing.pinVerifier) {
+          const { replacing: _, ...session } = this.session;
+          this.session = session;
+        }
       } catch (error) {
         if (isUnreachable(error)) this.online = false;
         else if (codeOf(error) === 'DEVICE_REVOKED') await this.wipe(record);

@@ -10,6 +10,7 @@ const bridge: DeviceBridge = {
   status: () => electron.ipcRenderer.invoke('device:status'),
   register: (input) => electron.ipcRenderer.invoke('device:register', input),
   signIn: (input) => electron.ipcRenderer.invoke('device:sign-in', input),
+  signInByPassword: (input) => electron.ipcRenderer.invoke('device:sign-in-by-password', input),
   lock: (reason) => electron.ipcRenderer.invoke('device:lock', reason),
   accessToken: () => electron.ipcRenderer.invoke('device:access-token'),
   refresh: () => electron.ipcRenderer.invoke('device:refresh'),

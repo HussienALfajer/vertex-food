@@ -2,10 +2,18 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import type { Branch, Tenant } from '@vertex-food/contracts';
 import { sidebarLinkClassName } from '@vertex-food/ui';
-import { Building2Icon, ClockIcon, HouseIcon, StoreIcon } from 'lucide-react';
+import {
+  Building2Icon,
+  ClockIcon,
+  HouseIcon,
+  MonitorIcon,
+  StoreIcon,
+  UserRoundIcon,
+  UsersIcon,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useStaffAccess } from '../../lib/staff-access';
+import { can, type StaffAccess, useStaffAccess } from '../../lib/staff-access';
 import { branchesQuery, tenantQuery } from './queries';
 import { onboardingView } from './tenant-status';
 
@@ -25,7 +33,9 @@ export function useRestaurantNavigation(): ((close: () => void) => ReactNode) | 
     !(current.status === 'onboarding' && !current.onboardingCompletedAt);
   const branches = useQuery({ ...branchesQuery, enabled: shown });
   if (!(shown && current)) return undefined;
-  return (close) => <RestaurantNav tenant={current} branches={branches.data} onNavigate={close} />;
+  return (close) => (
+    <RestaurantNav tenant={current} branches={branches.data} access={access} onNavigate={close} />
+  );
 }
 
 /**
@@ -36,10 +46,12 @@ export function useRestaurantNavigation(): ((close: () => void) => ReactNode) | 
 function RestaurantNav({
   tenant,
   branches,
+  access,
   onNavigate,
 }: {
   tenant: Tenant;
   branches: Branch[] | undefined;
+  access: StaffAccess;
   onNavigate: () => void;
 }) {
   const { t } = useTranslation('restaurant');
@@ -78,6 +90,22 @@ function RestaurantNav({
           </Link>
         )
       )}
+      {can(access, 'staff.view') && (
+        <Link to="/settings/staff" onClick={onNavigate} className={sidebarLinkClassName}>
+          <UsersIcon aria-hidden />
+          {t('nav.staff')}
+        </Link>
+      )}
+      {can(access, 'devices.manage') && (
+        <Link to="/settings/devices" onClick={onNavigate} className={sidebarLinkClassName}>
+          <MonitorIcon aria-hidden />
+          {t('nav.devices')}
+        </Link>
+      )}
+      <Link to="/me" onClick={onNavigate} className={sidebarLinkClassName}>
+        <UserRoundIcon aria-hidden />
+        {t('nav.account')}
+      </Link>
     </>
   );
 }
