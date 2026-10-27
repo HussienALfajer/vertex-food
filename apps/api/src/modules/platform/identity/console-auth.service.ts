@@ -25,7 +25,7 @@ import {
   platformUsers,
   type Transaction,
 } from '@vertex-food/db';
-import { and, count, eq, isNull, lt, ne, or } from 'drizzle-orm';
+import { and, count, eq, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { PlatformActor } from '../../../core/access/actor.js';
 import type { ConsoleRequest } from '../../../core/access/session-verifier.js';
 import { auditPlatform } from '../../../core/audit/audit.js';
@@ -210,8 +210,13 @@ export class ConsoleAuthService {
       await this.failed(user.id, now, 'platform_user.sign_in_failed');
       throw invalidCredentials();
     }
-    // The count is not reset here: TOTP and recovery-code guesses share it, so only a passed
-    // second factor (or setup) clears it, and a known password never buys more guesses.
+    // The password passed: only its own claim is taken back. TOTP and recovery-code guesses share
+    // the count, so only a passed second factor (or setup) clears it, and a known password never
+    // buys more guesses.
+    await this.db
+      .update(platformUsers)
+      .set({ failedSignIns: sql`greatest(${platformUsers.failedSignIns} - 1, 0)`, updatedAt: now })
+      .where(eq(platformUsers.id, user.id));
     if (input.setupCode !== undefined) {
       const totpSecret = newTotpSecret();
       const sealed = this.box.seal(`${totpContext(user.id)}:setup`, totpSecret);

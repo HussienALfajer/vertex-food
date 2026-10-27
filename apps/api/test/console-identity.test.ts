@@ -277,10 +277,10 @@ describe('signing in (rule 39)', () => {
       ).body.code;
     const first = await ticket();
     for (let i = 0; i < 2; i += 1) expect(await guess(first)).toBe('TOTP_INVALID');
-    // The password again (the 3rd and 4th claims) does not clear the two wrong codes.
+    // The password again does not clear the two wrong codes, and counts as no failure.
     const second = await ticket();
-    // Five attempts counted (two passwords, three codes): the fifth, wrong, locks the user.
-    expect(await guess(second)).toBe('TOTP_INVALID');
+    for (let i = 0; i < 3; i += 1) expect(await guess(second)).toBe('TOTP_INVALID');
+    // The fifth wrong code in a row locked the user.
     expect(await guess(second)).toBe('RATE_LIMITED');
     nextStep();
     const locked = await client(app)
