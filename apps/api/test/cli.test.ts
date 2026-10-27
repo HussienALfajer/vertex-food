@@ -4,6 +4,10 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { runCommand, USAGE } from '../src/cli/commands.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
+import {
+  ConsoleAccountsService,
+  PlatformUsersService,
+} from '../src/modules/platform/identity/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
 
@@ -28,7 +32,13 @@ async function run(...argv: string[]) {
   const err: string[] = [];
   const code = await runCommand(
     argv,
-    { tenancy: app.get(TenancyService), areas: app.get(AreasService), owner: () => owner },
+    {
+      tenancy: app.get(TenancyService),
+      areas: app.get(AreasService),
+      platformUsers: app.get(PlatformUsersService),
+      accounts: app.get(ConsoleAccountsService),
+      owner: () => owner,
+    },
     { out: (text) => out.push(text), err: (text) => err.push(text) },
   );
   return { code, out: out.join('\n'), err: err.join('\n') };
@@ -190,5 +200,111 @@ describe('the CLI', () => {
       'Test City',
     );
     expect(again).toMatchObject({ code: 1, err: expect.stringContaining('CONFLICT') });
+  });
+
+  it('creates and resets a platform user with a setup code, in the platform audit', async () => {
+    const created = await run(
+      'platform-user:create',
+      '--operator',
+      'test operator',
+      '--phone',
+      '0944 000 777',
+      '--name',
+      'مدير أول',
+      '--role',
+      'admin',
+    );
+    expect(created).toMatchObject({ code: 0, err: '' });
+    const setup = JSON.parse(created.out);
+    expect(setup.user).toMatchObject({ role: 'admin', status: 'pending_setup' });
+    expect(setup.setupCode).toMatch(/^[A-Z2-7]{4}-[A-Z2-7]{4}-[A-Z2-7]{4}$/);
+    const reset = await run('platform-user:reset', setup.user.id, '--operator', 'test operator');
+    expect(reset.code).toBe(0);
+    expect(JSON.parse(reset.out).setupCode).not.toBe(setup.setupCode);
+    const actions = await db
+      .select({ action: platformAuditEntries.action, name: platformAuditEntries.actorName })
+      .from(platformAuditEntries)
+      .where(eq(platformAuditEntries.entityId, setup.user.id));
+    expect(actions).toEqual([
+      { action: 'platform_user.created', name: 'test operator' },
+      { action: 'platform_user.reset', name: 'test operator' },
+    ]);
+    const twice = await run(
+      'platform-user:create',
+      '--operator',
+      'test operator',
+      '--phone',
+      '0944 000 777',
+      '--name',
+      'مدير ثان',
+      '--role',
+      'sales',
+    );
+    expect(twice).toMatchObject({ code: 1, err: expect.stringContaining('CONFLICT') });
+  });
+
+  it("authorizes an owner's password reset and changes their phone (rule 15)", async () => {
+    const created = await run(
+      'tenant:create',
+      '--operator',
+      'test operator',
+      '--name-ar',
+      'مطعم الاسترداد',
+      '--slug',
+      slug(),
+      '--currency',
+      'USD',
+      '--branch',
+      'main=الفرع الرئيسي',
+      '--owner-phone',
+      '0944 000 888',
+      '--owner-name',
+      'مالك تجريبي',
+    );
+    const tenantId = JSON.parse(created.out).tenant.id as string;
+    const reset = await run(
+      'account:authorize-password-reset',
+      '--operator',
+      'support person',
+      '--phone',
+      '0944 000 888',
+      '--reason',
+      'تحقق بالهاتف',
+    );
+    expect(reset.code).toBe(0);
+    const { accountId } = JSON.parse(reset.out);
+    const changed = await run(
+      'account:change-phone',
+      '--operator',
+      'support person',
+      '--phone',
+      '0944 000 888',
+      '--new-phone',
+      '0944 000 889',
+      '--reason',
+      'رقم جديد',
+    );
+    expect(changed.code).toBe(0);
+    expect(JSON.parse(changed.out)).toMatchObject({ id: accountId, phone: '+963944000889' });
+    const entries = await withTenant(db, tenantId, (tx) =>
+      tx
+        .select({ action: auditEntries.action, name: auditEntries.actorName })
+        .from(auditEntries)
+        .where(eq(auditEntries.entityId, accountId)),
+    );
+    expect(entries).toEqual([
+      { action: 'account.password_reset_authorized', name: 'support person' },
+      { action: 'account.phone_changed', name: 'support person' },
+    ]);
+    const unknown = await run(
+      'account:authorize-password-reset',
+      '--operator',
+      'support person',
+      '--phone',
+      '0944 000 899',
+      '--reason',
+      'x y',
+    );
+    expect(unknown).toMatchObject({ code: 1, err: 'NOT_FOUND: No such account' });
   });
 });

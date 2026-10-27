@@ -1,5 +1,6 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
 import {
+  type ConsolePermission,
   DomainError,
   permissionCatalog,
   type SignInIntent,
@@ -38,8 +39,16 @@ export type StaffActor = {
   passwordVerifiedAt: Date | null;
 };
 
-/** Vertex staff in the console (S02, console sessions arrive with the console identity). */
-export type PlatformActor = { kind: 'platform'; userId: string };
+/** Vertex staff signed in to the console (spec S02 rules 38–43), from a verified session cookie. */
+export type PlatformActor = {
+  kind: 'platform';
+  userId: string;
+  sessionId: string;
+  /** Effective console permissions (`effectiveConsolePermissions`). */
+  permissions: ConsolePermission[];
+  /** The last TOTP entered in this session, for sensitive actions (rule 40). */
+  reauthenticatedAt: Date | null;
+};
 
 /** The API CLI, run on the server by Vertex staff: `name` is the operator, for the audit log. */
 export type SystemActor = { kind: 'system'; name: string };

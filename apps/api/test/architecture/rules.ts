@@ -24,7 +24,10 @@ export function routeViolations(routes: Route[]): string[] {
       violations.push(`${route.name} declares no entitlement (@RequiresFeature or @NoFeature)`);
     }
     const underConsole = route.path === '/api/console' || route.path.startsWith('/api/console/');
-    if ((route.access?.kind === 'console') !== underConsole) {
+    // Signing in to the console happens before a session exists: public, under /api/console/auth/.
+    const consoleSignIn =
+      route.access?.kind === 'public' && route.path.startsWith('/api/console/auth/');
+    if ((route.access?.kind === 'console' || consoleSignIn) !== underConsole) {
       violations.push(`${route.name}: console routes, and only they, live under /api/console/`);
     }
     if (!schemaId(route.responseSchema)) {

@@ -29,7 +29,8 @@ import { TenancyService } from './tenancy.service.js';
 const idParam = { schema: idSchema };
 
 /**
- * The tenant registry for Vertex staff (spec S01; screens in S22). The CLI calls the same service
+ * The tenant registry for Vertex staff (spec S01; screens in S22). Status and slug changes need a
+ * TOTP re-entry (spec S02 rule 40); each request names its tenant in the platform audit (rule 43). The CLI calls the same service
  * as the `system` actor with the operator's name.
  */
 @Controller('console/tenants')
@@ -48,7 +49,7 @@ export class TenancyConsoleController {
   }
 
   @Get(':id')
-  @ConsoleRoute('console.tenants.manage')
+  @ConsoleRoute({ subjectTenant: 'id' }, 'console.tenants.manage')
   @SerializeOptions({ schema: consoleTenantDetailSchema })
   get(@Param('id', idParam) id: string) {
     return this.tenancy.getConsoleTenant(id);
@@ -65,7 +66,7 @@ export class TenancyConsoleController {
   }
 
   @Put(':id/slug')
-  @ConsoleRoute('console.tenants.manage')
+  @ConsoleRoute({ reauth: true, subjectTenant: 'id' }, 'console.tenants.manage')
   @SerializeOptions({ schema: consoleTenantDetailSchema })
   setSlug(
     @CurrentPlatformUser() user: PlatformActor,
@@ -76,7 +77,7 @@ export class TenancyConsoleController {
   }
 
   @Post(':id/status')
-  @ConsoleRoute('console.tenants.status')
+  @ConsoleRoute({ reauth: true, subjectTenant: 'id' }, 'console.tenants.status')
   @SerializeOptions({ schema: consoleTenantDetailSchema })
   changeStatus(
     @CurrentPlatformUser() user: PlatformActor,
@@ -87,7 +88,7 @@ export class TenancyConsoleController {
   }
 
   @Post(':id/branches')
-  @ConsoleRoute('console.tenants.manage')
+  @ConsoleRoute({ subjectTenant: 'id' }, 'console.tenants.manage')
   @SerializeOptions({ schema: branchSchema })
   createBranch(
     @CurrentPlatformUser() user: PlatformActor,
@@ -98,7 +99,7 @@ export class TenancyConsoleController {
   }
 
   @Post(':id/branches/:branchId/archive')
-  @ConsoleRoute('console.tenants.manage')
+  @ConsoleRoute({ subjectTenant: 'id' }, 'console.tenants.manage')
   @SerializeOptions({ schema: branchSchema })
   archiveBranch(
     @CurrentPlatformUser() user: PlatformActor,

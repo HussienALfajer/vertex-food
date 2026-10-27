@@ -148,6 +148,12 @@ describe('the rules catch', () => {
     @StaffRoute('tenant.view')
     @NoFeature()
     staffInConsole() {}
+
+    // Only the sign-in steps under /api/console/auth/ are public in the console.
+    @Get('public')
+    @Public()
+    @NoFeature()
+    publicInConsole() {}
   }
 
   @Module({ controllers: [BrokenController, ConsoleBrokenController], providers: [Implicit] })
@@ -192,6 +198,7 @@ describe('the rules catch', () => {
         'BrokenController.bare declares no response schema with an id (@SerializeOptions({ schema }))',
         'BrokenController.consoleOutside: console routes, and only they, live under /api/console/',
         'ConsoleBrokenController.staffInConsole: console routes, and only they, live under /api/console/',
+        'ConsoleBrokenController.publicInConsole: console routes, and only they, live under /api/console/',
         'BrokenController.inherited declares no response schema with an id (@SerializeOptions({ schema }))',
         'RoutedController.staffRouted: console routes, and only they, live under /api/console/',
         'BrokenController.raw takes @Res() or @Next(), which skip the response serializer',

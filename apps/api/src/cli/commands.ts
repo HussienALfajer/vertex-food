@@ -1,9 +1,13 @@
 import { parseArgs } from 'node:util';
 import {
   archiveBranchSchema,
+  authorizeAccountPasswordResetSchema,
+  changeAccountPhoneSchema,
+  consoleAccountLookupSchema,
   createBranchSchema,
   createCitySchema,
   createGovernorateSchema,
+  createPlatformUserSchema,
   createTenantSchema,
   DomainError,
   idSchema,
@@ -15,6 +19,10 @@ import type { Database } from '@vertex-food/db';
 import { z } from 'zod';
 import type { SystemActor } from '../core/access/actor.js';
 import type { AreasService } from '../modules/platform/areas/index.js';
+import type {
+  ConsoleAccountsService,
+  PlatformUsersService,
+} from '../modules/platform/identity/index.js';
 import type { TenancyService } from '../modules/platform/tenancy/index.js';
 
 export const USAGE = `Usage (Vertex staff, on the server with the API's .env); every command takes --operator <your name>:
@@ -26,7 +34,11 @@ export const USAGE = `Usage (Vertex staff, on the server with the API's .env); e
   branch:create <tenant-id> --code <code> --name-ar <name> [--name-latin <name>] [--currency <USD|TRY|SYP>]
   branch:archive <tenant-id> <branch-id> [--note <text>]
   governorate:add --name-ar <name> --name-latin <name>
-  city:add --governorate <governorate-id> --name-ar <name> --name-latin <name>`;
+  city:add --governorate <governorate-id> --name-ar <name> --name-latin <name>
+  platform-user:create --phone <phone> --name <name> --role <admin|sales|dispatch|finance|support>
+  platform-user:reset <platform-user-id>
+  account:authorize-password-reset --phone <phone> --reason <text>
+  account:change-phone --phone <old phone> --new-phone <new phone> --reason <text>`;
 
 const options = {
   operator: { type: 'string' },
@@ -44,6 +56,10 @@ const options = {
   governorate: { type: 'string' },
   'owner-phone': { type: 'string' },
   'owner-name': { type: 'string' },
+  phone: { type: 'string' },
+  'new-phone': { type: 'string' },
+  name: { type: 'string' },
+  role: { type: 'string' },
 } as const;
 
 const operatorSchema = z.string().trim().min(2).max(100);
@@ -61,12 +77,15 @@ export type Output = { out: (text: string) => void; err: (text: string) => void 
 export type Services = {
   tenancy: TenancyService;
   areas: AreasService;
+  platformUsers: PlatformUsersService;
+  accounts: ConsoleAccountsService;
   /** The owner connection, for areas only: the app role cannot write them. */
   owner: () => Database;
 };
 
 /**
- * The tenancy commands for Vertex staff until the console screens (S22, spec S01). Each calls the
+ * The tenancy, platform user and owner recovery commands for Vertex staff until the console screens
+ * (S22, specs S01 and S02). Each calls the
  * same service as its console route, as the `system` actor with the operator's name, so every
  * change is audited. Answers the process exit code: 0 done, 1 refused, 2 misused. Adapted from
  * Vertex Shifa's `tenant-commands.ts`.
@@ -86,7 +105,7 @@ export async function runCommand(
   const { values, positionals } = parsed;
   const [command, first, second, ...extra] = positionals;
   const print = (value: unknown) => output.out(JSON.stringify(value, null, 2));
-  const { tenancy, areas } = services;
+  const { tenancy, areas, platformUsers, accounts } = services;
   try {
     if (extra.length > 0 || !command) {
       output.err(USAGE);
@@ -204,6 +223,43 @@ export async function runCommand(
           ),
         );
         return 0;
+      // Spec S02 rules 38, 42: the first admin, and a reset even of the last admin. The setup
+      // code is printed this once, for the operator to hand over in person.
+      case 'platform-user:create':
+        print(
+          await platformUsers.create(
+            operator(),
+            createPlatformUserSchema.parse({
+              phone: values.phone,
+              name: values.name,
+              role: values.role,
+            }),
+          ),
+        );
+        return 0;
+      case 'platform-user:reset':
+        print(await platformUsers.reset(operator(), idSchema.parse(first)));
+        return 0;
+      // Rule 15: owner recovery after identity checks outside the system.
+      case 'account:authorize-password-reset': {
+        const actor = operator();
+        const { phone } = consoleAccountLookupSchema.parse({ phone: values.phone });
+        const { reason } = authorizeAccountPasswordResetSchema.parse({ reason: values.reason });
+        const id = await accounts.lookupId(phone);
+        print(await accounts.authorizePasswordReset(actor, id, reason));
+        return 0;
+      }
+      case 'account:change-phone': {
+        const actor = operator();
+        const { phone } = consoleAccountLookupSchema.parse({ phone: values.phone });
+        const change = changeAccountPhoneSchema.parse({
+          phone: values['new-phone'],
+          reason: values.reason,
+        });
+        const id = await accounts.lookupId(phone);
+        print(await accounts.changePhone(actor, id, change.phone, change.reason));
+        return 0;
+      }
     }
   } catch (error) {
     if (error instanceof DomainError) {

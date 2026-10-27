@@ -6,6 +6,7 @@ import type { Route } from '../routes.js';
 import type { Access } from './access.decorators.js';
 import type { AuthenticatedRequest } from './actor.js';
 import {
+  CONSOLE_SESSION_COOKIE,
   DEVICE_TOKEN_HEADER,
   type SessionVerifier,
   STAFF_SESSION_COOKIE,
@@ -50,7 +51,14 @@ export function cookieValue(cookieHeader: string | undefined, name: string): str
 
 const unauthenticated = () => new DomainError('UNAUTHENTICATED', 'No session');
 
-type Matcher = { method: string; pattern: RegExp; params: number; access: Access | undefined };
+type Matcher = {
+  method: string;
+  path: string;
+  pattern: RegExp;
+  /** The names of the path's parameters, in order. */
+  names: string[];
+  access: Access | undefined;
+};
 
 /** `/api/staff/:id/access` as a pattern of the whole path; fewer parameters match first. */
 function matchers(routes: Route[]): Matcher[] {
@@ -59,18 +67,22 @@ function matchers(routes: Route[]): Matcher[] {
       const segments = route.path
         .split('/')
         .map((segment) =>
-          segment.startsWith(':') ? '[^/]+' : segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          segment.startsWith(':') ? '([^/]+)' : segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
         );
       return {
         method: route.method,
+        path: route.path,
         // Express matches paths without regard to case: so does the step, or `/API/STAFF` would
         // reach the body parser unchecked.
         pattern: new RegExp(`^${segments.join('/')}/?$`, 'i'),
-        params: segments.filter((segment) => segment === '[^/]+').length,
+        names: route.path
+          .split('/')
+          .filter((segment) => segment.startsWith(':'))
+          .map((segment) => segment.slice(1)),
         access: route.access,
       };
     })
-    .sort((a, b) => a.params - b.params);
+    .sort((a, b) => a.names.length - b.names.length);
 }
 
 /**
@@ -80,17 +92,20 @@ function matchers(routes: Route[]): Matcher[] {
  * tokens it declares through the identity module's `SessionVerifier`, and sets the actor, device
  * or ticket on the request; the access guard then checks permissions on what it set. A path no
  * route serves passes, to be answered `NOT_FOUND`. A personal-device session (a cookie) must send
- * its writes from an allowed origin (rule 35).
+ * its writes from the restaurant app's origins (rule 35), a console session from the console's
+ * only (rule 41). A console session is checked whole here, origin,
+ * permission and re-auth included, so the platform audit records every refusal (rules 41, 43).
  */
 export function authenticationStep(
   routes: Route[],
   verifier: SessionVerifier,
-  allowedOrigins: readonly string[],
+  origins: { staff: readonly string[]; console: readonly string[] },
 ) {
   const logger = new Logger('Authentication');
   const table = matchers(routes);
 
-  async function authenticate(access: Access, request: IncomingRequest): Promise<void> {
+  async function authenticate(route: Matcher, request: IncomingRequest): Promise<void> {
+    const access = route.access as Access;
     switch (access.kind) {
       case 'public':
         return;
@@ -104,7 +119,7 @@ export function authenticationStep(
         if (!cookie) throw unauthenticated();
         if (
           !READS.has(request.method) &&
-          !allowedOrigins.includes(header(request, 'origin') ?? '')
+          !origins.staff.includes(header(request, 'origin') ?? '')
         ) {
           throw new DomainError('FORBIDDEN', 'A write from another origin');
         }
@@ -123,11 +138,29 @@ export function authenticationStep(
         request.ticket = await verifier.ticket(ticket, access.purpose);
         return;
       }
-      // Customer and driver sessions arrive with S16 and S19, console sessions with the console
-      // identity: until then their routes are refused.
+      case 'console': {
+        const cookie = cookieValue(header(request, 'cookie'), CONSOLE_SESSION_COOKIE);
+        if (!cookie) throw unauthenticated();
+        const values = route.pattern.exec(request.path)?.slice(1) ?? [];
+        const params = Object.fromEntries(
+          route.names.map((name, index) => [name, values[index] ?? '']),
+        );
+        const subject = access.options.subjectTenant;
+        request.actor = await verifier.console(cookie, {
+          route: `${route.method} ${route.path}`,
+          params,
+          subjectTenantId: subject ? (params[subject] ?? null) : null,
+          foreignOrigin:
+            !READS.has(request.method) &&
+            !origins.console.includes(header(request, 'origin') ?? ''),
+          permissions: access.permissions,
+          reauth: access.options.reauth ?? false,
+        });
+        return;
+      }
+      // Customer and driver sessions arrive with S16 and S19: until then their routes are refused.
       case 'customer':
       case 'driver':
-      case 'console':
         throw unauthenticated();
     }
   }
@@ -141,7 +174,7 @@ export function authenticationStep(
     if (!route) return next();
     // A route without declarations is refused by the access guard.
     if (!route.access) return next();
-    authenticate(route.access, request).then(
+    authenticate(route, request).then(
       () => {
         request.authenticated = true;
         next();

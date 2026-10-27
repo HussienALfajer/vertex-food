@@ -9,7 +9,15 @@ import { MEMBER_CREDENTIALS, STAFF_ACCOUNTS } from '../access/index.js';
 import { TENANT_DEVICES } from '../tenancy/index.js';
 import { StaffAccountsStore } from './accounts.js';
 import { AuthService } from './auth.service.js';
-import { KeyedHash, SecretBox } from './crypto.js';
+import { ConsoleAccountsService } from './console-accounts.service.js';
+import { ConsoleAuthService } from './console-auth.service.js';
+import {
+  ConsoleAccountsController,
+  ConsoleAuthController,
+  ConsoleMeController,
+  PlatformUsersController,
+} from './console-identity.controller.js';
+import { KeyedHash, SECRET_BOX, SecretBox } from './crypto.js';
 import { TenantDevicesStore } from './device-access.js';
 import { DEVICE_NONCES, DevicesService, KEYED_HASH } from './devices.service.js';
 import {
@@ -25,6 +33,7 @@ import { OtpChallenges } from './otp-challenges.js';
 import { FakeOtpSender, OTP_SENDER, type OtpSender } from './otp-sender.js';
 import { PersonalDeviceStore } from './personal-devices.js';
 import { MemberCredentialsStore } from './pins.js';
+import { PlatformUsersService } from './platform-users.service.js';
 import { ProofOfWork } from './proof-of-work.js';
 import { SessionsService } from './sessions.service.js';
 import { SignInLock } from './sign-in-lock.js';
@@ -33,12 +42,10 @@ import { SessionIssuer } from './staff-sessions.js';
 import { Tickets } from './tickets.js';
 import { TokenSigner } from './tokens.js';
 
-/** The AES-256-GCM box of identity (`IDENTITY_ENCRYPTION_KEY`), for the console's TOTP secrets. */
-export const SECRET_BOX = Symbol('SecretBox');
-
 /**
  * Accounts, sign-in, OTPs, registered PCs and their member lists, PINs, staff sessions and
- * personal devices (spec S02, ADR 0032). Global, because it provides the ports other modules and
+ * personal devices, and the console's platform users, sessions and owner recovery (spec S02, ADR
+ * 0032). Global, because it provides the ports other modules and
  * the core declare: the session verifier of the authentication step (`SESSION_VERIFIER`), the
  * tenant's PCs for tenancy (`TENANT_DEVICES`), and the accounts and member credentials of staff
  * management in access (`STAFF_ACCOUNTS`, `MEMBER_CREDENTIALS`).
@@ -52,6 +59,10 @@ export const SECRET_BOX = Symbol('SecretBox');
     SessionsController,
     MeController,
     StaffPinController,
+    ConsoleAuthController,
+    ConsoleMeController,
+    PlatformUsersController,
+    ConsoleAccountsController,
   ],
   providers: [
     {
@@ -108,6 +119,9 @@ export const SECRET_BOX = Symbol('SecretBox');
     DevicesService,
     SessionsService,
     MeService,
+    ConsoleAuthService,
+    PlatformUsersService,
+    ConsoleAccountsService,
     { provide: SESSION_VERIFIER, useExisting: SessionsService },
     { provide: TENANT_DEVICES, useFactory: () => new TenantDevicesStore() },
     { provide: STAFF_ACCOUNTS, useFactory: () => new StaffAccountsStore() },

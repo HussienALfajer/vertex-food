@@ -5,7 +5,8 @@ import { z } from 'zod';
 /**
  * The API's signed tokens (spec S02 rule 44): EdDSA JWTs (RFC 7519, RFC 8037) signed with
  * `IDENTITY_TOKEN_KEY`. Access tokens name a staff session on a registered PC, device tokens a
- * registered PC, tickets a person in the middle of signing in. Each kind has its own claims, so one
+ * registered PC, tickets a person in the middle of signing in, console steps a platform user in
+ * the middle of signing in to the console. Each kind has its own claims, so one
  * is never accepted as another; the header must be exactly EdDSA with this key's id. Copied from
  * Vertex Shifa and adapted.
  */
@@ -30,6 +31,18 @@ const claimsOf = {
     tid: z.uuid().nullable(),
     /** The personal device of a `personal` sign-in. */
     pd: z.uuid().nullable(),
+  }),
+  /**
+   * A console sign-in step (rules 38, 39): the platform user who passed the password or setup
+   * code, and, for setup, their new TOTP secret, sealed.
+   */
+  console_step: z.object({
+    jti: z.string(),
+    uid: z.uuid(),
+    step: z.enum(['totp', 'setup']),
+    sec: z.string().nullable(),
+    /** A keyed hash of what the step rests on, so a reset or a password change voids it. */
+    ref: z.string(),
   }),
 } as const;
 

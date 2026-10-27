@@ -5,7 +5,10 @@ import {
   platformAuditEntries,
   type Transaction,
 } from '@vertex-food/db';
-import type { Actor, DeviceActor } from '../access/actor.js';
+import type { Actor, DeviceActor, PlatformActor } from '../access/actor.js';
+
+/** A platform user named without a session: a failed sign-in step, a session's own end. */
+type PlatformUserRef = Pick<PlatformActor, 'kind' | 'userId'>;
 
 /**
  * Audit entries (ADR 0016), written in the same transaction as the change they record. They hold
@@ -20,13 +23,15 @@ export type AuditRecord = {
   details?: Record<string, unknown> | null;
   /** Platform entries: the tenant the change concerns (spec S02 rule 43). */
   subjectTenantId?: string | null;
+  /** Platform entries: the console route of a `console.request`, as `METHOD /path/:param`. */
+  requestRoute?: string | null;
 };
 
 /**
  * Who the entry names. A registered PC acting without a member (confirming its wipe) is recorded
  * as the system with its device id.
  */
-function actorColumns(actor: Actor | DeviceActor) {
+function actorColumns(actor: Actor | DeviceActor | PlatformUserRef) {
   switch (actor.kind) {
     case 'device':
       return { actorKind: 'system', actorId: null, actorName: 'device' };
@@ -62,7 +67,7 @@ export async function audit(
 /** One entry in the platform audit log: a change that belongs to no tenant (a city added). */
 export async function auditPlatform(
   db: Database | Transaction,
-  actor: Actor,
+  actor: Actor | PlatformUserRef,
   record: AuditRecord,
 ): Promise<void> {
   await db.insert(platformAuditEntries).values({
@@ -73,6 +78,7 @@ export async function auditPlatform(
     reason: record.reason ?? null,
     details: record.details ?? null,
     subjectTenantId: record.subjectTenantId ?? (actor.kind === 'staff' ? actor.tenantId : null),
+    requestRoute: record.requestRoute ?? null,
     occurredAt: new Date(),
   });
 }
