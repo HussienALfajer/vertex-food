@@ -111,7 +111,7 @@ export class TestApi {
     const ownerPhone = newPhone();
     const detail = await this.app.get(TenancyService).createTenant(OPERATOR, {
       nameAr: 'مطعم تجريبي',
-      slug: `t-${Date.now().toString(36)}-${this.slugCount}`,
+      slug: `t-${Date.now().toString(36)}-${this.slugCount}-${randomInt(46_656).toString(36)}`,
       defaultCurrency: 'USD',
       branches: branchCodes.map((code, index) => ({ nameAr: `فرع ${index + 1}`, code })),
       owner: { phone: ownerPhone, displayName: 'مالك تجريبي' },
