@@ -81,6 +81,14 @@ export function recordSession(record: Registered, membershipId: string, now: Dat
   });
 }
 
+/**
+ * Rule 22: an owner or manager replaced their forgotten PIN by password; the lockout of the old
+ * one on this PC goes with it.
+ */
+export function clearLocalLockout(record: Registered, membershipId: string): Registered {
+  return withMember(record, membershipId, { failures: 0, disabled: false });
+}
+
 /** Verifies `pin` for `member`, counting a wrong one toward rule 25. */
 async function verifyCounted(
   record: Registered,

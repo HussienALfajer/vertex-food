@@ -20,6 +20,7 @@ import type { DeviceKey } from './device-key.js';
 import type { DeviceRecord, DeviceStore, Registration } from './device-store.js';
 import {
   approveLocally,
+  clearLocalLockout,
   countFailure,
   type LocalOutcome,
   localMember,
@@ -395,7 +396,8 @@ export class DeviceService {
           this.deps.client.refreshSession(token, current.refreshToken),
         );
         this.online = true;
-        this.session = this.onlineSession(session.membershipId, tokens);
+        // A session opened to replace a forgotten PIN still waits for it (rule 22).
+        this.session = { ...session, ...this.onlineSession(session.membershipId, tokens) };
         return tokens.accessToken;
       } catch (error) {
         if (isUnreachable(error)) {
@@ -432,14 +434,17 @@ export class DeviceService {
           return current;
         });
         this.online = true;
-        this.save(this.withList(record.registration, list));
+        let next = this.withList(record.registration, list);
         const member = list.members.find((m) => m.membershipId === this.session?.membershipId);
         if (this.session && !member) this.session = null;
-        // Rule 22: the replaced PIN arrived; the session goes on as any other.
+        // Rule 22: the replaced PIN arrived; its lockout on this PC goes, and the session goes on
+        // as any other.
         if (this.session?.replacing && member?.pinVerifier !== this.session.replacing.pinVerifier) {
+          next = clearLocalLockout(next, this.session.membershipId);
           const { replacing: _, ...session } = this.session;
           this.session = session;
         }
+        this.save(next);
       } catch (error) {
         if (isUnreachable(error)) this.online = false;
         else if (codeOf(error) === 'DEVICE_REVOKED') await this.wipe(record);

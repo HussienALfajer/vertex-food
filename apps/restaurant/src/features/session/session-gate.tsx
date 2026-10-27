@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import type { Me } from '@vertex-food/contracts';
 import { Button, Callout } from '@vertex-food/ui';
 import { LockIcon, WifiIcon } from 'lucide-react';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../../components/app-shell';
 import { LoadingState, OfflineState } from '../../components/query-states';
@@ -19,8 +19,8 @@ import { ChoosePinDialog } from './choose-pin-dialog';
 import { activityEvents, createIdleTimer } from './idle-timer';
 import { LockScreen } from './lock-screen';
 import { PersonalActions } from './personal-actions';
-import { MeContext, meQuery, useDeviceStatus, useSessionLost } from './queries';
-import { ReauthProvider } from './reauth';
+import { forgetSessionData, MeContext, meQuery, useDeviceStatus, useSessionLost } from './queries';
+import { ReauthProvider, useSensitive } from './reauth';
 import { WindowWarning } from './window-warning';
 
 type Registered = Extract<DeviceStatus, { state: 'registered' }>;
@@ -46,10 +46,28 @@ function Bare({ children }: { children: ReactNode }) {
   return <AppShell>{children}</AppShell>;
 }
 
+/**
+ * Members share a PC: what one member's session read (staff, devices, the catalog of what they may
+ * assign) is forgotten when the session ends, so the next member never sees it (rules 6, 7).
+ */
+function useForgetBetweenSessions(membershipId: string | null) {
+  const queryClient = useQueryClient();
+  const previous = useRef(membershipId);
+  useLayoutEffect(() => {
+    if (previous.current !== null && previous.current !== membershipId) {
+      forgetSessionData(queryClient);
+    }
+    previous.current = membershipId;
+  }, [membershipId, queryClient]);
+}
+
 function DeviceGate({ bridge }: { bridge: DeviceBridge }) {
   const status = useDeviceStatus(bridge);
   const pathname = usePathname();
   const current = status.data;
+  useForgetBetweenSessions(
+    current?.state === 'registered' ? (current.session?.membershipId ?? null) : null,
+  );
   if (!current) return <Bare>{status.isError ? <OfflineState /> : <LoadingState />}</Bare>;
   if (current.state === 'wiped') {
     return (
@@ -105,19 +123,14 @@ function DeviceSession({
 
   if (member && (!member.hasPin || session.choosePin)) {
     // The member signed in by password (registration, or a forgotten PIN, rule 22) and needs a
-    // PIN: they choose one first. Their password was just entered, so no current PIN is asked.
+    // PIN: they choose one first. Their password was just entered, so no current PIN is asked;
+    // after 5 minutes the password dialog asks for it again (rule 26).
     return (
-      <Bare>
-        <ChoosePinDialog
-          open
-          save={async (pin) => {
-            await unwrapEmpty(api.PUT('/api/me/pin', { body: body({ newPin: pin }) }));
-            await bridge.refresh();
-          }}
-          onCancel={() => void bridge.lock('signed_out')}
-          cancelLabel={t('choosePin.signOut')}
-        />
-      </Bare>
+      <ReauthProvider hasPassword={me.data?.account.hasPassword ?? true}>
+        <Bare>
+          <RequiredPin bridge={bridge} />
+        </Bare>
+      </ReauthProvider>
     );
   }
 
@@ -166,6 +179,22 @@ function DeviceSession({
         }
       />
     </StaffAccessContext.Provider>
+  );
+}
+
+function RequiredPin({ bridge }: { bridge: DeviceBridge }) {
+  const { t } = useTranslation('restaurant');
+  const sensitive = useSensitive();
+  return (
+    <ChoosePinDialog
+      open
+      save={async (pin) => {
+        await sensitive(() => unwrapEmpty(api.PUT('/api/me/pin', { body: body({ newPin: pin }) })));
+        await bridge.refresh();
+      }}
+      onCancel={() => void bridge.lock('signed_out')}
+      cancelLabel={t('choosePin.signOut')}
+    />
   );
 }
 

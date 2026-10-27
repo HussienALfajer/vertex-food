@@ -102,7 +102,8 @@ async function reauthenticate(page: Page) {
   await expect(dialog).toHaveCount(0);
 }
 
-const checkbox = (scope: Page | Locator, name: string) => scope.getByRole('checkbox', { name });
+const checkbox = (scope: Page | Locator, name: string | RegExp) =>
+  scope.getByRole('checkbox', { name });
 
 test.describe('staff as the owner', () => {
   test('lists, filters and adds a member after the password', async ({ page }, testInfo) => {
@@ -398,6 +399,52 @@ test.describe('on a registered PC', () => {
     api.devices.push(device(only.id, { id: (await deviceId(page)) ?? '' }));
     await page.goto('/settings/devices');
     await expect(page.getByText('هذا الحاسوب')).toBeVisible();
+  });
+});
+
+test.describe('a shared PC', () => {
+  test('the next member never sees what the previous one read (rules 6, 7)', async ({ page }) => {
+    failOnCspViolation(page);
+    const restaurant = active();
+    const only = completeBranch();
+    const api = await mockApi(page, {
+      tenant: restaurant,
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+      me: null,
+      staff: [staffMember({ displayName: 'أحمد الكاشير', branchIds: [only.id] })],
+    });
+    api.deviceMe = me(restaurant, { sessionKind: 'device' });
+    const owner = team.owner();
+    const manager = team.manager();
+    await installFakeDevice(
+      page,
+      fakeDevice(restaurant.id, { members: [owner, manager], sessionMemberId: owner.membershipId }),
+    );
+    await page.goto('/settings/staff/new');
+    await expect(checkbox(page, 'مالك')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'الصلاحيات' })).toBeVisible();
+
+    // The owner locks; the manager signs in with their PIN on the same PC.
+    await page.getByRole('button', { name: 'تبديل الكاشير' }).click();
+    api.deviceMe = me(restaurant, {
+      sessionKind: 'device',
+      roles: ['manager'],
+      allBranches: false,
+      branchIds: [only.id],
+      permissions: ['tenant.view', 'staff.view', 'staff.manage', 'devices.manage'],
+    });
+    await page.getByRole('button', { name: /ليلى المديرة/ }).click();
+    const pad = page.locator('main [data-slot="pin-pad"]');
+    await pad.focus();
+    await page.keyboard.type(manager.pin as string);
+    await expect(page).toHaveURL(/\/$/);
+    // In the same page: a reload would start an empty cache and prove nothing.
+    await page.getByRole('navigation').getByRole('link', { name: 'فريق العمل' }).click();
+    await page.getByRole('link', { name: 'إضافة عضو' }).click();
+    await expect(checkbox(page, 'كاشير')).toBeVisible();
+    await expect(checkbox(page, 'مالك')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'الصلاحيات' })).toHaveCount(0);
   });
 });
 

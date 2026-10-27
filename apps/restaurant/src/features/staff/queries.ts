@@ -15,11 +15,13 @@ import { api, body, unwrap, unwrapEmpty } from '../../lib/api';
 // Server state of staff, devices and the member's own account (spec S02), online only: nothing
 // here is queued while offline, and every write is a sensitive action run through `useSensitive`.
 
-/** What the staff screens show and allow the caller: the catalog, presets, assignable roles. */
+/**
+ * What the staff screens show and allow the caller: the catalog, presets, assignable roles. It
+ * depends on the caller, so it is read again like any other and forgotten between sessions.
+ */
 export const catalogQuery = queryOptions({
   queryKey: ['access', 'catalog'],
   queryFn: (): Promise<AccessCatalog> => unwrap(api.GET('/api/access/catalog')),
-  staleTime: Number.POSITIVE_INFINITY,
 });
 
 export type StaffFilters = {

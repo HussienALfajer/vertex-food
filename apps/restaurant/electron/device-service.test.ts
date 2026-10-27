@@ -314,6 +314,54 @@ describe('DeviceService forgotten PIN by password (rule 22)', () => {
     expect(service.status()).toMatchObject({ session: { choosePin: false } });
   });
 
+  it('clears the forgotten PIN lockout on this PC once the new PIN arrives', async () => {
+    const { service, owner, server } = await registered();
+    await service.lock('locked');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await service.signIn({ membershipId: owner.membershipId, pin: '000001' });
+    }
+    const ownerView = () => {
+      const status = service.status();
+      return status.state === 'registered'
+        ? status.members.find((item) => item.membershipId === owner.membershipId)
+        : undefined;
+    };
+    expect(ownerView()).toMatchObject({ pinDisabledHere: true });
+    expect(
+      await service.signInByPassword({
+        membershipId: owner.membershipId,
+        phone: '+963900000010',
+        password: server.ownerPassword,
+        proofOfWork,
+      }),
+    ).toEqual({ ok: true });
+    // Still disabled until the new PIN is set: the old one stays refused here.
+    expect(ownerView()).toMatchObject({ pinDisabledHere: true });
+    server.list = {
+      ...server.list,
+      version: 'v2',
+      members: server.list.members.map((item) =>
+        item.membershipId === owner.membershipId ? { ...item, pinVerifier: 'new-verifier' } : item,
+      ),
+    };
+    await service.refresh();
+    expect(ownerView()).toMatchObject({ pinDisabledHere: false });
+  });
+
+  it('keeps asking for the new PIN across an access-token refresh', async () => {
+    const { service, owner, server } = await registered();
+    await service.lock('locked');
+    await service.signInByPassword({
+      membershipId: owner.membershipId,
+      phone: '+963900000010',
+      password: server.ownerPassword,
+      proofOfWork,
+    });
+    server.now = later(14.5);
+    expect(await service.accessToken()).toMatch(/^access-/);
+    expect(service.status()).toMatchObject({ session: { choosePin: true } });
+  });
+
   it('refuses a wrong password and opens nothing', async () => {
     const { service, owner, api } = await registered();
     await service.lock('locked');

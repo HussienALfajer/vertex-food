@@ -1,4 +1,4 @@
-import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Me } from '@vertex-food/contracts';
 import { createContext, useContext, useEffect } from 'react';
 import { api, onSessionLost, unwrap } from '../../lib/api';
@@ -54,6 +54,16 @@ export function useMe(): Me | null {
 }
 
 /**
+ * Forgets everything a session read but the PC's own status and the session itself: on a shared
+ * PC between members, in a browser when the session is lost (rules 6, 7).
+ */
+export function forgetSessionData(queryClient: QueryClient): void {
+  queryClient.removeQueries({
+    predicate: (query) => query.queryKey[0] !== 'device' && query.queryKey[0] !== 'me',
+  });
+}
+
+/**
  * The API said the session is gone: a PC locks, a browser reads its session again (and finds
  * none, so the welcome screen opens).
  */
@@ -62,8 +72,12 @@ export function useSessionLost() {
   useEffect(
     () =>
       onSessionLost(() => {
-        if (deviceBridge) void deviceBridge.lock('locked');
-        else void queryClient.invalidateQueries({ queryKey: ['me'] });
+        if (deviceBridge) {
+          void deviceBridge.lock('locked');
+          return;
+        }
+        forgetSessionData(queryClient);
+        void queryClient.invalidateQueries({ queryKey: ['me'] });
       }),
     [queryClient],
   );
