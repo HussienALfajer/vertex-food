@@ -204,26 +204,24 @@ function PersonalGate() {
   const online = useOnline();
   const pathname = usePathname();
   const entry = entryPaths.includes(pathname);
-  // A failed read keeps the last session's data: the refusal decides, whatever is still cached.
-  const signedOut = ['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(me.error) ?? '');
+  // When the server last said there is no session (rule 35). A failed read keeps the cached data,
+  // and a later failure of another kind (the network, a restart) replaces the refusal: data older
+  // than the refusal is the ended session's, whatever came after.
+  const refusedAt = useRef(0);
+  if (['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(me.error) ?? '')) {
+    refusedAt.current = Math.max(refusedAt.current, me.errorUpdatedAt);
+  }
+  const session = me.data && me.dataUpdatedAt > refusedAt.current ? me.data : undefined;
+  const ended = refusedAt.current > 0 && !session;
   useEffect(() => {
     // Rules 6, 7: nothing the ended session read stays for the next one.
-    if (signedOut) forgetSessionData(queryClient);
-  }, [signedOut, queryClient]);
-  if (signedOut) {
-    return entry ? (
-      <Bare>
-        <Outlet />
-      </Bare>
-    ) : (
-      <Navigate to="/welcome" replace />
-    );
-  }
-  if (me.data) {
+    if (ended) forgetSessionData(queryClient);
+  }, [ended, queryClient]);
+  if (session) {
     if (entry || pathname === '/lock') return <Navigate to="/" replace />;
     return (
-      <StaffAccessContext.Provider value={accessOfMe(me.data)}>
-        <SignedIn me={me.data} personal actions={<PersonalActions />} />
+      <StaffAccessContext.Provider value={accessOfMe(session)}>
+        <SignedIn me={session} personal actions={<PersonalActions />} />
       </StaffAccessContext.Provider>
     );
   }
@@ -234,6 +232,7 @@ function PersonalGate() {
       </Bare>
     );
   }
+  if (ended) return <Navigate to="/welcome" replace />;
   return <Bare>{me.isPending && online ? <LoadingState /> : <OfflineState />}</Bare>;
 }
 

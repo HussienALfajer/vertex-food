@@ -335,6 +335,37 @@ test.describe('my account and personal mode', () => {
     expect(reads).toBeLessThanOrEqual(2);
   });
 
+  test('an ended session stays ended when the next read fails otherwise', async ({ page }) => {
+    await page.clock.install();
+    const { api } = await start(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
+    api.me = null;
+    await page.route('**/api/staff?**', (route) =>
+      route.fulfill({ status: 401, json: { code: 'SESSION_ENDED', message: 'SESSION_ENDED' } }),
+    );
+    await page.getByRole('navigation').getByRole('link', { name: 'فريق العمل' }).click();
+    await expect(page).toHaveURL(/\/welcome$/);
+    // Later the API is briefly down when the tab is focused again.
+    await page.route('**/api/me', (route) =>
+      route.fulfill({
+        status: 503,
+        json: { code: 'SERVICE_UNAVAILABLE', message: 'SERVICE_UNAVAILABLE' },
+      }),
+    );
+    let reads = 0;
+    page.on('response', (response) => {
+      if (new URL(response.url()).pathname === '/api/me') reads += 1;
+    });
+    await page.clock.fastForward('01:00');
+    // TanStack Query listens for the tab's focus on the window.
+    await page.evaluate("window.dispatchEvent(new Event('visibilitychange'))");
+    await expect.poll(() => reads).toBeGreaterThan(0);
+    await page.clock.fastForward('00:10');
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page.getByRole('navigation')).toHaveCount(0);
+  });
+
   test('signs out of the back office', async ({ page }) => {
     const { api } = await start(page);
     await page.goto('/');
