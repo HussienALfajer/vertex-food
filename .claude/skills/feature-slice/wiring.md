@@ -48,10 +48,12 @@ From S01. For a need not listed here, Vertex Shifa's files (read only, through t
 | Contracts with a state table and rules | `packages/contracts/src/tenancy.ts` (and `tenancy.test.ts`) |
 | Schema and RLS migration | `packages/db/src/schema/tenancy.ts`, `packages/db/migrations/0003_tenancy-isolation-and-seed.sql`, `packages/db/test/tenancy.test.ts` |
 | API module (restaurant and console routes, service, views) | `apps/api/src/modules/platform/tenancy/` |
-| API integration test before sessions exist (S02) | `apps/api/test/tenancy.test.ts` |
+| API service-level rules with built actors (S01) | `apps/api/test/tenancy.test.ts` |
 | CLI commands | `apps/api/src/cli/commands.ts`, `apps/api/test/cli.test.ts` |
 | Scheduled worker job | `apps/worker/src/jobs/tenancy/apply-scheduled-status.job.ts`, `apps/worker/test/apply-scheduled-status.test.ts` |
 | Convention and architecture tests | `packages/db/test/conventions.test.ts`, `apps/api/test/architecture/rules.ts` |
 | Online-only restaurant screen (queries, drafts, forms, conflict reload, offline) | `apps/restaurant/src/features/tenancy/queries.ts`, `branch-draft.ts`, `apps/restaurant/src/features/settings/branch-sections.tsx` |
 | Wizard saving on Next | `apps/restaurant/src/features/setup/setup-wizard.tsx` |
+| Sessions and ports between modules, the authentication step | `apps/api/src/core/access/authentication.ts`, `apps/api/src/modules/platform/identity/`, `apps/api/src/modules/platform/access/ports.ts`, `apps/api/src/modules/platform/tenancy/ports.ts` |
+| API integration test with real sessions (S02) | `apps/api/test/staff.ts`, `apps/api/test/access.test.ts`, `apps/api/test/identity.test.ts` |
 | E2E with a mocked API, offline, RTL screenshots | `apps/restaurant/e2e/mock-api.ts`, `apps/restaurant/e2e/settings.spec.ts` |

@@ -41,7 +41,7 @@ The fixes are split into four PRs that touch different files: API runtime (`fix/
 | RES-04 | Confirmed (spike) | `spikes/printing/lib/queue.mjs:74` render outside the `try`, no alert | record for S10/S11 | **Recorded** for the spec that reuses it, in the spike report (`docs/spikes/`) |
 | PRIV-01 | Confirmed (spike) | `spikes/driver-location/server/server.mjs:127-130` stores event fixes without the duty check | record for S19 | **Recorded** for the spec that reuses it, in the spike report (`docs/spikes/`) |
 | TEST-04 | Confirmed (spike) | `spikes/driver-location/emulator/run.mjs:159-165` counts an exhausted retry as a phase | record for S19 | **Recorded** for the spec that reuses it, in the spike report (`docs/spikes/`) |
-| BE-01 | Partly | JSON parsed before the guard refuses; no spec rule requires the order, no bypass | decide in the S02 spec | Deferred: S02 spec decides |
+| BE-01 | Partly | JSON parsed before the guard refuses; no spec rule requires the order, no bypass | decide in the S02 spec | **Fixed** in S02 (rule 46): the authentication step runs ahead of the body parser (`apps/api/src/core/access/authentication.ts`, tested in `apps/api/test/identity.test.ts`) |
 | VER-01 | Partly (design gap, Info) | no client version or minimum-version contract | decide in the S04 spec | Deferred: S04 spec decides |
 | SUP-01 | No action | moderate advisories in build tooling only | recheck before release | No change |
 | FE-05 | No action | measurement of the E2E-only web export | — | No change |
@@ -60,5 +60,5 @@ The fixes are split into four PRs that touch different files: API runtime (`fix/
 
 - Adding or archiving a branch can move the tenant's next business day end; rule 6 reschedules a pending suspension only when an existing branch's day end changes. Whether membership changes reschedule too is for the owner (S02 or S05).
 - If Syria brings back daylight saving, which occurrence an ambiguous or skipped business day end selects (spec edge case 10).
-- BE-01: the API parses a JSON body before the guard refuses a request without a session; no bypass. S02 decides whether refusal comes first.
+- BE-01: decided by S02 rule 46 and fixed: a non-public request without a valid session, device token or ticket is refused before its body is read.
 - VER-01: no client version or minimum-version contract yet; S04 defines it for the offline restaurant app and the installed apps.

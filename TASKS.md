@@ -15,7 +15,7 @@ Five PRs. PR 1 first. After PR 1 merges, PR 2 (console backend) and PR 3 (restau
 - [x] api `platform/access`: catalog, staff list and detail, add (enumeration-safe, `ALREADY_MEMBER`), access changes (rule 7, `LAST_OWNER`, limits, `CONFLICT`), deactivate and reactivate ending sessions, PIN reset, password-reset authorization; devices list, rename, revoke; branch security; `BRANCH_HAS_DEVICES` on archive; `tenant.status_changed.v1` consumer (rule 37); events `staff.*`, `device.*`
 - [x] api tests: `test/identity.test.ts`, `test/access.test.ts` (service rules of Acceptance "Service"), HTTP access tests for every S01 and S02 staff route (success, 401, 403, other tenant, device routes, unparsed bodies)
 - [x] CLI: `tenant:create --owner-phone --owner-name`; console `POST /api/console/tenants` gains the owner (console route stays fail-closed until PR 2)
-- [ ] OpenAPI regenerated; restaurant API types regenerated; wiring checklist; docs (`apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table)
+- [x] OpenAPI regenerated; restaurant API types regenerated; wiring checklist; docs (`apps/api/CLAUDE.md`, `packages/db/CLAUDE.md`, `docs/architecture.md`, AGENTS commands table)
 - [ ] checks (`checker`), `reviewer`, owner acceptance (endpoints and rules summary), PR with auto-merge
 
 ### PR 2 — console identity backend (`feat/S02-console-identity-api`)
