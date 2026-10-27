@@ -366,6 +366,19 @@ test.describe('my account and personal mode', () => {
     await expect(page.getByRole('navigation')).toHaveCount(0);
   });
 
+  test('stays signed in when signing out does not reach the server', async ({ page }) => {
+    const { api } = await start(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
+    await page.route('**/api/sessions/current/end', (route) => route.abort('connectionreset'));
+    await page.getByRole('button', { name: 'تسجيل الخروج' }).click();
+    await expect(
+      page.getByText('تعذّر الوصول إلى الخادم. تحقّق من الاتصال ثم أعد المحاولة.'),
+    ).toBeVisible();
+    await expect(page).not.toHaveURL(/\/welcome$/);
+    expect(api.me).not.toBeNull();
+  });
+
   test('signs out of the back office', async ({ page }) => {
     const { api } = await start(page);
     await page.goto('/');

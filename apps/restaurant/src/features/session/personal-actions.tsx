@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Button } from '@vertex-food/ui';
+import { Button, toast } from '@vertex-food/ui';
 import { ArrowLeftRightIcon, LogOutIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api, unwrapEmpty } from '../../lib/api';
+import { api, apiErrorCode, unwrapEmpty } from '../../lib/api';
+import { useErrorText } from '../../lib/error-text';
 
 const tenantCountKey = 'vertex-food.personal-tenant-count';
 
@@ -37,14 +38,22 @@ export function PersonalActions() {
   const { t } = useTranslation('restaurant');
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const errorText = useErrorText();
   const [busy, setBusy] = useState(false);
 
   const leave = async (to: '/sign-in' | '/welcome') => {
     setBusy(true);
-    // Ended on the server when it answers; signed out here in any case.
-    await unwrapEmpty(
-      api.POST('/api/sessions/current/end', { body: { reason: 'signed_out' } }),
-    ).catch(() => undefined);
+    try {
+      await unwrapEmpty(api.POST('/api/sessions/current/end', { body: { reason: 'signed_out' } }));
+    } catch (failure) {
+      // The session cookie is `HttpOnly`: only the server ends it. Unless it says the session is
+      // already gone, the person stays signed in and is told so (rule 35).
+      if (!['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(failure) ?? '')) {
+        setBusy(false);
+        toast.add({ title: errorText(failure), type: 'error' });
+        return;
+      }
+    }
     // Nothing of this restaurant stays in the cache for the next session.
     queryClient.clear();
     setBusy(false);
