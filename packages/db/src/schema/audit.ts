@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { check, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, idIsUuidV7, tenantId, timestamptz } from './columns.js';
+import { tenants } from './tenancy.js';
 
 /**
  * Append-only audit log of a restaurant (ADR 0016): money (payments, refunds, voids, discounts
@@ -67,11 +68,20 @@ export const platformAuditEntries = pgTable(
     /** Free text written by Vertex staff, so never sent to logs. */
     reason: text(),
     details: jsonb(),
+    /** The tenant a console request or an account change concerns (spec S02 rule 43). */
+    subjectTenantId: uuid().references(() => tenants.id),
+    /** The console route of a `console.request` entry, as `METHOD /path/:param`. */
+    requestRoute: text(),
     occurredAt: timestamptz().notNull(),
     createdAt: createdAt(),
   },
   (t) => [
     idIsUuidV7('platform_audit_entries', t.id),
+    check(
+      'platform_audit_entries_request_route',
+      sql`char_length(${t.requestRoute}) between 1 and 200`,
+    ),
+    index('platform_audit_entries_subject_tenant_idx').on(t.subjectTenantId, t.occurredAt),
     check(
       'platform_audit_entries_actor_kind',
       sql`${t.actorKind} in ('platform', 'staff', 'system')`,

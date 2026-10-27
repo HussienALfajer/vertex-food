@@ -183,6 +183,8 @@ export const branches = pgTable(
     currencyLockedAt: timestamptz(),
     /** Damascus wall clock; on the hour or half hour between 00:00 and 08:00. */
     businessDayEndsAt: time().notNull().default('04:00'),
+    /** Spec S02 rule 32: the app locks after this many minutes without input. */
+    idleLockMinutes: smallint().notNull().default(5),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     archivedAt: archivedAt(),
@@ -218,6 +220,7 @@ export const branches = pgTable(
       'branches_business_day_ends_at',
       sql`${t.businessDayEndsAt} between '00:00' and '08:00' and extract(minute from ${t.businessDayEndsAt}) in (0, 30) and extract(second from ${t.businessDayEndsAt}) = 0`,
     ),
+    check('branches_idle_lock_minutes', sql`${t.idleLockMinutes} between 1 and 60`),
     index('branches_tenant_city_idx').on(t.tenantId, t.cityId),
   ],
 );
