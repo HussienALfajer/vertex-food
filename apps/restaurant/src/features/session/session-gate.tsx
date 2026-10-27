@@ -200,10 +200,25 @@ function RequiredPin({ bridge }: { bridge: DeviceBridge }) {
 
 function PersonalGate() {
   const me = useQuery(meQuery('personal'));
+  const queryClient = useQueryClient();
   const online = useOnline();
   const pathname = usePathname();
   const entry = entryPaths.includes(pathname);
+  // A failed read keeps the last session's data: the refusal decides, whatever is still cached.
   const signedOut = ['UNAUTHENTICATED', 'SESSION_ENDED'].includes(apiErrorCode(me.error) ?? '');
+  useEffect(() => {
+    // Rules 6, 7: nothing the ended session read stays for the next one.
+    if (signedOut) forgetSessionData(queryClient);
+  }, [signedOut, queryClient]);
+  if (signedOut) {
+    return entry ? (
+      <Bare>
+        <Outlet />
+      </Bare>
+    ) : (
+      <Navigate to="/welcome" replace />
+    );
+  }
   if (me.data) {
     if (entry || pathname === '/lock') return <Navigate to="/" replace />;
     return (
@@ -219,7 +234,6 @@ function PersonalGate() {
       </Bare>
     );
   }
-  if (signedOut) return <Navigate to="/welcome" replace />;
   return <Bare>{me.isPending && online ? <LoadingState /> : <OfflineState />}</Bare>;
 }
 

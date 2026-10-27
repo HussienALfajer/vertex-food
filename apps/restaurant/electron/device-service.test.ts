@@ -348,6 +348,33 @@ describe('DeviceService forgotten PIN by password (rule 22)', () => {
     expect(ownerView()).toMatchObject({ pinDisabledHere: false });
   });
 
+  it('a PIN reset by a manager lifts its lockout on this PC once the list has it', async () => {
+    const { service, cashier, server } = await registered();
+    await service.lock('locked');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await service.signIn({ membershipId: cashier.membershipId, pin: '000001' });
+    }
+    const cashierView = () => {
+      const status = service.status();
+      return status.state === 'registered'
+        ? status.members.find((item) => item.membershipId === cashier.membershipId)
+        : undefined;
+    };
+    expect(cashierView()).toMatchObject({ pinDisabledHere: true });
+    // An unchanged list leaves the lockout.
+    await service.refresh();
+    expect(cashierView()).toMatchObject({ pinDisabledHere: true });
+    server.list = {
+      ...server.list,
+      version: 'v2',
+      members: server.list.members.map((item) =>
+        item.membershipId === cashier.membershipId ? { ...item, pinVerifier: 'reset' } : item,
+      ),
+    };
+    await service.refresh();
+    expect(cashierView()).toMatchObject({ pinDisabledHere: false });
+  });
+
   it('keeps asking for the new PIN across an access-token refresh', async () => {
     const { service, owner, server } = await registered();
     await service.lock('locked');

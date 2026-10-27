@@ -76,8 +76,11 @@ export function useSessionLost() {
           void deviceBridge.lock('locked');
           return;
         }
-        forgetSessionData(queryClient);
-        void queryClient.invalidateQueries({ queryKey: ['me'] });
+        // The gate reads the session again and, finding none, forgets the rest and leaves for
+        // the welcome screen. Not while it is being read: that answer is the one that said so.
+        if (queryClient.isFetching({ queryKey: ['me'] }) === 0) {
+          void queryClient.invalidateQueries({ queryKey: ['me'] });
+        }
       }),
     [queryClient],
   );

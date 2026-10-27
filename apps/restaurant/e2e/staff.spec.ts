@@ -315,6 +315,26 @@ test.describe('my account and personal mode', () => {
     expect(api.personalDevices).toHaveLength(1);
   });
 
+  test('a session ended on the server leads to the welcome screen, once', async ({ page }) => {
+    const { api } = await start(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
+    // The device was removed from My account elsewhere, or the 12 hours passed (rule 35).
+    api.me = null;
+    await page.route('**/api/staff?**', (route) =>
+      route.fulfill({ status: 401, json: { code: 'SESSION_ENDED', message: 'SESSION_ENDED' } }),
+    );
+    let reads = 0;
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/me') reads += 1;
+    });
+    await page.getByRole('navigation').getByRole('link', { name: 'فريق العمل' }).click();
+    await expect(page).toHaveURL(/\/welcome$/);
+    await page.waitForTimeout(1000);
+    // One read of the session said it ended; nothing keeps asking.
+    expect(reads).toBeLessThanOrEqual(2);
+  });
+
   test('signs out of the back office', async ({ page }) => {
     const { api } = await start(page);
     await page.goto('/');

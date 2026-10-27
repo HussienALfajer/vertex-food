@@ -435,12 +435,20 @@ export class DeviceService {
         });
         this.online = true;
         let next = this.withList(record.registration, list);
+        // Rule 22: a PIN set anew (reset by a manager, or replaced by password) lifts the old
+        // one's lockout on this PC.
+        for (const listed of list.members) {
+          const before = record.memberList.members.find(
+            (m) => m.membershipId === listed.membershipId,
+          );
+          if (before && before.pinVerifier !== listed.pinVerifier) {
+            next = clearLocalLockout(next, listed.membershipId);
+          }
+        }
         const member = list.members.find((m) => m.membershipId === this.session?.membershipId);
         if (this.session && !member) this.session = null;
-        // Rule 22: the replaced PIN arrived; its lockout on this PC goes, and the session goes on
-        // as any other.
+        // The replaced PIN arrived: the session goes on as any other.
         if (this.session?.replacing && member?.pinVerifier !== this.session.replacing.pinVerifier) {
-          next = clearLocalLockout(next, this.session.membershipId);
           const { replacing: _, ...session } = this.session;
           this.session = session;
         }
