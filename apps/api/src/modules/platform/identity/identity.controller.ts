@@ -107,11 +107,14 @@ export class AuthController {
     @Ip() address: string,
     @Headers(DEVICE_TOKEN_HEADER) deviceToken: string | undefined,
     @Headers('cookie') cookie: string | undefined,
+    @ResponseCookies() cookies: CookieJar,
   ) {
-    return this.auth.signIn(input, address, {
-      deviceToken,
-      personalDeviceToken: cookieValue(cookie, PERSONAL_DEVICE_COOKIE),
-    });
+    return this.auth.signIn(
+      input,
+      address,
+      { deviceToken, personalDeviceToken: cookieValue(cookie, PERSONAL_DEVICE_COOKIE) },
+      cookies,
+    );
   }
 
   @Post('otp/request')

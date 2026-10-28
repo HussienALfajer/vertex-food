@@ -12,7 +12,16 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, inject, it, vi } from 'vitest';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
-import { newPhone, OPERATOR, ORIGIN, PASSWORD, pinFor, proofOfWork, TestApi } from './staff.js';
+import {
+  newDeviceKeys,
+  newPhone,
+  OPERATOR,
+  ORIGIN,
+  PASSWORD,
+  pinFor,
+  proofOfWork,
+  TestApi,
+} from './staff.js';
 
 // Spec S02 over HTTP: signing in, OTPs, tickets, registered PCs and their member lists, PIN
 // sessions, refresh, re-authentication, revocation and the wipe, personal devices, password
@@ -470,6 +479,36 @@ describe('revocation and the wipe (rule 19)', () => {
       tenancy.archiveBranch(OPERATOR, device.tenantId, branchIds[0] as string, undefined),
     ).rejects.toMatchObject({ code: 'BRANCH_HAS_DEVICES' });
   });
+
+  it('refuses archiving the only branch of an active member (edge case 6, BE-02)', async () => {
+    const { device, owner, branchIds } = await api.ownerOnDevice(['main', 'east']);
+    const [main, east] = branchIds as [string, string];
+    const tenancy = app.get(TenancyService);
+    const cashier = await device.addMember(owner, {
+      displayName: 'كاشير',
+      roles: ['cashier'],
+      branchScope: { allBranches: false, branchIds: [east] },
+    });
+    // East has no PC, but the cashier's only branch is east.
+    await expect(
+      tenancy.archiveBranch(OPERATOR, device.tenantId, east, undefined),
+    ).rejects.toMatchObject({ code: 'BRANCH_HAS_MEMBERS', details: { branchId: east } });
+    // Given another branch, they no longer hold it back.
+    const current = await device.as(owner).get(`/api/staff/${cashier.id}`).expect(200);
+    await device
+      .as(owner)
+      .patch(`/api/staff/${cashier.id}/access`)
+      .send({
+        roles: ['cashier'],
+        branchScope: { allBranches: false, branchIds: [main, east] },
+        grantedPermissions: [],
+        revokedPermissions: [],
+        updatedAt: current.body.updatedAt,
+      })
+      .expect(200);
+    const archived = await tenancy.archiveBranch(OPERATOR, device.tenantId, east, undefined);
+    expect(archived.archivedAt).not.toBeNull();
+  });
 });
 
 describe('personal devices (rules 12, 34, 35)', () => {
@@ -488,6 +527,11 @@ describe('personal devices (rules 12, 34, 35)', () => {
       .send({ phone: ownerPhone, password: PASSWORD, intent: 'personal', proofOfWork: solved })
       .expect(200);
     expect(second.body.step).toBe('done');
+    // Recognized, the device's 90 days start again, in the cookie as in the database (BE-04).
+    const renewed = (second.headers['set-cookie'] as unknown as string[] | undefined) ?? [];
+    expect(renewed).toContainEqual(
+      `${(deviceCookie as string).split(';')[0]}; Path=/api/auth/; Max-Age=7776000; HttpOnly; Secure; SameSite=Strict`,
+    );
     const opened = await api
       .http()
       .post('/api/auth/personal-session')
@@ -602,6 +646,59 @@ describe('password resets (rule 14)', () => {
     expect((await device.as(managerSession).get('/api/me')).body.code).toBe('SESSION_ENDED');
     // The PIN stays (rule 14).
     await device.signIn(manager.id, pinFor(6));
+  });
+
+  it('voids the tickets issued before the new password (SEC-02)', async () => {
+    const { device, owner, branchIds, tenantId } = await api.ownerOnDevice();
+    const manager = await device.addMember(
+      owner,
+      {
+        displayName: 'مدير',
+        roles: ['manager'],
+        branchScope: { allBranches: false, branchIds: [branchIds[0] as string] },
+      },
+      pinFor(6),
+    );
+    await api.firstSignIn(manager.phone);
+    // Someone signed in with the old password and kept the ticket, unused.
+    const old = await api.signInWithOtp(manager.phone);
+    await device.as(owner).post(`/api/staff/${manager.id}/password-reset`).send({}).expect(204);
+    vi.setSystemTime(Date.now() + 61_000);
+    const solved = await proofOfWork(app);
+    const requested = await api
+      .http()
+      .post('/api/auth/otp/request')
+      .send({
+        phone: manager.phone,
+        purpose: 'password_reset',
+        intent: 'register_device',
+        proofOfWork: solved,
+      })
+      .expect(200);
+    const code = api.otps.lastCode(await api.accountId(manager.phone));
+    const verified = await api
+      .http()
+      .post('/api/auth/otp/verify')
+      .send({ challengeId: requested.body.challengeId, code, intent: 'register_device' })
+      .expect(200);
+    const set = await api
+      .http()
+      .post('/api/auth/password')
+      .set('x-sign-in-ticket', verified.body.ticket)
+      .send({ password: 'a-brand-new-password-9' })
+      .expect(200);
+    const register = (ticket: string) =>
+      api.http().post('/api/devices').set('x-sign-in-ticket', ticket).send({
+        tenantId,
+        branchId: branchIds[0],
+        name: 'جهاز آخر',
+        publicKey: newDeviceKeys().publicKey,
+        os: 'Windows 11',
+        appVersion: '0.1.0',
+      });
+    expect((await register(old.ticket)).body.code).toBe('TICKET_INVALID');
+    // The ticket of the new password still works.
+    expect((await register(set.body.ticket)).status).not.toBe(401);
   });
 });
 

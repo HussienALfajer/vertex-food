@@ -4812,6 +4812,7 @@
           "LAST_OWNER",
           "LAST_ADMIN",
           "BRANCH_HAS_DEVICES",
+          "BRANCH_HAS_MEMBERS",
           "OTP_DELIVERY_UNAVAILABLE"
         ]
       },

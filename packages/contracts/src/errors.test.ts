@@ -75,6 +75,7 @@ describe('error codes', () => {
       LAST_OWNER: 409,
       LAST_ADMIN: 409,
       BRANCH_HAS_DEVICES: 409,
+      BRANCH_HAS_MEMBERS: 409,
       OTP_DELIVERY_UNAVAILABLE: 503,
     });
   });

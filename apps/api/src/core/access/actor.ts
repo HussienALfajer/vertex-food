@@ -78,6 +78,8 @@ export type Ticket = {
   deviceId: string | null;
   /** The personal device of a `personal` sign-in. */
   personalDeviceId: string | null;
+  /** The password the ticket rests on (`Tickets`): a ticket issued before a change is refused. */
+  credentialRef: string;
 };
 
 /**

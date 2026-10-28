@@ -52,5 +52,6 @@ export const errors = {
   LAST_OWNER: 'يجب أن يبقى للمطعم مالك واحد فعّال على الأقل.',
   LAST_ADMIN: 'يجب أن يبقى مسؤول واحد فعّال على الأقل.',
   BRANCH_HAS_DEVICES: 'في هذا الفرع حواسيب مسجّلة. أزلها قبل أرشفة الفرع.',
+  BRANCH_HAS_MEMBERS: 'لبعض الموظفين هذا الفرع وحده. أضف لهم فرعًا آخر قبل أرشفته.',
   OTP_DELIVERY_UNAVAILABLE: 'تعذّر إرسال رمز التحقق الآن. أعد المحاولة لاحقًا.',
 } satisfies Record<ErrorCode, string>;

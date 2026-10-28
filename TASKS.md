@@ -8,11 +8,11 @@ Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/
 
 - [x] SEC-01: "Switch cashier" locks at once, not behind a queued refresh; a refresh that ends after the lock opens nothing (`device-service.ts`)
 - [x] OFF-01: every look at the clock (status, offline refresh) keeps the highest time seen (`device-service.ts`)
-- [ ] SEC-02: tickets issued before a password change are refused (`tickets.ts`)
-- [ ] BE-01: a console reset keeps an active admin and rechecks the operator (`platform-users.service.ts`)
-- [ ] BE-02: archiving a branch refuses while active members have it as their only branch (`BRANCH_HAS_MEMBERS`)
-- [ ] BE-03: staff writes read the time after the tenant lock (`staff.service.ts`)
-- [ ] BE-04: a recognized personal device renews its cookie
+- [x] SEC-02: tickets issued before a password change are refused (`tickets.ts`)
+- [x] BE-01: a console reset keeps an active admin and rechecks the operator (`platform-users.service.ts`)
+- [x] BE-02: archiving a branch refuses while active members have it as their only branch (`BRANCH_HAS_MEMBERS`)
+- [x] BE-03: staff writes read the time after the tenant lock (`staff.service.ts`)
+- [x] BE-04: a recognized personal device renews its cookie
 - [ ] FE-01: "Forgot your password?" on the sign-in screen, through `password_reset` (restaurant), with E2E
 - [ ] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
 - [ ] FE-03: the restaurant dev server forwards `/api` to the local API

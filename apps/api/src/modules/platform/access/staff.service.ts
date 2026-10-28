@@ -25,11 +25,13 @@ import {
 import {
   branches,
   type Database,
+  staffMembershipBranches,
   staffMemberships,
   type Transaction,
   withTenant,
 } from '@vertex-food/db';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, notExists, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
   holds,
   type PlatformOperator,
@@ -40,7 +42,12 @@ import { audit } from '../../../core/audit/audit.js';
 import { assertCurrent, nextUpdatedAt } from '../../../core/concurrency/updated-at.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { emit } from '../../../core/events/outbox.js';
-import { readTenant, statusState, type TenantOwners } from '../tenancy/index.js';
+import {
+  readTenant,
+  statusState,
+  type TenantMembers,
+  type TenantOwners,
+} from '../tenancy/index.js';
 import {
   inScope,
   linkAccount,
@@ -75,7 +82,7 @@ const sameSet = <T>(a: readonly T[], b: readonly T[]) =>
  * its transaction.
  */
 @Injectable()
-export class StaffService implements TenantOwners {
+export class StaffService implements TenantOwners, TenantMembers {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     @Inject(STAFF_ACCOUNTS) private readonly accounts: StaffAccounts,
@@ -459,6 +466,52 @@ export class StaffService implements TenantOwners {
     assertAdjustmentsAllowed(roles, granted, revoked);
   }
 
+  /**
+   * Tenancy's `TENANT_MEMBERS` (spec S02 edge case 6): a branch is not archived while an active
+   * member has it as their only active branch. Run in the archive's transaction, after the tenant
+   * row is locked for update, which every staff write waits for.
+   */
+  async assertBranchNotSoleScope(tx: Transaction, branchId: string): Promise<void> {
+    const other = alias(staffMembershipBranches, 'other_branch');
+    const [stranded] = await tx
+      .select({ id: staffMemberships.id })
+      .from(staffMemberships)
+      .innerJoin(
+        staffMembershipBranches,
+        and(
+          eq(staffMembershipBranches.membershipId, staffMemberships.id),
+          eq(staffMembershipBranches.branchId, branchId),
+          isNull(staffMembershipBranches.archivedAt),
+        ),
+      )
+      .where(
+        and(
+          eq(staffMemberships.status, 'active'),
+          eq(staffMemberships.allBranches, false),
+          notExists(
+            tx
+              .select({ one: sql`1` })
+              .from(other)
+              .innerJoin(branches, eq(branches.id, other.branchId))
+              .where(
+                and(
+                  eq(other.membershipId, staffMemberships.id),
+                  ne(other.branchId, branchId),
+                  isNull(other.archivedAt),
+                  isNull(branches.archivedAt),
+                ),
+              ),
+          ),
+        ),
+      )
+      .limit(1);
+    if (stranded) {
+      throw new DomainError('BRANCH_HAS_MEMBERS', 'Active members have no other branch', {
+        branchId,
+      });
+    }
+  }
+
   private async assertBranchesActive(tx: Transaction, scope: BranchScope): Promise<void> {
     if (scope.allBranches) return;
     const found = await tx
@@ -503,11 +556,10 @@ export class StaffService implements TenantOwners {
     tenantId: string,
     options: { adding?: boolean; whileSuspended?: boolean } = {},
   ): Promise<Date> {
+    const row = await readTenant(tx, tenantId, { lock: 'share' });
+    // The time once the lock is held: a write that waited past a scheduled suspension sees it.
     const now = new Date();
-    const status: TenantStatus = effectiveStatus(
-      statusState(await readTenant(tx, tenantId, { lock: 'share' })),
-      now,
-    );
+    const status: TenantStatus = effectiveStatus(statusState(row), now);
     if (status === 'closed') throw new DomainError('TENANT_CLOSED', 'The restaurant is closed');
     if (status === 'suspended' && (options.adding || !options.whileSuspended)) {
       throw new DomainError('TENANT_SUSPENDED', 'The restaurant is suspended');
