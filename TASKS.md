@@ -17,8 +17,7 @@ Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/
 - [x] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
 - [x] FE-03: the restaurant dev server forwards `/api` to the local API
 - [x] TOOL-01: the git guard runs for PowerShell too
-- [ ] TEST-01: ADR 0025 boundary for `packages/contracts` and `packages/db` (owner decision on branch charges by order type)
-- [ ] Audit record, docs, `pnpm verify`, reviewer, PR with auto-merge and Auto-fix
+- [x] Audit record, docs, `pnpm verify`, reviewer, PR with auto-merge and Auto-fix
 
 ## docs/cloud-handoff — continue a spec from local or cloud
 
@@ -42,6 +41,7 @@ From the analysis of 2026-10-28 (S02 sessions and CI runs 26–30), approved by 
 
 ## Follow-ups (not this spec)
 
+- TEST-01 (audit of 2026-10-28): ADR 0025's platform → food boundary test for `packages/contracts` and `packages/db`. Waits for the owner: S01's branch charges by order type (`contracts/tenancy.ts` imports `orders.ts`; `branch_charges_order_types` lists the food order types) either stay platform with a generic sales channel, or move to the food domain
 - The restaurant's logo on the lock screen (spec S02 screen 4): the PC has no session there, so the main process must fetch and keep the logo (a device route for it, or the local database of S04); until then the lock screen shows the name. Do it with S04 or S08 branding
 - The sign-in lock message shows the policy's 15 minutes: the API answers `RATE_LIMITED` without the retry time, and a per-address limit reads the same (PR 1 API)
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
