@@ -1,4 +1,4 @@
-// PreToolUse hook (Bash): refuse `git commit` on main, pushing to main, and broad staging
+// PreToolUse hook (Bash, PowerShell): refuse `git commit` on main, pushing to main, and broad staging
 // (`git add -A`, `--all`, `-u`, `.`, `:/`). A refusal exits with code 2; the message goes back to
 // Claude, which must use a branch, push its own branch, or stage by path.
 // Tested by `packages/config/test/git-guard.test.ts`, which pipes commands into this file.

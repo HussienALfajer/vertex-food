@@ -48,14 +48,15 @@ function Bare({ children }: { children: ReactNode }) {
 
 /**
  * Members share a PC: what one member's session read (staff, devices, the catalog of what they may
- * assign) is forgotten when the session ends, so the next member never sees it (rules 6, 7).
+ * assign, `/me`) is forgotten when the session ends, so the next session, the same member's too,
+ * never sees it (rules 6, 7, 32).
  */
 function useForgetBetweenSessions(membershipId: string | null) {
   const queryClient = useQueryClient();
   const previous = useRef(membershipId);
   useLayoutEffect(() => {
     if (previous.current !== null && previous.current !== membershipId) {
-      forgetSessionData(queryClient);
+      forgetSessionData(queryClient, { keepMe: false });
     }
     previous.current = membershipId;
   }, [membershipId, queryClient]);
@@ -110,12 +111,14 @@ function DeviceSession({
   const online = useOnline();
   const pathname = usePathname();
   const member = status.members.find((item) => item.membershipId === session.membershipId);
-  // Online, the API's view of the member (all branches for owners); offline, the member list's.
-  const me = useQuery({ ...meQuery(session.membershipId), enabled: session.online });
+  // Online, the API's view of the member (all branches for owners); offline, the member list's
+  // only, whatever the cache holds.
+  const { data: me } = useQuery({ ...meQuery(session.membershipId), enabled: session.online });
+  const meData = session.online ? me : undefined;
   useIdleLock(status.branch.idleLockMinutes, () => void bridge.lock('idle'));
 
-  const access: StaffAccess = me.data
-    ? accessOfMe(me.data)
+  const access: StaffAccess = meData
+    ? accessOfMe(meData)
     : {
         permissions: new Set(member?.permissions ?? []),
         branchIds: [status.branch.id],
@@ -126,7 +129,7 @@ function DeviceSession({
     // PIN: they choose one first. Their password was just entered, so no current PIN is asked;
     // after 5 minutes the password dialog asks for it again (rule 26).
     return (
-      <ReauthProvider hasPassword={me.data?.account.hasPassword ?? true}>
+      <ReauthProvider hasPassword={meData?.account.hasPassword ?? true}>
         <Bare>
           <RequiredPin bridge={bridge} />
         </Bare>
@@ -137,7 +140,7 @@ function DeviceSession({
   return (
     <StaffAccessContext.Provider value={access}>
       <SignedIn
-        me={me.data ?? null}
+        me={meData ?? null}
         actions={
           <Button
             type="button"

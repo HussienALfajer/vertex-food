@@ -51,7 +51,14 @@ export default defineConfig(({ mode }) => ({
     vertexFoodWeb(),
     connectOriginsFile(mode),
   ],
-  server: { port: 5273, strictPort: true },
+  // In a browser the renderer calls the API on its own origin, so the personal session's
+  // `SameSite=Strict` cookie travels (spec S02 rule 35): in development Vite forwards `/api` to the
+  // local API (`API_PORT`, 3100 by default), as the console's does; leave `VITE_API_URL` unset.
+  server: {
+    port: 5273,
+    strictPort: true,
+    proxy: { '/api': `http://127.0.0.1:${process.env.API_PORT ?? 3100}` },
+  },
   // The E2E runs the built renderer under the CSP Electron sends with every response, from the
   // same file the main process reads.
   preview: {

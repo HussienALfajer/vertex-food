@@ -13,10 +13,10 @@ Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/
 - [x] BE-02: archiving a branch refuses while active members have it as their only branch (`BRANCH_HAS_MEMBERS`)
 - [x] BE-03: staff writes read the time after the tenant lock (`staff.service.ts`)
 - [x] BE-04: a recognized personal device renews its cookie
-- [ ] FE-01: "Forgot your password?" on the sign-in screen, through `password_reset` (restaurant), with E2E
-- [ ] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
-- [ ] FE-03: the restaurant dev server forwards `/api` to the local API
-- [ ] TOOL-01: the git guard runs for PowerShell too
+- [x] FE-01: "Forgot your password?" on the sign-in screen, through `password_reset` (restaurant), with E2E
+- [x] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
+- [x] FE-03: the restaurant dev server forwards `/api` to the local API
+- [x] TOOL-01: the git guard runs for PowerShell too
 - [ ] TEST-01: ADR 0025 boundary for `packages/contracts` and `packages/db` (owner decision on branch charges by order type)
 - [ ] Audit record, docs, `pnpm verify`, reviewer, PR with auto-merge and Auto-fix
 

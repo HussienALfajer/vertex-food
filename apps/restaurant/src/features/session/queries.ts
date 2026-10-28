@@ -54,12 +54,17 @@ export function useMe(): Me | null {
 }
 
 /**
- * Forgets everything a session read but the PC's own status and the session itself: on a shared
- * PC between members, in a browser when the session is lost (rules 6, 7).
+ * Forgets everything a session read but the PC's own status: on a shared PC between sessions,
+ * `/me` too, so the next session never starts from the last one's (rule 32); in a browser when
+ * the session is lost, all but `/me`, which is the session the gate reads again (rules 6, 7).
  */
-export function forgetSessionData(queryClient: QueryClient): void {
+export function forgetSessionData(
+  queryClient: QueryClient,
+  options: { keepMe: boolean } = { keepMe: true },
+): void {
   queryClient.removeQueries({
-    predicate: (query) => query.queryKey[0] !== 'device' && query.queryKey[0] !== 'me',
+    predicate: (query) =>
+      query.queryKey[0] !== 'device' && (!options.keepMe || query.queryKey[0] !== 'me'),
   });
 }
 
