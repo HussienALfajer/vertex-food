@@ -24,11 +24,15 @@ export const PASSWORD = 'cedar-lamp-river-42';
 export const ORIGIN = 'app://restaurant';
 
 let phoneCount = 0;
-/** A synthetic Syrian mobile number, unique in the run. */
+/**
+ * A synthetic Syrian mobile number, unique in the run. Its last six digits start with 1, so they
+ * are never one of the PINs of `pinFor` (48…), which the API refuses as the phone's tail.
+ */
 export function newPhone(): string {
   phoneCount += 1;
-  const tail = `${Date.now() % 1_000_000}${phoneCount}`.padStart(8, '0').slice(-8);
-  return `+9639${tail}`;
+  const clock = String(Date.now() % 100_000).padStart(5, '0');
+  const count = String(phoneCount % 100).padStart(2, '0');
+  return `+9639${clock.slice(0, 2)}1${clock.slice(2)}${count}`;
 }
 
 /** A six-digit PIN that is not trivial and not the phone's tail. */
