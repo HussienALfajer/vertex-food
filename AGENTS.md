@@ -26,7 +26,7 @@ Read these on demand. For a feature, read its spec, the ADRs it lists, and its s
 
 ## Stack (ADR 0002, 0003)
 
-pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, the eight app skeletons, `brand/`, `packages/config`, `db`, `contracts`, `crypto`, `i18n`, `tokens`, `ui`, `ui-native` and CI are in place; `sync` and `print` arrive with their roadmap items.
+pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, the eight app skeletons, `brand/`, `packages/config`, `db`, `contracts`, `crypto`, `i18n`, `sync`, `tokens`, `ui`, `ui-native` and CI are in place; `print` arrives with its roadmap item.
 
 - `apps/api`, `apps/worker`, `apps/whatsapp-gateway` NestJS · `apps/restaurant` React + Vite in Electron, offline-first branch hub serving the kitchen display and waiter app · `apps/console` React + Vite · `apps/web` Next.js · `apps/customer`, `apps/driver` React Native + Expo
 - `packages/contracts` · `db` · `crypto` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
@@ -48,6 +48,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Local database (roles and `vertex_food`, from `.env`) | `pnpm db:setup-local` (`packages/db/CLAUDE.md`) |
 | Generate a migration from the schema | `pnpm db:generate` · custom SQL: `pnpm --filter @vertex-food/db exec drizzle-kit generate --custom --name=<name>` |
 | Apply migrations to the local database | `pnpm db:migrate` |
+| Start or stop the sync service (PowerSync in Docker; `packages/sync/CLAUDE.md`) | `pnpm sync:up` · `pnpm sync:down` |
 | CLI for Vertex staff: tenants, platform users, owner recovery (after `build`; `apps/api/CLAUDE.md`) | `pnpm --filter @vertex-food/api cli <command> --operator <name> …` |
 | Regenerate `apps/api/openapi.json` after a route or contract change | `pnpm --filter @vertex-food/api exec vitest run test/openapi.test.ts -u` |
 | Regenerate the restaurant app's API types after `openapi.json` changes | `pnpm --filter @vertex-food/restaurant exec vitest run test/api-schema.test.ts -u` |

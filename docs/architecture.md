@@ -50,7 +50,7 @@ apps/
 packages/
   contracts/          Zod schemas (exportable as JSON Schema), error codes, state tables, money, totals, agreement terms
   db/                 Drizzle schema, migrations, RLS policies, shared write paths
-  sync/               command definitions, sync rules, hub protocol (later: S04)
+  sync/               command registry and definitions, canonical JSON and signed envelopes, the sync service's streams (powersync/); hub protocol and client outbox (S04)
   print/              receipt and ticket documents, Skia rendering to 1-bit pages, ESC/POS, network and spooler transports, print queue (ADR 0023) (later: S10, S11)
   tokens/             design tokens (palette, semantic roles light and dark, scales, logo paths, restaurant identity slots), shared by web and native
   ui/                 web design system: Tailwind v4 theme, fonts, Base UI components, theme toggle, PoweredBy (restaurant, console, web)
@@ -67,14 +67,15 @@ docs/                 product, decisions, specs, roadmap, workflow
 
 | Layer | Module | Owns (main tables) | Notes |
 |---|---|---|---|
-| platform | identity | accounts, personal_devices, otp_challenges, used_tokens, devices, staff_pins, staff_sessions, platform_users, platform_user_recovery_codes, platform_sessions; hub_pairings (S04) | ADR 0005, 0032, S02 |
+| platform | identity | accounts, personal_devices, otp_challenges, used_tokens, devices, staff_pins, staff_sessions, platform_users, platform_user_recovery_codes, platform_sessions; hub pairings live on the hub PCs only (S04) | ADR 0005, 0032, S02 |
 | platform | tenancy | tenants (catalog with `data_location`), tenant_slugs, branches, branch_hours, branch_hour_exceptions, branch_charges | ADR 0004, S01 |
-| platform | access | staff_memberships, staff_membership_branches, account_tenant_links; the permission catalog and role presets are code in `packages/contracts` | ADR 0005, 0032, S02 |
+| platform | access | staff_memberships, staff_membership_branches, account_tenant_links, membership_access_snapshots (append-only, S04); the permission catalog and role presets are code in `packages/contracts` | ADR 0005, 0032, S02 |
 | platform | commercial | features (the feature catalog), packages, agreement_templates, agreements, agreement_terms (append-only) | ADR 0013, 0025 |
 | platform | entitlements | entitlement_overrides, resolved cache | ADR 0013 |
 | platform | config | branding_versions, custom_field_definitions | ADR 0010 |
 | platform | messaging | whatsapp_sessions, whatsapp_session_credentials, whatsapp_session_events (append-only), whatsapp_messages (the send queue), whatsapp_known_recipients, whatsapp_opt_outs; templates are code in `packages/contracts` and `packages/i18n`; push_tokens (S16, S19) | ADR 0012, 0034, S03 |
-| platform | files, audit, events, domains, sync, areas | files; audit_entries, platform_audit_entries; outbox_events; domains; command_log, number_ranges; governorates, cities (areas below a city: S16, S23) | ADR 0015, 0016, 0008, 0021 |
+| platform | sync | command_log, command_payloads, command_replays, number_blocks, device_sync_states, branch_connectivity, branch_connectivity_changes, branch_certificate_authorities, branch_ca_keys, device_certificates, quarantine_batches, quarantine_commands, quarantine_decisions, attention_items, attention_resolutions; `devices.hub_role`; the command registry is code in `packages/sync` | ADR 0008, 0022, 0035, S04 |
+| platform | files, audit, events, domains, areas | files; audit_entries, platform_audit_entries; outbox_events; domains; governorates, cities (areas below a city: S16, S23) | ADR 0015, 0016, 0021 |
 | food | menu | categories, items, variants, modifier_groups, modifiers, item_availability, prices (USD base per channel), rounding_rules, exchange_rates, item_costs (owner only) | ADR 0007, 0014, 0031 |
 | food | orders | orders, order_lines, order_adjustments (kind, source, funding), order_events (append-only), table_requests, lost_demand_events | ADR 0007, 0029 |
 | food | promotions | campaigns, campaign_versions (append-only), campaign_participations (opt-outs, co-funding acceptances), coupon_codes, campaign_uses, fraud_limits | ADR 0026 |

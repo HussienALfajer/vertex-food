@@ -32,7 +32,7 @@ Rules that keep the parallel PRs apart:
 - [x] db `src/access-snapshots.ts`: `appendAccessSnapshot(tx, …)`, called by every S02 access write path in `apps/api` (add, edit, adjust, deactivate, reactivate, branch scope) in its transaction; tests
 - [x] `packages/sync` created: canonical JSON and payload hash against fixed vectors, Ed25519 envelope signing and verification, the registry and `defineCommand` (name, version, schema, access, station, `resolve`, `describe`, `alreadyApplied`), the definitions of `sync.network_check` and `audit.record_local_events`; boundary and unit tests; folder `CLAUDE.md`
 - [x] Sync service: `packages/sync/powersync/` with the pinned PowerSync Open Edition image, the stream definitions (published columns, filtered by `tenant_id` and `branch_id`), their convention test (both filters on every stream; columns within the `food_sync` grants), local `docker compose` setup (`pnpm sync:up`) and notes; `branch_id` added to `device_certificates` and `attention_resolutions` so their streams filter by branch (migrations 0012, 0013). First started in PR 5
-- [ ] Wiring, docs (ROADMAP with the parallel plan, `AGENTS.md` stack line, architecture, folder `CLAUDE.md` files, glossary)
+- [x] Wiring, docs (ROADMAP with the parallel plan, `AGENTS.md` stack line, architecture, folder `CLAUDE.md` files, glossary)
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 2 `feat/s04-hub-protocol` — hub protocol in `packages/sync` (after PR 1, parallel with PR 3 and PR 4)
