@@ -273,6 +273,46 @@ describe('DeviceService PIN sessions (rules 24, 25, 32)', () => {
     expect(server.refreshed).toBe(2);
   });
 
+  it('"Switch cashier" locks at once while a member-list refresh waits on the connection', async () => {
+    const { service, server, api } = await registered();
+    let release: () => void = () => undefined;
+    vi.mocked(api.members).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ status: 'not_modified', issuedAt: server.now.toISOString() });
+        }),
+    );
+    const refreshing = service.refresh();
+    await vi.waitFor(() => expect(api.members).toHaveBeenCalled());
+    const locking = service.lock('locked');
+    expect(service.status()).toMatchObject({ session: null });
+    release();
+    await Promise.all([refreshing, locking]);
+    expect(service.status()).toMatchObject({ session: null });
+    expect(server.ended).toEqual([expect.stringMatching(/^access-1./)]);
+  });
+
+  it('a token refresh that ends after the lock ends the rotated session and opens nothing', async () => {
+    const { service, server, api } = await registered();
+    server.now = later(14.5);
+    let release: () => void = () => undefined;
+    const refresh = vi.mocked(api.refreshSession).getMockImplementation();
+    vi.mocked(api.refreshSession).mockImplementationOnce(
+      (token, refreshToken) =>
+        new Promise((resolve, reject) => {
+          release = () => refresh?.(token, refreshToken).then(resolve, reject);
+        }),
+    );
+    const token = service.accessToken();
+    await vi.waitFor(() => expect(api.refreshSession).toHaveBeenCalled());
+    const locking = service.lock('locked');
+    release();
+    expect(await token).toBeNull();
+    await locking;
+    expect(service.status()).toMatchObject({ session: null });
+    expect(server.ended).toContainEqual(expect.stringMatching(/^access-2./));
+  });
+
   it('a refresh refused by the server ends the session', async () => {
     const { service, server, api } = await registered();
     vi.mocked(api.refreshSession).mockRejectedValueOnce(new DeviceApiError('SESSION_ENDED'));
@@ -475,6 +515,28 @@ describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () 
     await service.refresh();
     expect(vi.mocked(api.token).mock.calls.length).toBe(before + 1);
     expect(service.status()).toMatchObject({ online: true });
+  });
+
+  it('keeps the time a status saw, so a clock set back never reopens the window', async () => {
+    const { service, server, make } = await registered();
+    await service.lock('locked');
+    server.reachable = false;
+    // Offline, 8 days on: only a status is read (no PIN typed, no sync); the window has closed.
+    server.pcClockOffsetMs = 8 * 24 * 3600_000;
+    expect(service.status()).toMatchObject({ window: { open: false } });
+    // The clock is set back to day 1: still closed, with the clock warning, after a restart too.
+    server.pcClockOffsetMs = 24 * 3600_000;
+    expect(service.status()).toMatchObject({ window: { open: false, clockBehind: true } });
+    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
+  });
+
+  it('an offline member-list refresh keeps the time it saw too', async () => {
+    const { service, server, make } = await registered();
+    server.reachable = false;
+    server.pcClockOffsetMs = 8 * 24 * 3600_000;
+    await service.refresh();
+    server.pcClockOffsetMs = 0;
+    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
   });
 
   it('a clock that ran ahead and was corrected leaves the window open once synced', async () => {

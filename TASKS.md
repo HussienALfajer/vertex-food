@@ -2,6 +2,24 @@
 
 The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
 
+## fix/S02-audit — the external audit of 2026-10-28 (Phase 0, S01, S02)
+
+Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/audits/2026-10-28-S02-audit.md`.
+
+- [x] SEC-01: "Switch cashier" locks at once, not behind a queued refresh; a refresh that ends after the lock opens nothing (`device-service.ts`)
+- [x] OFF-01: every look at the clock (status, offline refresh) keeps the highest time seen (`device-service.ts`)
+- [ ] SEC-02: tickets issued before a password change are refused (`tickets.ts`)
+- [ ] BE-01: a console reset keeps an active admin and rechecks the operator (`platform-users.service.ts`)
+- [ ] BE-02: archiving a branch refuses while active members have it as their only branch (`BRANCH_HAS_MEMBERS`)
+- [ ] BE-03: staff writes read the time after the tenant lock (`staff.service.ts`)
+- [ ] BE-04: a recognized personal device renews its cookie
+- [ ] FE-01: "Forgot your password?" on the sign-in screen, through `password_reset` (restaurant), with E2E
+- [ ] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
+- [ ] FE-03: the restaurant dev server forwards `/api` to the local API
+- [ ] TOOL-01: the git guard runs for PowerShell too
+- [ ] TEST-01: ADR 0025 boundary for `packages/contracts` and `packages/db` (owner decision on branch charges by order type)
+- [ ] Audit record, docs, `pnpm verify`, reviewer, PR with auto-merge and Auto-fix
+
 ## docs/cloud-handoff — continue a spec from local or cloud
 
 - [x] Repository audit of 2026-10-28: every branch merged into `main`, local `main` equals `origin/main`; merged `chore/workflow-speed` deleted on origin, empty `.claude/worktrees/` removed
