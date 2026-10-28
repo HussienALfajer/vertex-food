@@ -41,6 +41,7 @@ const definitions = {
   reject: testCommand('write_then_reject'),
   throws: testCommand('write_then_throw'),
   constraint: testCommand('break_a_constraint'),
+  nodeError: testCommand('throw_a_node_error'),
   adjust: testCommand('adjust'),
   infrastructure: testCommand('lose_the_connection'),
 };
@@ -78,6 +79,11 @@ const executors = [
       occurredAt: new Date(),
     });
     return { outcome: 'accepted' };
+  }),
+  defineExecutor(definitions.nodeError, async () => {
+    throw Object.assign(new TypeError('The "data" argument must be a string'), {
+      code: 'ERR_INVALID_ARG_TYPE',
+    });
   }),
   defineExecutor(definitions.adjust, async (tx, command) => {
     await write(tx, command.tenantId, command.envelope.id);
@@ -150,7 +156,11 @@ describe('execution in a savepoint (rule 9, SYNC-01)', () => {
 
   it('records an exception or a broken constraint as server_error, with nothing written', async () => {
     const { device, tenantId, ownerMembershipId } = await api.ownerOnDevice();
-    for (const name of ['test.write_then_throw', 'test.break_a_constraint']) {
+    for (const name of [
+      'test.write_then_throw',
+      'test.break_a_constraint',
+      'test.throw_a_node_error',
+    ]) {
       const failed = command(device, name, ownerMembershipId);
       const response = await upload(device, [uploaded(failed)], 200);
       expect(response.body.results).toEqual([

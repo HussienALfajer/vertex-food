@@ -280,6 +280,76 @@ describe('the quarantine (rules 40–42)', () => {
     expect([twice.status, twice.body.code]).toEqual([409, 'QUARANTINE_ALREADY_DECIDED']);
   });
 
+  it('takes nothing more into a decided batch, and refuses the revoked PC’s later commands', async () => {
+    const b = await branch();
+    const pending = signedCommand(b.standby.device, { membershipId: b.ownerMembershipId });
+    await revoke(b, b.standby.device);
+    const { response } = await quarantineUpload(b.standby.device, [pending]);
+    const batchId = response.body.batchId as string;
+    await b.hub.as(b.owner).post(`/api/sync/quarantine/${batchId}/accept`).expect(200);
+
+    // A stolen key signs new commands after the decision: stored nowhere, run never.
+    const forged = signedCommand(b.standby.device, { membershipId: b.ownerMembershipId });
+    const again = await quarantineUpload(b.standby.device, [forged]);
+    expect(again.response.body.batchId).toBe(batchId);
+    const detail = await b.hub.as(b.owner).get(`/api/sync/quarantine/${batchId}`).expect(200);
+    expect(detail.body.commands.map((command: { commandId: string }) => command.commandId)).toEqual(
+      [pending.id],
+    );
+    // Uploaded by the hub, the late command is refused with its reason, visibly.
+    const viaHub = await upload(b.hub, [uploaded(forged)], 200);
+    expect(viaHub.body.results).toEqual([
+      { id: forged.id, outcome: 'rejected', reason: 'device_revoked', replay: false },
+    ]);
+    // The accepted one, uploaded again by the hub, answers its outcome.
+    const pendingAgain = await upload(b.hub, [uploaded(pending)], 200);
+    expect(pendingAgain.body.results[0]).toMatchObject({ outcome: 'accepted', replay: true });
+  });
+
+  it('runs the commands another PC executed instead of holding them, and refuses a wiped PC', async () => {
+    const b = await branch();
+    // The standby holds the hub's commands in its journal when it is revoked.
+    const hubCommand = signedCommand(b.hub, { membershipId: b.ownerMembershipId });
+    const own = signedCommand(b.standby.device, { membershipId: b.ownerMembershipId });
+    await revoke(b, b.standby.device);
+    const { response } = await quarantineUpload(b.standby.device, [hubCommand, own]);
+    const batchId = response.body.batchId as string;
+    const detail = await b.hub.as(b.owner).get(`/api/sync/quarantine/${batchId}`).expect(200);
+    expect(detail.body.commands.map((command: { commandId: string }) => command.commandId)).toEqual(
+      [own.id],
+    );
+    const logged = await withTenant(db, b.tenantId, (tx) =>
+      tx.select().from(commandLog).where(eq(commandLog.id, hubCommand.id)),
+    );
+    expect(logged[0]).toMatchObject({
+      outcome: 'accepted',
+      uploadedByDeviceId: b.standby.device.deviceId,
+    });
+    // The hub's own upload of it answers the outcome, whatever the owner decides on the batch.
+    await b.hub
+      .as(b.owner)
+      .post(`/api/sync/quarantine/${batchId}/reject`)
+      .send({ reason: 'جهاز مسروق' })
+      .expect(200);
+    const replay = await upload(b.hub, [uploaded(hubCommand)], 200);
+    expect(replay.body.results[0]).toMatchObject({ outcome: 'accepted', replay: true });
+
+    // Once the PC confirmed its wipe, it uploads nothing more.
+    const http = await b.standby.device.device();
+    await http.post('/api/devices/current/wiped').expect(204);
+    const wiped = await quarantineUpload(b.standby.device, [own]);
+    expect([wiped.response.status, wiped.response.body.code]).toEqual([403, 'DEVICE_REVOKED']);
+  });
+
+  it('runs a revoked PC’s command made before its revocation, held or not', async () => {
+    const b = await branch();
+    const before = signedCommand(b.standby.device, { membershipId: b.ownerMembershipId });
+    await revoke(b, b.standby.device);
+    await quarantineUpload(b.standby.device, [before]);
+    const viaHub = await upload(b.hub, [uploaded(before)], 200);
+    expect(viaHub.body.results).toEqual([{ id: before.id, outcome: 'accepted', replay: false }]);
+  });
+
   it('rejects a batch with a reason and runs nothing', async () => {
     const b = await branch();
     const command = signedCommand(b.client.device, { membershipId: b.ownerMembershipId });

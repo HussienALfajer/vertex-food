@@ -125,6 +125,28 @@ describe('the command upload (rules 7–10)', () => {
     ]);
   });
 
+  it('does not answer or record another branch’s command id', async () => {
+    const b = await branch();
+    const command = signedCommand(b.hub, { membershipId: b.ownerMembershipId });
+    await upload(b.hub, [uploaded(command)], 200);
+    // The east branch's first PC is its hub; it uploads the main branch's id with its own payload.
+    const east = await registerPc(api, b, b.east, 3);
+    const other = resign(east.device, {
+      ...command,
+      executedByDeviceId: east.device.deviceId,
+      payload: { ...command.payload, sequence: 5 },
+    });
+    const response = await upload(east.device, [uploaded(other)], 200);
+    expect(response.body.results).toEqual([
+      { id: command.id, outcome: 'rejected', reason: 'signature_invalid', replay: false },
+    ]);
+    const replays = await withTenant(db, b.tenantId, (tx) =>
+      tx.select().from(commandReplays).where(eq(commandReplays.commandId, command.id)),
+    );
+    expect(replays).toEqual([]);
+    expect(await attentionOf(b.tenantId, command.id)).toEqual([]);
+  });
+
   it('executes one id once when the hub and the standby upload it together', async () => {
     const b = await branch();
     const command = signedCommand(b.hub, { membershipId: b.ownerMembershipId });

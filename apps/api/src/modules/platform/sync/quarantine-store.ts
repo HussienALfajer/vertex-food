@@ -119,8 +119,9 @@ export async function addToQuarantine(
 }
 
 /**
- * Holds one uploaded command in its batch (rules 16, 40). Answers the batch's decision: a revoked
- * PC's batch the owner already accepted takes its late commands in, to be run.
+ * Holds one uploaded command in its batch (rules 16, 40), unless the owner already decided on the
+ * batch: a decided batch takes nothing more. Answers the batch's decision and whether the command
+ * was in the batch already.
  */
 export async function holdInQuarantine(
   tx: Transaction,
@@ -134,13 +135,24 @@ export async function holdInQuarantine(
     receivedAt: Date;
     receivedFromDeviceId: string;
   },
-): Promise<'accept' | 'reject' | null> {
+): Promise<{ decision: 'accept' | 'reject' | null; alreadyHeld: boolean }> {
   const batch = await quarantineBatch(tx, input);
-  await addToQuarantine(tx, {
-    tenantId: input.tenantId,
-    batchId: batch.id,
-    envelopes: [input.envelope],
-    receivedAt: input.receivedAt,
-  });
-  return batch.decision;
+  const [held] = await tx
+    .select({ id: quarantineCommands.id })
+    .from(quarantineCommands)
+    .where(
+      and(
+        eq(quarantineCommands.batchId, batch.id),
+        eq(quarantineCommands.commandId, input.envelope.id),
+      ),
+    );
+  if (!held && batch.decision === null) {
+    await addToQuarantine(tx, {
+      tenantId: input.tenantId,
+      batchId: batch.id,
+      envelopes: [input.envelope],
+      receivedAt: input.receivedAt,
+    });
+  }
+  return { decision: batch.decision, alreadyHeld: held !== undefined };
 }

@@ -22,6 +22,7 @@ import {
   describeForLog,
   deviceSyncStates,
   devices,
+  quarantineBatches,
   quarantineCommands,
   staffMemberships,
   type Transaction,
@@ -71,14 +72,26 @@ class Rejected extends Error {
 /** SQLSTATE classes of a database or infrastructure failure, which the PC retries (rule 9). */
 const INFRASTRUCTURE_CLASSES = ['08', '40', '53', '57P', '58', 'XX'];
 
+/** The driver's network errors, which carry no SQLSTATE. */
+const NETWORK_ERRORS = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'EPIPE',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+]);
+
 function isInfrastructureFailure(error: unknown): boolean {
   if (isDeadlineExceeded(error)) return true;
   const cause = error instanceof Error && error.cause ? error.cause : error;
   if (typeof cause !== 'object' || cause === null || !('code' in cause)) return false;
   const code = String(cause.code);
-  // A driver's network error (ECONNRESET, ETIMEDOUT…) has no SQLSTATE.
-  if (code.startsWith('E')) return true;
-  return INFRASTRUCTURE_CLASSES.some((prefix) => code.startsWith(prefix));
+  if (NETWORK_ERRORS.has(code)) return true;
+  // A SQLSTATE is five digits or capitals; Node's own `ERR_*` codes are a handler's bug.
+  return (
+    /^[0-9A-Z]{5}$/.test(code) && INFRASTRUCTURE_CLASSES.some((prefix) => code.startsWith(prefix))
+  );
 }
 
 const unstored = (id: string, reason: CommandReason): CommandResult => ({
@@ -151,12 +164,28 @@ export class CommandPipeline {
     await lock(tx, 'command', envelope.id);
     const receivedAt = await databaseNow(tx);
     const [known] = await tx.select().from(commandLog).where(eq(commandLog.id, envelope.id));
-    if (known) return this.replay(tx, scope, known, uploaded, receivedAt);
+    if (known) {
+      // Another branch's command is not this branch's to read or answer.
+      if (known.branchId !== scope.branchId) {
+        this.logger.warn(
+          `Command of another branch uploaded: command ${envelope.id} uploader ${scope.uploadedByDeviceId}`,
+        );
+        return unstored(envelope.id, 'signature_invalid');
+      }
+      return this.replay(tx, scope, known, uploaded, receivedAt);
+    }
     if (!options.fromQuarantine) {
+      // Rule 16 decided on this command once; a revoked executor's is checked again below.
       const [held] = await tx
         .select({ id: quarantineCommands.id })
         .from(quarantineCommands)
-        .where(eq(quarantineCommands.commandId, envelope.id));
+        .innerJoin(quarantineBatches, eq(quarantineBatches.id, quarantineCommands.batchId))
+        .where(
+          and(
+            eq(quarantineCommands.commandId, envelope.id),
+            eq(quarantineBatches.reason, 'member_inactive'),
+          ),
+        );
       if (held) return { id: envelope.id, outcome: 'quarantined', replay: true };
     }
 
@@ -231,12 +260,14 @@ export class CommandPipeline {
         executor.status !== 'active' &&
         (executor.revokedAt === null || executor.revokedAt.getTime() <= effective.getTime());
       if (revoked) {
-        return this.quarantine(tx, scope, uploaded, receivedAt, {
+        const held = await this.quarantine(tx, scope, uploaded, receivedAt, {
           reason: 'device_revoked',
           deviceId: executor.id,
           membershipId: null,
-          options,
         });
+        if (held) return held;
+        // The owner decided on the revoked PC's batch: a command it did not hold is refused.
+        reason = 'device_revoked';
       }
     }
 
@@ -264,12 +295,13 @@ export class CommandPipeline {
         accepted: options.fromQuarantine,
       });
       if (decision === 'quarantine') {
-        return this.quarantine(tx, scope, uploaded, receivedAt, {
+        const held = await this.quarantine(tx, scope, uploaded, receivedAt, {
           reason: 'member_inactive',
           deviceId: executor.id,
           membershipId,
-          options,
         });
+        if (held) return held;
+        throw new Error('A member batch is always open');
       }
       reason = decision;
     }
@@ -476,7 +508,12 @@ export class CommandPipeline {
     return toCommandResult(known, true);
   }
 
-  /** Rules 16 and 40–42: the command is held for the owner; the PC drops it from its queue. */
+  /**
+   * Rules 16 and 40–42: the command is held for the owner, and the PC drops it from its queue. A
+   * revoked PC's batch the owner decided takes nothing more: a command it held when the owner
+   * accepted it runs (the standby uploading it after the decision), any other answers null and is
+   * refused `device_revoked` by the caller.
+   */
   private async quarantine(
     tx: Transaction,
     scope: CommandScope,
@@ -486,10 +523,9 @@ export class CommandPipeline {
       reason: 'device_revoked' | 'member_inactive';
       deviceId: string;
       membershipId: string | null;
-      options: RunOptions;
     },
-  ): Promise<CommandResult> {
-    const decision = await holdInQuarantine(tx, {
+  ): Promise<CommandResult | null> {
+    const held = await holdInQuarantine(tx, {
       tenantId: scope.tenantId,
       branchId: scope.branchId,
       deviceId: hold.deviceId,
@@ -499,9 +535,13 @@ export class CommandPipeline {
       receivedAt,
       receivedFromDeviceId: scope.uploadedByDeviceId,
     });
-    // A revoked PC's batch the owner already accepted takes its late commands in (rule 41).
-    if (decision === 'accept') return this.run(tx, scope, uploaded, { fromQuarantine: true });
-    return { id: uploaded.envelope.id, outcome: 'quarantined', replay: false };
+    if (held.decision === null) {
+      return { id: uploaded.envelope.id, outcome: 'quarantined', replay: held.alreadyHeld };
+    }
+    if (held.decision === 'accept' && held.alreadyHeld) {
+      return this.run(tx, scope, uploaded, { fromQuarantine: true });
+    }
+    return null;
   }
 
   /**

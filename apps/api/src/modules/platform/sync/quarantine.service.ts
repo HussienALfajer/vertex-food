@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   type CommandEnvelope,
   type CommandResult,
@@ -48,6 +48,8 @@ const byJournal = (a: CommandEnvelope, b: CommandEnvelope) =>
  */
 @Injectable()
 export class QuarantineService {
+  private readonly logger = new Logger('SyncQuarantine');
+
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     @Inject(COMMAND_REGISTRY) private readonly registry: CommandRegistry,
@@ -57,14 +59,21 @@ export class QuarantineService {
 
   /**
    * Rule 40: the revoked PC proves itself with the nonce of a device-token challenge signed by
-   * its key. One batch per revocation: a later upload answers the batch already made.
+   * its key, until it confirmed its wipe. Its own commands go to its revocation's one batch while
+   * the owner has not decided on it (at most 10 000; any beyond are refused, audited and logged);
+   * the entries of its journal that another PC executed are not its to hold, and run as any upload
+   * of them would, through rule 8 with their executor's signature.
    */
   async upload(input: QuarantineUpload): Promise<{ batchId: string }> {
     if (!isSyncProtocolSupported(input.protocol)) {
       throw new DomainError('PROTOCOL_UNSUPPORTED', 'The sync protocol is not supported');
     }
     this.proofs.takeNonce(input.tenantId, input.deviceId, input.nonce);
-    return withTenant(this.db, input.tenantId, async (tx) => {
+    const own = input.commands.filter((envelope) => envelope.executedByDeviceId === input.deviceId);
+    const others = input.commands.filter(
+      (envelope) => envelope.executedByDeviceId !== input.deviceId,
+    );
+    const received = await withTenant(this.db, input.tenantId, async (tx) => {
       const [device] = await tx.select().from(devices).where(eq(devices.id, input.deviceId));
       if (!device) throw new DomainError('DEVICE_UNKNOWN', 'Unknown device');
       const verify = ed25519Verifier(device.publicKey);
@@ -74,6 +83,7 @@ export class QuarantineService {
       if (device.status !== 'revoked') {
         throw new DomainError('DEVICE_NOT_REVOKED', 'Only a revoked PC uploads to the quarantine');
       }
+      if (device.wipedAt) throw new DomainError('DEVICE_REVOKED', 'The PC confirmed its wipe');
       const actor = {
         kind: 'device',
         tenantId: input.tenantId,
@@ -89,41 +99,62 @@ export class QuarantineService {
         membershipId: null,
         receivedFromDeviceId: device.id,
       });
-      // The standby's uploads may have made the batch and added some of these before; ids
-      // already held stay where they are, and the batch holds at most 10 000 commands.
+      // The owner decided on what the batch held: nothing more is taken or run.
+      if (batch.decision !== null) {
+        this.logger.warn(`Quarantine upload after the decision: batch ${batch.id}`);
+        return { batchId: batch.id, branchId: device.branchId, decided: true };
+      }
+      // The standby's uploads may have added some of these before; ids already held stay.
       const [held] = await tx
         .select({ value: count() })
         .from(quarantineCommands)
         .where(eq(quarantineCommands.batchId, batch.id));
       const room = Math.max(0, MAX_QUARANTINE_COMMANDS - (held?.value ?? 0));
-      const envelopes = input.commands.slice(0, room);
-      if (envelopes.length > 0) {
+      const taken = own.slice(0, room);
+      const refused = own.slice(room).map((envelope) => envelope.id);
+      if (taken.length > 0) {
         await addToQuarantine(tx, {
           tenantId: input.tenantId,
           batchId: batch.id,
-          envelopes,
+          envelopes: taken,
           receivedAt: await databaseNow(tx),
         });
-        await audit(tx, input.tenantId, actor, {
-          action: 'quarantine_batch.received',
-          entityType: 'quarantine_batch',
-          entityId: batch.id,
-          details: { reason: 'device_revoked', uploaded: envelopes.length },
-        });
       }
-      // A batch the owner accepted already takes the PC's late commands in (rule 41).
-      if (batch.decision === 'accept') {
-        for (const envelope of [...envelopes].sort(byJournal)) {
-          await this.pipeline.run(
-            tx,
-            { tenantId: input.tenantId, branchId: device.branchId, uploadedByDeviceId: device.id },
-            { envelope, mirrored: true },
-            { fromQuarantine: true },
-          );
-        }
+      if (refused.length > 0) {
+        this.logger.warn(
+          `Quarantine batch ${batch.id} full: ${refused.length} commands refused, first ${refused[0]}`,
+        );
       }
-      return { batchId: batch.id };
+      await audit(tx, input.tenantId, actor, {
+        action: 'quarantine_batch.received',
+        entityType: 'quarantine_batch',
+        entityId: batch.id,
+        details: {
+          reason: 'device_revoked',
+          uploaded: taken.length,
+          executedElsewhere: others.length,
+          ...(refused.length > 0 ? { refused: refused.length, refusedIds: refused } : {}),
+        },
+      });
+      return { batchId: batch.id, branchId: device.branchId, decided: false };
     });
+    if (!received.decided) {
+      for (const envelope of [...others].sort(byJournal)) {
+        await withTenant(this.db, input.tenantId, (tx) =>
+          this.pipeline.run(
+            tx,
+            {
+              tenantId: input.tenantId,
+              branchId: received.branchId,
+              uploadedByDeviceId: input.deviceId,
+            },
+            { envelope, mirrored: true },
+            { fromQuarantine: false },
+          ),
+        );
+      }
+    }
+    return { batchId: received.batchId };
   }
 
   list(actor: StaffActor): Promise<QuarantineBatch[]> {
@@ -161,21 +192,33 @@ export class QuarantineService {
   }
 
   /**
-   * Rule 41: the decision and the batch's commands in one transaction, each run in journal order
+   * Rule 41: the decision, then the batch's commands in journal order, each in its own transaction
    * through rule 8 without the device check and flagged `from_quarantine`; one already in the log
-   * (uploaded earlier by the standby) answers as a replay and is skipped.
+   * (uploaded earlier by the standby) answers as a replay and is skipped. An accept cut short is
+   * finished by accepting again, which runs what is left.
    */
-  accept(
+  async accept(
     actor: StaffActor,
     id: string,
   ): Promise<{ batch: QuarantineBatch; results: CommandResult[] }> {
     requirePermission(actor, 'sync.quarantine.review');
-    return withTenant(this.db, actor.tenantId, async (tx) => {
-      const batch = await this.decide(tx, actor, id, 'accept', null);
-      const results: CommandResult[] = [];
-      for (const envelope of await batchEnvelopes(tx, id)) {
-        results.push(
-          await this.pipeline.run(
+    const batch = await withTenant(this.db, actor.tenantId, async (tx) => {
+      await lock(tx, 'quarantine-batch', id);
+      const [decided] = await tx
+        .select({ decision: quarantineDecisions.decision })
+        .from(quarantineDecisions)
+        .where(eq(quarantineDecisions.batchId, id));
+      if (decided?.decision === 'accept' && (await unexecutedCount(tx, id)) > 0) {
+        return batchRow(tx, id);
+      }
+      return this.decide(tx, actor, id, 'accept', null);
+    });
+    const envelopes = await withTenant(this.db, actor.tenantId, (tx) => batchEnvelopes(tx, id));
+    const results: CommandResult[] = [];
+    for (const envelope of envelopes) {
+      results.push(
+        await withTenant(this.db, actor.tenantId, (tx) =>
+          this.pipeline.run(
             tx,
             {
               tenantId: actor.tenantId,
@@ -185,8 +228,10 @@ export class QuarantineService {
             { envelope, mirrored: true },
             { fromQuarantine: true },
           ),
-        );
-      }
+        ),
+      );
+    }
+    return withTenant(this.db, actor.tenantId, async (tx) => {
       await audit(tx, actor.tenantId, actor, {
         action: 'quarantine_batch.accepted',
         entityType: 'quarantine_batch',
@@ -228,8 +273,7 @@ export class QuarantineService {
     reason: string | null,
   ) {
     await lock(tx, 'quarantine-batch', id);
-    const [batch] = await tx.select().from(quarantineBatches).where(eq(quarantineBatches.id, id));
-    if (!batch) throw notFound();
+    const batch = await batchRow(tx, id);
     // The revoked PC's batch takes no more commands while it is decided.
     await lock(tx, 'quarantine-device', batch.deviceId);
     const [decided] = await tx
@@ -251,6 +295,19 @@ export class QuarantineService {
     });
     return batch;
   }
+}
+
+async function batchRow(tx: Transaction, id: string) {
+  const [batch] = await tx.select().from(quarantineBatches).where(eq(quarantineBatches.id, id));
+  if (!batch) throw notFound();
+  return batch;
+}
+
+/** How many of the batch's commands are not in the log yet. */
+async function unexecutedCount(tx: Transaction, id: string): Promise<number> {
+  const envelopes = await batchEnvelopes(tx, id);
+  const executed = await executedIds(tx, envelopes);
+  return envelopes.filter((envelope) => !executed.has(envelope.id)).length;
 }
 
 async function readBatch(tx: Transaction, id: string): Promise<QuarantineBatch> {
