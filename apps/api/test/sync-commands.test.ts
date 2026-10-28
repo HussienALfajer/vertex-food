@@ -107,7 +107,9 @@ describe('the command upload (rules 7–10)', () => {
     });
     for (let i = 0; i < 2; i++) {
       const response = await upload(b.standby.device, [uploaded(other)], 200);
-      expect(response.body.results).toEqual([{ id: command.id, outcome: 'accepted', replay: true }]);
+      expect(response.body.results).toEqual([
+        { id: command.id, outcome: 'accepted', replay: true },
+      ]);
     }
     // A forged version that claims the stored hash is a mismatch too.
     const forged = { ...command, payload: { ...command.payload, sequence: 3 } };
@@ -143,7 +145,9 @@ describe('the command upload (rules 7–10)', () => {
     const a = signedCommand(b.hub, { membershipId: b.ownerMembershipId });
     const c = signedCommand(b.hub, { membershipId: b.ownerMembershipId });
     const response = await upload(b.hub, [uploaded(a), uploaded(c), uploaded(a)], 200);
-    expect(response.body.results.map((r: { id: string; replay: boolean }) => [r.id, r.replay])).toEqual([
+    expect(
+      response.body.results.map((r: { id: string; replay: boolean }) => [r.id, r.replay]),
+    ).toEqual([
       [a.id, false],
       [c.id, false],
       [a.id, true],
@@ -227,7 +231,11 @@ describe('rule 8, in order', () => {
     const b = await branch();
     const member = { membershipId: b.ownerMembershipId };
     const command = signedCommand(b.hub, member);
-    await rejected(b, { ...command, signature: signedCommand(b.hub, member).signature }, 'signature_invalid');
+    await rejected(
+      b,
+      { ...command, signature: signedCommand(b.hub, member).signature },
+      'signature_invalid',
+    );
     // Signed by the standby but naming the hub as its executor.
     const forged = resign(b.standby.device, signedCommand(b.hub, member));
     await rejected(b, forged, 'signature_invalid');
@@ -243,7 +251,11 @@ describe('rule 8, in order', () => {
     const b = await branch();
     const cashier = await b.hub.addMember(
       b.owner,
-      { displayName: 'كاشير', roles: ['cashier'], branchScope: { allBranches: false, branchIds: [b.main] } },
+      {
+        displayName: 'كاشير',
+        roles: ['cashier'],
+        branchScope: { allBranches: false, branchIds: [b.main] },
+      },
       pinFor(4),
     );
     await rejected(b, signedCommand(b.hub, { membershipId: cashier.id }), 'permission_missing');
@@ -261,7 +273,9 @@ describe('rule 8, in order', () => {
       }),
       'approver_not_allowed',
     );
-    const events = { events: [{ action: 'hub.promoted', at: new Date().toISOString(), details: {} }] };
+    const events = {
+      events: [{ action: 'hub.promoted', at: new Date().toISOString(), details: {} }],
+    };
     await rejected(
       b,
       signedCommand(b.hub, {
@@ -279,7 +293,11 @@ describe('rule 8, in order', () => {
   it('rejects a command from before the member existed (member_inactive)', async () => {
     const b = await branch();
     const at = new Date((await serverNow(db)).getTime() - 60 * MINUTE);
-    await rejected(b, signedCommand(b.hub, { membershipId: b.ownerMembershipId, at }), 'member_inactive');
+    await rejected(
+      b,
+      signedCommand(b.hub, { membershipId: b.ownerMembershipId, at }),
+      'member_inactive',
+    );
   });
 });
 
@@ -343,7 +361,10 @@ describe('the clock (rules 14–16)', () => {
 
   it('carries the offline window and mirrored flags to the log', async () => {
     const b = await branch();
-    const command = signedCommand(b.hub, { membershipId: b.ownerMembershipId, afterOfflineWindow: true });
+    const command = signedCommand(b.hub, {
+      membershipId: b.ownerMembershipId,
+      afterOfflineWindow: true,
+    });
     await upload(b.hub, [uploaded(command, false)], 200);
     expect((await logged(b.tenantId, command.id))?.flags).toEqual([
       'after_offline_window',
@@ -388,12 +409,11 @@ describe('the clock (rules 14–16)', () => {
       highestSeenTime: new Date(deactivatedAt.getTime() - 5 * MINUTE).toISOString(),
     });
     const after = signedCommand(b.hub, { membershipId: manager.id, at: deactivatedAt });
-    const response = await upload(b.hub, [
-      uploaded(early),
-      uploaded(late),
-      uploaded(suspect),
-      uploaded(after),
-    ], 200);
+    const response = await upload(
+      b.hub,
+      [uploaded(early), uploaded(late), uploaded(suspect), uploaded(after)],
+      200,
+    );
     expect(response.body.results.map((r: { outcome: string }) => r.outcome)).toEqual([
       'accepted',
       'quarantined',
@@ -443,7 +463,12 @@ describe('audit.record_local_events', () => {
       name: 'audit.record_local_events',
       payload: {
         events: [
-          { action: 'staff_pin.failed_offline', at, membershipId: b.ownerMembershipId, details: { attempts: 1 } },
+          {
+            action: 'staff_pin.failed_offline',
+            at,
+            membershipId: b.ownerMembershipId,
+            details: { attempts: 1 },
+          },
           { action: 'hub_pairing.paired', at, pairingId, details: { kind: 'station' } },
         ],
       },
@@ -455,7 +480,9 @@ describe('audit.record_local_events', () => {
       tx
         .select()
         .from(auditEntries)
-        .where(and(eq(auditEntries.recordedOffline, true), eq(auditEntries.deviceId, b.hub.deviceId))),
+        .where(
+          and(eq(auditEntries.recordedOffline, true), eq(auditEntries.deviceId, b.hub.deviceId)),
+        ),
     );
     expect(entries).toHaveLength(2);
     const pin = entries.find((entry) => entry.action === 'staff_pin.failed_offline');
@@ -477,13 +504,21 @@ describe('audit.record_local_events', () => {
       payload: {
         events: [
           { action: 'hub.promoted', at: new Date().toISOString(), details: {} },
-          { action: 'staff_pin.locked_offline', at: new Date().toISOString(), membershipId: uuidv7(), details: {} },
+          {
+            action: 'staff_pin.locked_offline',
+            at: new Date().toISOString(),
+            membershipId: uuidv7(),
+            details: {},
+          },
         ],
       },
       resolved: {},
     });
     const response = await upload(b.hub, [uploaded(command)], 200);
-    expect(response.body.results[0]).toMatchObject({ outcome: 'rejected', reason: 'payload_invalid' });
+    expect(response.body.results[0]).toMatchObject({
+      outcome: 'rejected',
+      reason: 'payload_invalid',
+    });
     const entries = await withTenant(db, b.tenantId, (tx) =>
       tx.select().from(auditEntries).where(eq(auditEntries.recordedOffline, true)),
     );
