@@ -17,7 +17,7 @@ The sync foundation of the restaurant (spec S04, ADR 0008, 0022, 0035): the comm
 - A new published table: the migration publishes and grants it (`packages/db`, `SYNC_ACCESS`), and a query here names its columns and filters it by tenant and branch. The sync service reads whole rows, so a column devices must not get lives in an unpublished table.
 
 ## The sync service locally
-1. PostgreSQL with `wal_level = logical` (as a superuser: `ALTER SYSTEM SET wal_level = logical;`, then restart the server); `pnpm db:setup-local` with `POWERSYNC_STORAGE_URI` set creates the bucket storage: the role `food_sync_storage`, owning `vertex_food_powersync` and connecting nowhere else. The sync service gets only the sync role's and this role's credentials, never another role's (ADR 0035).
+1. PostgreSQL with `wal_level = logical` (as a superuser: `ALTER SYSTEM SET wal_level = logical;`, then restart the server); `pnpm db:setup-local` with `POWERSYNC_STORAGE_URI` set creates the bucket storage: the role `food_sync_storage`, owning `vertex_food_powersync`, with no access to the development database. The sync service gets only the sync role's and this role's credentials, never another role's (ADR 0035).
 2. Docker Desktop; the `POWERSYNC_*` keys of `.env.example` in `.env`.
 3. `pnpm sync:up` (the API's JWKS on port 3100 for device tokens), `pnpm sync:down` to stop. S04's PR 5 runs the sync scenarios against it.
 
