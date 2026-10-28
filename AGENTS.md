@@ -26,10 +26,10 @@ Read these on demand. For a feature, read its spec, the ADRs it lists, and its s
 
 ## Stack (ADR 0002, 0003)
 
-pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, the eight app skeletons, `brand/`, `packages/config`, `db`, `contracts`, `i18n`, `tokens`, `ui`, `ui-native` and CI are in place; `sync` and `print` arrive with their roadmap items, `crypto` with S03 (ADR 0034).
+pnpm workspaces + Turborepo · TypeScript (strict) · Node 24 · PostgreSQL 17 · package scope `@vertex-food/*`. The workspace, the eight app skeletons, `brand/`, `packages/config`, `db`, `contracts`, `crypto`, `i18n`, `tokens`, `ui`, `ui-native` and CI are in place; `sync` and `print` arrive with their roadmap items.
 
 - `apps/api`, `apps/worker`, `apps/whatsapp-gateway` NestJS · `apps/restaurant` React + Vite in Electron, offline-first branch hub serving the kitchen display and waiter app · `apps/console` React + Vite · `apps/web` Next.js · `apps/customer`, `apps/driver` React Native + Expo
-- `packages/contracts` · `db` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
+- `packages/contracts` · `db` · `crypto` · `sync` · `print` · `tokens` · `ui` · `ui-native` · `i18n` · `config`
 
 ## Commands
 

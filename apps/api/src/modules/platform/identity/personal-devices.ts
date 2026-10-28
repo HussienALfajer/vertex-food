@@ -1,7 +1,7 @@
 import { type PersonalDevice, personalDeviceDays } from '@vertex-food/contracts';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { type Database, personalDevices, type Transaction } from '@vertex-food/db';
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
-import type { KeyedHash } from './crypto.js';
 import { randomToken } from './secrets.js';
 
 const DAY_MS = 86_400_000;

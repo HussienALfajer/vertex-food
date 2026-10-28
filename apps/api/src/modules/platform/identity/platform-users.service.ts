@@ -11,6 +11,7 @@ import {
   type PlatformUserStatus,
   type UpdatePlatformUser,
 } from '@vertex-food/contracts';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { type Database, platformUsers, type Transaction } from '@vertex-food/db';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { PlatformOperator } from '../../../core/access/actor.js';
@@ -25,7 +26,6 @@ import {
   permissionsOfUser,
   platformUserById,
 } from './console-auth.service.js';
-import type { KeyedHash } from './crypto.js';
 import { KEYED_HASH } from './devices.service.js';
 
 export function toPlatformUser(row: PlatformUserRow): PlatformUser {

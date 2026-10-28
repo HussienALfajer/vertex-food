@@ -6,12 +6,13 @@ import {
   timingSafeEqual,
 } from 'node:crypto';
 
-// Copied from Vertex Shifa's `packages/crypto` (ADR 0032); the API is its only user here.
+// Copied from Vertex Shifa's `packages/crypto` (ADR 0032, 0034): the API, the worker and the
+// gateway each build these with keys of their own (identity, messaging).
 
 /**
- * Keyed hashes of values the server only compares (OTP codes, tokens, rate-limit keys):
- * HMAC-SHA-256 under `IDENTITY_HASH_KEY` (spec S02). Each use names its purpose, so a hash
- * made for one never matches another.
+ * Keyed hashes of values the server only compares (OTP codes, tokens, rate-limit keys, message
+ * recipients): HMAC-SHA-256 under a key of the caller's (`IDENTITY_HASH_KEY`, `MESSAGING_HASH_KEY`).
+ * Each use names its purpose, so a hash made for one never matches another.
  */
 export class KeyedHash {
   constructor(private readonly key: Buffer) {}
@@ -29,10 +30,10 @@ export class KeyedHash {
 const TAG_BYTES = 16;
 
 /**
- * Values the server must read back (console TOTP secrets), encrypted with AES-256-GCM under
- * `IDENTITY_ENCRYPTION_KEY` (spec S02). Each one is
- * bound to what it belongs to (`context`, such as `platform_user:<id>:totp`), so a value copied to
- * another row does not decrypt.
+ * Values the server must read back (console TOTP secrets, message recipients and parameters),
+ * encrypted with AES-256-GCM under a key of the caller's (`IDENTITY_ENCRYPTION_KEY`,
+ * `MESSAGING_ENCRYPTION_KEY`). Each one is bound to what it belongs to (`context`, such as
+ * `platform_user:<id>:totp`), so a value copied to another row does not decrypt.
  */
 export class SecretBox {
   constructor(private readonly key: Buffer) {}
@@ -70,9 +71,6 @@ export class SecretBox {
     }
   }
 }
-
-/** The AES-256-GCM box of identity (`IDENTITY_ENCRYPTION_KEY`), for the console's TOTP secrets. */
-export const SECRET_BOX = Symbol('SecretBox');
 
 /** Compares two strings in time independent of where they differ. */
 export function safeEqual(a: string, b: string): boolean {

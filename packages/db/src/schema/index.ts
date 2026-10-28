@@ -4,4 +4,5 @@ export * from './audit.js';
 export * from './events.js';
 export * from './files.js';
 export * from './identity.js';
+export * from './messaging.js';
 export * from './tenancy.js';

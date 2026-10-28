@@ -54,4 +54,6 @@ export const errors = {
   BRANCH_HAS_DEVICES: 'في هذا الفرع حواسيب مسجّلة. أزلها قبل أرشفة الفرع.',
   BRANCH_HAS_MEMBERS: 'لبعض الموظفين هذا الفرع وحده. أضف لهم فرعًا آخر قبل أرشفته.',
   OTP_DELIVERY_UNAVAILABLE: 'تعذّر إرسال رمز التحقق الآن. أعد المحاولة لاحقًا.',
+  // S03 messaging
+  WHATSAPP_SESSION_LIMIT: 'بلغت الحد الأقصى لأرقام واتساب المنصة.',
 } satisfies Record<ErrorCode, string>;

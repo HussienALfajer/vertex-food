@@ -14,6 +14,7 @@ import {
   staffSessionPolicy,
   type TenantOptions,
 } from '@vertex-food/contracts';
+import type { KeyedHash } from '@vertex-food/crypto';
 import {
   accounts,
   branches,
@@ -42,7 +43,6 @@ import {
   readMembership,
 } from '../access/index.js';
 import { accountById, accountByPhone, resetOpen } from './accounts.js';
-import type { KeyedHash } from './crypto.js';
 import { DecoyLocks } from './decoy-locks.js';
 import { KEYED_HASH } from './devices.service.js';
 import { MeService } from './me.service.js';

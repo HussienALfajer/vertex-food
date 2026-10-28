@@ -4,8 +4,8 @@ import {
   type ProofOfWorkChallenge,
   type ProofOfWorkSolution,
 } from '@vertex-food/contracts';
+import { type KeyedHash, safeEqual } from '@vertex-food/crypto';
 import type { Database } from '@vertex-food/db';
-import { type KeyedHash, safeEqual } from './crypto.js';
 import { randomToken } from './secrets.js';
 import { useToken } from './single-use.js';
 

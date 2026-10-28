@@ -63,6 +63,8 @@ export const errorStatus = {
   BRANCH_HAS_DEVICES: 409,
   BRANCH_HAS_MEMBERS: 409,
   OTP_DELIVERY_UNAVAILABLE: 503,
+  // S03 messaging
+  WHATSAPP_SESSION_LIMIT: 409,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof errorStatus;

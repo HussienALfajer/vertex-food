@@ -3,9 +3,9 @@
 The Arabic text of every front end (ADR 0018, ADR 0020): plain catalogs and locale constants, no i18n library and no I/O, so the restaurant, console and web apps and the Expo apps all read the same files. Each app wires its own i18next instance to `ar`. Copied from Vertex Shifa's `packages/i18n` and adapted.
 
 ## Layout
-- `src/ar/<namespace>.ts`, collected in `src/ar/index.ts` (`ar`, `Catalog`): `common` (shared by every product), `errors` (the text of each error code of `packages/contracts`), and one namespace per app: `restaurant`, `console`, `web`, `customer`, `driver`. A new app or area adds a namespace file.
+- `src/ar/<namespace>.ts`, collected in `src/ar/index.ts` (`ar`, `Catalog`): `common` (shared by every product), `errors` (the text of each error code of `packages/contracts`), `messaging` (the WhatsApp text of each template of `messageTemplates`, `{{param}}` placeholders naming exactly its parameters, rendered by the gateway), and one namespace per app: `restaurant`, `console`, `web`, `customer`, `driver`. A new app or area adds a namespace file.
 - `src/locale.ts`: `defaultLanguage` (`ar`), `textDirection` (`rtl`), `formatLocale` (`ar-SY-u-nu-latn`, Syrian Arabic month names with Latin digits; pinned by `locale.test.ts`) for every `Intl` formatter, `displayTimeZone` (`Asia/Damascus`).
-- `src/catalog.test.ts`: no empty text, no Arabic-Indic digit, a text for every error code.
+- `src/catalog.test.ts`: no empty text, no Arabic-Indic digit, a text for every error code and every message template.
 
 ## Rules
 - Every text the user sees lives here; components never hold literal text.

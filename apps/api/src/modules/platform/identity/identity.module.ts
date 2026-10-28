@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { nonceTtlSeconds } from '@vertex-food/contracts';
+import { KeyedHash, SecretBox } from '@vertex-food/crypto';
 import type { Database } from '@vertex-food/db';
 import { SESSION_VERIFIER } from '../../../core/access/session-verifier.js';
 import type { Config } from '../../../core/config/config.js';
@@ -17,9 +18,8 @@ import {
   ConsoleMeController,
   PlatformUsersController,
 } from './console-identity.controller.js';
-import { KeyedHash, SECRET_BOX, SecretBox } from './crypto.js';
 import { TenantDevicesStore } from './device-access.js';
-import { DEVICE_NONCES, DevicesService, KEYED_HASH } from './devices.service.js';
+import { DEVICE_NONCES, DevicesService, KEYED_HASH, SECRET_BOX } from './devices.service.js';
 import {
   AuthController,
   DevicesController,

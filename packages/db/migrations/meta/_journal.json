@@ -57,6 +57,20 @@
       "when": 1793120892342,
       "tag": "0007_identity-and-access-isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793189804329,
+      "tag": "0008_messaging",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793189812885,
+      "tag": "0009_messaging-grants",
+      "breakpoints": true
     }
   ]
 }

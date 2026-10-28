@@ -1,6 +1,6 @@
 import { argon2, createPublicKey, randomBytes, timingSafeEqual, verify } from 'node:crypto';
 
-// Keyed hashes (`KeyedHash`) and sealed values (`SecretBox`) are in `crypto.ts`.
+// Keyed hashes (`KeyedHash`) and sealed values (`SecretBox`) are in `@vertex-food/crypto`.
 
 /** A random URL-safe token. */
 export function randomToken(bytes = 32): string {
