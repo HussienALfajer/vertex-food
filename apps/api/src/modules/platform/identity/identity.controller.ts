@@ -23,7 +23,6 @@ import {
   deviceTokenSchema,
   endSessionSchema,
   idSchema,
-  jwksSchema,
   memberListAckSchema,
   memberListQuerySchema,
   memberListResultSchema,
@@ -81,7 +80,6 @@ import { AuthService } from './auth.service.js';
 import { DevicesService } from './devices.service.js';
 import { MeService } from './me.service.js';
 import { SessionsService } from './sessions.service.js';
-import { TokenSigner } from './tokens.js';
 
 const idParam = { schema: idSchema };
 
@@ -189,20 +187,6 @@ export class AuthController {
     @ResponseCookies() cookies: CookieJar,
   ) {
     return this.auth.openPersonalSession(ticket, input.tenantId, cookies);
-  }
-}
-
-/** The public key of the API's tokens, for the sync service (S04, rule 44). */
-@Controller('.well-known')
-@NoFeature()
-export class JwksController {
-  constructor(@Inject(TokenSigner) private readonly tokens: TokenSigner) {}
-
-  @Get('jwks.json')
-  @Public()
-  @SerializeOptions({ schema: jwksSchema })
-  jwks() {
-    return this.tokens.jwks();
   }
 }
 

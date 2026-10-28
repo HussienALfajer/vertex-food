@@ -30,6 +30,7 @@ import { emit } from '../../../core/events/outbox.js';
 import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { permissionsOf, readMembership } from '../access/index.js';
 import { memberListOf, tenantStatusAt } from './member-lists.js';
+import { BRANCH_PCS, type BranchPcs } from './ports.js';
 import { verifyEd25519 } from './secrets.js';
 import type { Nonces } from './single-use.js';
 import { endSessions, SessionIssuer } from './staff-sessions.js';
@@ -85,6 +86,7 @@ export class DevicesService {
     @Inject(SessionIssuer) private readonly issuer: SessionIssuer,
     @Inject(DEVICE_NONCES) private readonly nonces: Nonces,
     @Inject(KEYED_HASH) private readonly hashes: KeyedHash,
+    @Inject(BRANCH_PCS) private readonly branchPcs: BranchPcs,
   ) {}
 
   /**
@@ -136,6 +138,12 @@ export class DevicesService {
         });
       if (!row) throw new Error('No device inserted');
       const actor = { kind: 'device', tenantId: input.tenantId, deviceId: row.id } as const;
+      // Spec S04 rule 38: the hub and standby roles of the first two PCs, the branch's CA.
+      await this.branchPcs.registered(
+        tx,
+        { ...actor, branchId: row.branchId, status: 'active' },
+        now,
+      );
       await audit(
         tx,
         input.tenantId,

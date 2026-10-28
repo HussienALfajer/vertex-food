@@ -23,6 +23,15 @@ export const TEST_MESSAGING_ENV = {
   MESSAGING_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
 };
 
+/** Sync keys made for this run (spec S04). */
+export const TEST_SYNC_ENV = {
+  SYNC_TOKEN_KEY: generateKeyPairSync('ed25519')
+    .privateKey.export({ format: 'der', type: 'pkcs8' })
+    .toString('base64'),
+  SYNC_CA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  SYNC_ENDPOINT: 'https://sync.example.test',
+};
+
 /**
  * The API as production builds it, on this run's test database, plus `imports` (test-only
  * modules, which the global guard, filter and serializer cover too). Close it after the test.
@@ -33,17 +42,27 @@ export async function createTestApp(
     imports?: ModuleMetadata['imports'];
     /** The OTP sender: the fake by default, `gateway` for the messaging tests. */
     otpSender?: 'fake' | 'gateway';
+    /** More environment, over the test defaults (`SYNC_MINIMUM_APP_VERSION`). */
+    env?: Record<string, string>;
+    /** Providers replaced by test values (a command registry with test commands). */
+    overrides?: { token: symbol; value: unknown }[];
   } = {},
 ): Promise<INestApplication> {
   const config = loadConfig({
     DATABASE_APP_URL: options.databaseUrl ?? inject('databaseUrl'),
     ...TEST_IDENTITY_ENV,
     ...TEST_MESSAGING_ENV,
+    ...TEST_SYNC_ENV,
     OTP_SENDER: options.otpSender ?? 'fake',
+    ...options.env,
   });
-  const moduleRef = await Test.createTestingModule({
+  const builder = Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],
-  }).compile();
+  });
+  for (const { token, value } of options.overrides ?? []) {
+    builder.overrideProvider(token).useValue(value);
+  }
+  const moduleRef = await builder.compile();
   const app = configureApp(
     moduleRef.createNestApplication({ logger: false, bodyParser: false }),
     config,

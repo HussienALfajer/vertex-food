@@ -20,11 +20,11 @@ import {
   PlatformUsersController,
 } from './console-identity.controller.js';
 import { TenantDevicesStore } from './device-access.js';
+import { DeviceProofs } from './device-proofs.js';
 import { DEVICE_NONCES, DevicesService, KEYED_HASH, SECRET_BOX } from './devices.service.js';
 import {
   AuthController,
   DevicesController,
-  JwksController,
   MeController,
   SessionsController,
   StaffPinController,
@@ -50,14 +50,14 @@ import { TokenSigner } from './tokens.js';
  * the core declare: the session verifier of the authentication step (`SESSION_VERIFIER`), the
  * tenant's PCs for tenancy (`TENANT_DEVICES`), the accounts and member credentials of staff
  * management in access (`STAFF_ACCOUNTS`, `MEMBER_CREDENTIALS`), and the platform users' names of
- * messaging (`PLATFORM_USER_NAMES`). It takes messaging's gateway OTP sender when
- * `OTP_SENDER=gateway`.
+ * messaging (`PLATFORM_USER_NAMES`); it exports the device proofs of sync's quarantine upload
+ * (`DeviceProofs`) and takes sync's set-up of a registered PC (`BRANCH_PCS`, `ports.ts`). It takes
+ * messaging's gateway OTP sender when `OTP_SENDER=gateway`.
  */
 @Global()
 @Module({
   controllers: [
     AuthController,
-    JwksController,
     DevicesController,
     SessionsController,
     MeController,
@@ -126,6 +126,11 @@ import { TokenSigner } from './tokens.js';
         new OtpChallenges(db, hashes, sender),
     },
     { provide: DEVICE_NONCES, useFactory: () => new Nonces(nonceTtlSeconds * 1000) },
+    {
+      provide: DeviceProofs,
+      inject: [DEVICE_NONCES],
+      useFactory: (nonces: Nonces) => new DeviceProofs(nonces),
+    },
     AuthService,
     DevicesService,
     SessionsService,
@@ -146,6 +151,7 @@ import { TokenSigner } from './tokens.js';
     MEMBER_CREDENTIALS,
     PLATFORM_USER_NAMES,
     OTP_SENDER,
+    DeviceProofs,
   ],
 })
 export class IdentityModule {}

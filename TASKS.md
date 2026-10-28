@@ -49,8 +49,8 @@ Rules that keep the parallel PRs apart:
 
 ## PR 3 `feat/s04-sync-api` — API and worker (after PR 1, parallel with PR 2)
 
-- [ ] Config: `SYNC_CA_ENCRYPTION_KEY`, the PowerSync token key and endpoint, minimum app version (and in `.env.example`)
-- [ ] `platform/sync` module: `POST /api/sync/commands` executor (lock per id, replays and mismatches, the check order of rule 8, signature, device and revocation time, access snapshot at the effective time, savepoint and `server_error`, attention items, clock rules 14–16, `426`); executors of `sync.network_check` and `audit.record_local_events`
+- [x] Config: `SYNC_CA_ENCRYPTION_KEY`, the PowerSync token key and endpoint, minimum app version (and in `.env.example`)
+- [x] `platform/sync` module: `POST /api/sync/commands` executor (lock per id, replays and mismatches, the check order of rule 8, signature, device and revocation time, access snapshot at the effective time, savepoint and `server_error`, attention items, clock rules 14–16, `426`); executors of `sync.network_check` and `audit.record_local_events`
 - [ ] Number blocks (allocation idempotent per device and day, hub lowest and standby next, `numberBlocks.check`, uniqueness helper), certificates (branch CA at the first registration, CSR, private IPv4 only), token (EdDSA, 5 min, `UPDATE_REQUIRED`), heartbeat and connectivity, hub roles (first two PCs, `HUB_ROLE_ACTIVE`), sync status, attention list and resolve, quarantine upload (signed nonce, one batch, 10 000 cap), review, accept and reject with re-auth
 - [ ] Worker: `sync/connectivity-sweep` every 15 s; outbox dispatcher (from Vertex Shifa) and the `device.revoked.v1` consumer clearing `hub_role`; jobs role grants
 - [ ] Tests: `test/sync*.test.ts` (each route's success, 401, 403, other tenant, other branch's device, client PC on hub-only routes, every rejection reason, concurrent uploads of one id, SYNC-01 rollback, member deactivated on both sides of 10 minutes, clock-suspect, quarantine, attention), worker tests, architecture tests; OpenAPI and client types regenerated
