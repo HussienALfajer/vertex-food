@@ -34,7 +34,7 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - [x] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
 - [x] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
 - [x] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
-- [ ] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
+- [x] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
