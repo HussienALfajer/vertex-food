@@ -15,6 +15,10 @@ allowBuilds:
   # Downloads the Electron binary for apps/restaurant (dev:electron and start). CI typechecks, tests
   # and builds without launching it and skips the download (ELECTRON_SKIP_BINARY_DOWNLOAD).
   electron: true
+  # apps/whatsapp-gateway's Baileys: its preinstall only checks the Node version (engines already
+  # says it), and protobufjs's postinstall only warns about its CLI's version; neither builds code.
+  baileys: false
+  protobufjs: false
 
 # Advisories `pnpm audit --prod` (CI) accepts, each with no patched version and reachable only through
 # build tools that Expo and React Native declare as runtime dependencies; none reaches an app bundle

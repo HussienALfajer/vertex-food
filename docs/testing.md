@@ -42,7 +42,8 @@ The hook is `.claude/hooks/test-guard.mjs` (PreToolUse on Bash and PowerShell), 
 
 ## Test databases
 
-- Every run of a database suite (`packages/db`, `apps/worker`, `apps/api`) creates its own database, `food_test_<time>_<random>`, migrates it in its global setup and drops it at the end (`createTestDatabase` in `packages/db/src/testing.ts`). Runs never share rows, so the suites run at the same time under Turborepo, and need no per-worker databases or locks; files of one run share the database and seed their own rows with unique values.
+- The `apps/whatsapp-gateway` suite runs its files one at a time (`fileParallelism: false`): a gateway takes every free WhatsApp session of its database, so two files' gateways would take each other's. Each test resets the messaging tables first (`test/fixtures.ts`).
+- Every run of a database suite (`packages/db`, `apps/worker`, `apps/api`, `apps/whatsapp-gateway`) creates its own database, `food_test_<time>_<random>`, migrates it in its global setup and drops it at the end (`createTestDatabase` in `packages/db/src/testing.ts`). Runs never share rows, so the suites run at the same time under Turborepo, and need no per-worker databases or locks; files of one run share the database and seed their own rows with unique values.
 - A run killed before its teardown leaves its database behind. `createTestDatabase` drops those first: older than 6 hours (the time is in the name) and with nobody connected, so a run of another checkout that is still going keeps its own.
 - The api suite runs with Vitest's default workers. Its peak was 5 PostgreSQL connections (of the default `max_connections` of 100), and capping it at 4 workers was no faster, so it has no cap. Add one (`TEST_WORKERS`, as Vertex Hub's `packages/db/src/test-workers.ts`) when its connections approach that limit or a cap measures faster.
 

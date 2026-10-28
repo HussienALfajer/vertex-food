@@ -41,7 +41,7 @@ The target layout; the parts marked *(later)* arrive with the spec named.
 apps/
   api/                NestJS API: core/, modules/<platform|food|restaurant|marketplace|dispatch>/<module>/, cli/
   worker/             NestJS jobs: outbox dispatcher, jobs/<area>/<name>.job.ts
-  whatsapp-gateway/   transport/, sessions/, sending/ (from Vertex Shifa)
+  whatsapp-gateway/   transport/ (Baileys, fake), sessions/ (lease), sending/, incoming/, alerts/, sweep/ (from Vertex Shifa)
   restaurant/         React + Vite renderer; electron/ (device identity; local DB, hub server, printing later); hub-clients/ (kitchen, waiter) (later: S04, S11, S12)
   console/            React + Vite: Vertex back office, dispatch board
   web/                Next.js: QR menus, restaurant pages, custom domains, customer web ordering

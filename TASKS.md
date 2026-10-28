@@ -28,14 +28,14 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 
 ## PR 2 `feat/s03-gateway` — the gateway (after PR 1)
 
-- [ ] Config: `DATABASE_APP_URL`, messaging keys (and in `.env.example`), `WHATSAPP_TRANSPORT` (production refuses `fake`)
-- [ ] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
-- [ ] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at` (kept for the same phone, restarted for another, with the old phone's known recipients deleted: the counts of `whatsappNumberCandidates` start at `linked_at`), duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
-- [ ] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
-- [ ] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
-- [ ] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
-- [ ] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Config: `DATABASE_APP_URL`, messaging keys (and in `.env.example`), `WHATSAPP_TRANSPORT` (production refuses `fake`)
+- [x] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
+- [x] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at` (kept for the same phone, restarted for another, with the old phone's known recipients deleted: the counts of `whatsappNumberCandidates` start at `linked_at`), duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
+- [x] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
+- [x] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
+- [x] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
+- [x] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
 
