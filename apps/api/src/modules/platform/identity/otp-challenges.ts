@@ -1,7 +1,14 @@
 import { randomInt } from 'node:crypto';
-import { DomainError, type ErrorCode, type OtpPurpose, otpPolicy } from '@vertex-food/contracts';
+import { Logger } from '@nestjs/common';
+import {
+  DomainError,
+  type ErrorCode,
+  type OtpDeliveryStatus,
+  type OtpPurpose,
+  otpPolicy,
+} from '@vertex-food/contracts';
 import type { KeyedHash } from '@vertex-food/crypto';
-import { accounts, type Database, otpChallenges } from '@vertex-food/db';
+import { accounts, type Database, describeForLog, otpChallenges } from '@vertex-food/db';
 import { and, desc, eq, gt } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import type { OtpSender } from './otp-sender.js';
@@ -18,11 +25,25 @@ function judge(state: ChallengeState, now: number): ErrorCode | undefined {
   return undefined;
 }
 
+/** A code sent to a phone: when, and whether it starts the resend cooldown. */
+type Send = { at: number; startsCooldown: boolean };
+
+/**
+ * A new-device code whose delivery failed (spec S03 rule 19): it expires at once and starts no
+ * cooldown, so the person may ask again at once. A first sign-in or a reset stays quiet instead
+ * (S02 rule 13): it keeps its expiry and cooldown, as a decoy's would.
+ */
+const failedNewDevice = (row: { purpose: string; deliveryStatus: string }) =>
+  row.purpose === 'new_device' && row.deliveryStatus === 'failed';
+
 /** The cooldown between two sends and the hourly limit per phone (ADR 0012). */
-function assertSendAllowed(sentAt: number[], now: number, cooldownCode: ErrorCode) {
-  const recent = sentAt.filter((time) => now - time < HOUR_MS).sort((a, b) => b - a);
-  const last = recent[0];
-  if (last !== undefined && now - last < otpPolicy.resendCooldownSeconds * 1000) {
+function assertSendAllowed(sends: Send[], now: number, cooldownCode: ErrorCode) {
+  const recent = sends.filter((send) => now - send.at < HOUR_MS);
+  const last = Math.max(
+    Number.NEGATIVE_INFINITY,
+    ...recent.filter((send) => send.startsCooldown).map((send) => send.at),
+  );
+  if (now - last < otpPolicy.resendCooldownSeconds * 1000) {
     throw new DomainError(cooldownCode, 'An OTP was sent less than a minute ago');
   }
   if (recent.length >= otpPolicy.maxPerHour) {
@@ -42,6 +63,7 @@ type Decoy = ChallengeState & { phoneKey: string; purpose: OtpPurpose; createdAt
  * never tell whether the phone has an account.
  */
 export class OtpChallenges {
+  private readonly logger = new Logger('OtpChallenges');
   private readonly decoys = new Map<string, Decoy>();
   private readonly decoySends = new Map<string, number[]>();
 
@@ -53,10 +75,11 @@ export class OtpChallenges {
   ) {}
 
   /**
-   * Sends a new code to the account; `cooldownCode` is what a send within the cooldown answers.
-   * Answers the challenge id, or refuses with `OTP_DELIVERY_UNAVAILABLE` when the sender failed,
-   * unless `quietFailure`: then the id comes back as for a decoy (an OTP request must not tell an
-   * eligible phone from another, rule 13).
+   * Sends a new code to the account in the challenge's transaction (spec S03 rule 18);
+   * `cooldownCode` is what a send within the cooldown answers. Answers the challenge id, or
+   * refuses with `OTP_DELIVERY_UNAVAILABLE` when the sender failed, unless `quietFailure`: then
+   * the id comes back as for a decoy (an OTP request must not tell an eligible phone from another,
+   * rule 13). A failed send is kept as a `failed` challenge, which counts toward the hourly limit.
    */
   async start(
     account: { id: string; phone: string },
@@ -67,7 +90,7 @@ export class OtpChallenges {
     const now = this.now();
     const id = uuidv7();
     const code = String(randomInt(0, 10 ** otpPolicy.digits)).padStart(otpPolicy.digits, '0');
-    await this.db.transaction(async (tx) => {
+    const failed = await this.db.transaction(async (tx) => {
       // Serializes the sends of one account, so two requests never both pass the limits.
       await tx
         .select({ id: accounts.id })
@@ -75,7 +98,11 @@ export class OtpChallenges {
         .where(eq(accounts.id, account.id))
         .for('update');
       const sent = await tx
-        .select({ createdAt: otpChallenges.createdAt })
+        .select({
+          createdAt: otpChallenges.createdAt,
+          purpose: otpChallenges.purpose,
+          deliveryStatus: otpChallenges.deliveryStatus,
+        })
         .from(otpChallenges)
         .where(
           and(
@@ -85,7 +112,7 @@ export class OtpChallenges {
         )
         .orderBy(desc(otpChallenges.createdAt));
       assertSendAllowed(
-        sent.map((row) => row.createdAt.getTime()),
+        sent.map((row) => ({ at: row.createdAt.getTime(), startsCooldown: !failedNewDevice(row) })),
         now,
         cooldownCode,
       );
@@ -95,25 +122,40 @@ export class OtpChallenges {
         purpose,
         codeHash: this.hashes.hash('otp', `${id}:${code}`),
         expiresAt: new Date(now + otpPolicy.ttlSeconds * 1000),
-        deliveryStatus: 'sent',
+        deliveryStatus: this.sender.deliveryStatus,
         createdAt: new Date(now),
       });
-    });
-    try {
-      await this.sender.send(account.id, account.phone, code, purpose);
-    } catch {
-      // A quiet failure keeps the normal expiry: wrong codes then count attempts as a decoy's do.
-      await this.db
-        .update(otpChallenges)
-        .set({
-          deliveryStatus: 'failed',
-          ...(options.quietFailure ? {} : { expiresAt: new Date(now) }),
-          updatedAt: new Date(),
-        })
-        .where(eq(otpChallenges.id, id));
-      if (!options.quietFailure) {
-        throw new DomainError('OTP_DELIVERY_UNAVAILABLE', 'The OTP could not be sent');
+      try {
+        // A savepoint: a failed send leaves nothing of its own behind, the challenge stays.
+        await tx.transaction((send) =>
+          this.sender.send(send, {
+            challengeId: id,
+            accountId: account.id,
+            phone: account.phone,
+            code,
+            purpose,
+          }),
+        );
+        return false;
+      } catch (error) {
+        // No number could send is expected; anything else is a fault, logged without its message.
+        if (!(error instanceof DomainError && error.code === 'OTP_DELIVERY_UNAVAILABLE')) {
+          this.logger.error(`OTP challenge ${id} could not be sent: ${describeForLog(error)}`);
+        }
+        // A quiet failure keeps the normal expiry: wrong codes then count attempts as a decoy's do.
+        await tx
+          .update(otpChallenges)
+          .set({
+            deliveryStatus: 'failed',
+            ...(options.quietFailure ? {} : { expiresAt: new Date(now) }),
+            updatedAt: new Date(),
+          })
+          .where(eq(otpChallenges.id, id));
+        return true;
       }
+    });
+    if (failed && !options.quietFailure) {
+      throw new DomainError('OTP_DELIVERY_UNAVAILABLE', 'The OTP could not be sent');
     }
     return id;
   }
@@ -123,7 +165,11 @@ export class OtpChallenges {
     const now = this.now();
     this.sweep(now);
     const sent = this.decoySends.get(phoneKey) ?? [];
-    assertSendAllowed(sent, now, cooldownCode);
+    assertSendAllowed(
+      sent.map((at) => ({ at, startsCooldown: true })),
+      now,
+      cooldownCode,
+    );
     this.decoySends.set(phoneKey, [...sent, now]);
     const id = uuidv7();
     this.decoys.set(id, {
@@ -189,7 +235,8 @@ export class OtpChallenges {
         .for('update');
       if (!row) return undefined;
       const state = {
-        expiresAt: row.expiresAt.getTime(),
+        // A new-device code the gateway could not deliver expires at once (spec S03 rule 19).
+        expiresAt: failedNewDevice(row) ? 0 : row.expiresAt.getTime(),
         attempts: row.attempts,
         consumed: row.consumedAt !== null,
       };
@@ -220,6 +267,20 @@ export class OtpChallenges {
     }
     if ('refusal' in outcome) throw refused(outcome.refusal);
     return outcome;
+  }
+
+  /**
+   * Where a new-device code is (spec S03 rule 21): its challenge's delivery status. Every other
+   * purpose, a decoy or an unknown id answers `unknown`, so the answer never tells an account
+   * from a decoy (S02 rule 13); a new-device code follows a correct password and has no decoy.
+   */
+  async deliveryStatus(challengeId: string): Promise<OtpDeliveryStatus> {
+    const [row] = await this.db
+      .select({ purpose: otpChallenges.purpose, deliveryStatus: otpChallenges.deliveryStatus })
+      .from(otpChallenges)
+      .where(eq(otpChallenges.id, challengeId));
+    if (row?.purpose !== 'new_device') return 'unknown';
+    return row.deliveryStatus as OtpDeliveryStatus;
   }
 
   /** Forgets decoys and decoy sends older than an hour. */

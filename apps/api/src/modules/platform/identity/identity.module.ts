@@ -7,6 +7,7 @@ import type { Config } from '../../../core/config/config.js';
 import { CONFIG } from '../../../core/config/config.module.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { MEMBER_CREDENTIALS, STAFF_ACCOUNTS } from '../access/index.js';
+import { GatewayOtpSender, messagingCrypto, PLATFORM_USER_NAMES } from '../messaging/index.js';
 import { TENANT_DEVICES } from '../tenancy/index.js';
 import { StaffAccountsStore } from './accounts.js';
 import { AuthService } from './auth.service.js';
@@ -33,7 +34,7 @@ import { OtpChallenges } from './otp-challenges.js';
 import { FakeOtpSender, OTP_SENDER, type OtpSender } from './otp-sender.js';
 import { PersonalDeviceStore } from './personal-devices.js';
 import { MemberCredentialsStore } from './pins.js';
-import { PlatformUsersService } from './platform-users.service.js';
+import { PlatformUserNamesStore, PlatformUsersService } from './platform-users.service.js';
 import { ProofOfWork } from './proof-of-work.js';
 import { SessionsService } from './sessions.service.js';
 import { SignInLock } from './sign-in-lock.js';
@@ -47,8 +48,10 @@ import { TokenSigner } from './tokens.js';
  * personal devices, and the console's platform users, sessions and owner recovery (spec S02, ADR
  * 0032). Global, because it provides the ports other modules and
  * the core declare: the session verifier of the authentication step (`SESSION_VERIFIER`), the
- * tenant's PCs for tenancy (`TENANT_DEVICES`), and the accounts and member credentials of staff
- * management in access (`STAFF_ACCOUNTS`, `MEMBER_CREDENTIALS`).
+ * tenant's PCs for tenancy (`TENANT_DEVICES`), the accounts and member credentials of staff
+ * management in access (`STAFF_ACCOUNTS`, `MEMBER_CREDENTIALS`), and the platform users' names of
+ * messaging (`PLATFORM_USER_NAMES`). It takes messaging's gateway OTP sender when
+ * `OTP_SENDER=gateway`.
  */
 @Global()
 @Module({
@@ -107,8 +110,15 @@ import { TokenSigner } from './tokens.js';
       inject: [DATABASE],
       useFactory: (db: Database) => new SignInLock(db),
     },
-    // Only the fake exists until S03; `loadConfig` refuses it in production.
-    { provide: OTP_SENDER, useFactory: () => new FakeOtpSender() },
+    // The WhatsApp gateway's sender (spec S03); `loadConfig` refuses the fake in production.
+    {
+      provide: OTP_SENDER,
+      inject: [CONFIG],
+      useFactory: (config: Config): OtpSender =>
+        config.identity.otpSender === 'gateway'
+          ? new GatewayOtpSender(messagingCrypto(config.messaging))
+          : new FakeOtpSender(),
+    },
     {
       provide: OtpChallenges,
       inject: [DATABASE, KEYED_HASH, OTP_SENDER],
@@ -127,7 +137,15 @@ import { TokenSigner } from './tokens.js';
     { provide: TENANT_DEVICES, useFactory: () => new TenantDevicesStore() },
     { provide: STAFF_ACCOUNTS, useFactory: () => new StaffAccountsStore() },
     { provide: MEMBER_CREDENTIALS, useFactory: () => new MemberCredentialsStore() },
+    { provide: PLATFORM_USER_NAMES, useFactory: () => new PlatformUserNamesStore() },
   ],
-  exports: [SESSION_VERIFIER, TENANT_DEVICES, STAFF_ACCOUNTS, MEMBER_CREDENTIALS, OTP_SENDER],
+  exports: [
+    SESSION_VERIFIER,
+    TENANT_DEVICES,
+    STAFF_ACCOUNTS,
+    MEMBER_CREDENTIALS,
+    PLATFORM_USER_NAMES,
+    OTP_SENDER,
+  ],
 })
 export class IdentityModule {}

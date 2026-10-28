@@ -1,14 +1,26 @@
 import { Logger } from '@nestjs/common';
 import type { OtpPurpose } from '@vertex-food/contracts';
+import type { Transaction } from '@vertex-food/db';
+
+/** One code to send: the challenge it belongs to, its account and that account's phone. */
+export type OtpRequest = {
+  challengeId: string;
+  accountId: string;
+  phone: string;
+  code: string;
+  purpose: OtpPurpose;
+};
 
 /**
- * Sends a one-time code to a phone (spec S02 rule 12). Called synchronously, never through the
- * outbox, because the code is never stored in clear. A failure throws: a password sign-in then
- * answers `OTP_DELIVERY_UNAVAILABLE`; a first sign-in or reset answers as for any phone (rule 13).
- * S03 adds the WhatsApp gateway sender.
+ * Sends a one-time code to a phone (spec S02 rule 12, S03 rule 18), in the transaction that creates
+ * the challenge, never through the outbox, because the code is never stored in clear. A failure
+ * throws: a password sign-in then answers `OTP_DELIVERY_UNAVAILABLE`; a first sign-in or reset
+ * answers as for any phone (rule 13). The messaging module provides the WhatsApp gateway sender.
  */
 export interface OtpSender {
-  send(accountId: string, phone: string, code: string, purpose: OtpPurpose): Promise<void>;
+  /** The challenge's `delivery_status` once `send` returns: `queued` for the gateway. */
+  readonly deliveryStatus: 'queued' | 'sent';
+  send(tx: Transaction, request: OtpRequest): Promise<void>;
 }
 
 export const OTP_SENDER = Symbol('OtpSender');
@@ -19,10 +31,11 @@ export const OTP_SENDER = Symbol('OtpSender');
  * API refuses to start with it in production (`loadConfig`).
  */
 export class FakeOtpSender implements OtpSender {
+  readonly deliveryStatus = 'sent';
   private readonly logger = new Logger('FakeOtpSender');
   private readonly codes = new Map<string, string>();
 
-  async send(accountId: string, _phone: string, code: string): Promise<void> {
+  async send(_tx: Transaction, { accountId, code }: OtpRequest): Promise<void> {
     this.codes.set(accountId, code);
     this.logger.log(`OTP for account ${accountId}: ${code}`);
   }

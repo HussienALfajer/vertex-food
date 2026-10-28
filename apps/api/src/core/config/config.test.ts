@@ -9,6 +9,8 @@ const EXAMPLE = {
   IDENTITY_HASH_KEY: Buffer.alloc(32).toString('base64'),
   IDENTITY_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
   IDENTITY_TOKEN_KEY: 'MC4CAQAwBQYDK2VwBCIEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  MESSAGING_HASH_KEY: Buffer.alloc(32).toString('base64'),
+  MESSAGING_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
 };
 
 const REAL = {
@@ -17,6 +19,8 @@ const REAL = {
   IDENTITY_TOKEN_KEY: generateKeyPairSync('ed25519')
     .privateKey.export({ format: 'der', type: 'pkcs8' })
     .toString('base64'),
+  MESSAGING_HASH_KEY: randomBytes(32).toString('base64'),
+  MESSAGING_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
 };
 
 const base = { DATABASE_APP_URL, ...EXAMPLE };
@@ -35,9 +39,13 @@ describe('loadConfig', () => {
   });
 
   it('allows only the Electron renderer by default in production', () => {
-    const env = { ...base, ...REAL, NODE_ENV: 'production', OTP_SENDER: undefined };
-    // Production refuses the fake sender, the only one until S03.
-    expect(() => loadConfig(env)).toThrow('Invalid API environment: OTP_SENDER');
+    const env = { ...base, ...REAL, NODE_ENV: 'production', OTP_SENDER: 'gateway' };
+    expect(loadConfig(env)).toMatchObject({
+      corsOrigins: ['app://restaurant'],
+      consoleOrigins: [],
+      production: true,
+      identity: { otpSender: 'gateway' },
+    });
   });
 
   it('reads CORS_ORIGINS as a comma-separated list of exact origins', () => {
@@ -79,10 +87,13 @@ describe('loadConfig', () => {
     expect(load).not.toThrow(/fake-password/);
   });
 
-  it('requires the identity keys, and an Ed25519 token key', () => {
+  it('requires the identity and messaging keys, and an Ed25519 token key', () => {
     expect(() => loadConfig({ DATABASE_APP_URL })).toThrow(
-      'Invalid API environment: IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY',
+      'Invalid API environment: IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY',
     );
+    expect(() =>
+      loadConfig({ ...base, MESSAGING_ENCRYPTION_KEY: randomBytes(48).toString('base64') }),
+    ).toThrow('Invalid API environment: MESSAGING_ENCRYPTION_KEY');
     const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 })
       .privateKey.export({ format: 'der', type: 'pkcs8' })
       .toString('base64');
@@ -97,9 +108,12 @@ describe('loadConfig', () => {
   it('refuses in production the example keys, the fake sender and an easy proof of work', () => {
     const production = { DATABASE_APP_URL, NODE_ENV: 'production' };
     expect(() => loadConfig({ ...production, ...EXAMPLE, IDENTITY_POW_DIFFICULTY: '4' })).toThrow(
-      'Invalid API environment: OTP_SENDER, IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, IDENTITY_POW_DIFFICULTY',
+      'Invalid API environment: OTP_SENDER, IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY, IDENTITY_POW_DIFFICULTY',
     );
     expect(() => loadConfig({ ...production, ...REAL })).toThrow(
+      'Invalid API environment: OTP_SENDER',
+    );
+    expect(() => loadConfig({ ...production, ...REAL, OTP_SENDER: 'whatsapp' })).toThrow(
       'Invalid API environment: OTP_SENDER',
     );
   });
