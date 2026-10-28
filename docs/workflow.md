@@ -90,7 +90,7 @@ Sonnet and Haiku never write code. Avoid `max` unless a gain is measured.
 ## What changed from Vertex Shifa
 
 - A commit at every passing gate inside `/feature-slice`.
-- Hooks: refuse commits on `main`, pushes to `main` and broad staging; a test guard (one run at a time, no `timeout`, whole E2E suites only through `pnpm verify`); a session-start note with the branch, uncommitted files and open `TASKS.md` items.
+- Hooks: refuse commits on `main`, pushes to `main` and broad staging; a test guard (one run at a time, no `timeout`, whole E2E suites only through `pnpm verify`); a session-start note with the branch, uncommitted and unpushed work, unmerged branches on `origin` and open `TASKS.md` items.
 - `agentGuidance: false` in `turbo.json`, so Turborepo does not inject its block into `AGENTS.md`.
 - Spike output folders denied to reads and ignored by git.
 - Parallel front-end sessions in worktrees after the backend PR merges.
@@ -114,6 +114,13 @@ Claude Code cloud sessions run in the shared cloud environment `vertex`, which t
 ```bash
 vertex-session /path/to/vertex-food
 ```
+
+**Local and cloud handoff.** One spec's PRs, or one PR's layers, may run partly on the owner's PC and partly in the cloud. The next session knows only what is on GitHub, so:
+
+- `TASKS.md` is tracked: every layer commit includes it, ticked, and the branch is pushed right after the commit (`AGENTS.md` "How to work", `/feature-slice` step 2). Each PR heading in it names its branch.
+- The session-start note fetches `origin` and shows the current branch's unpushed or missing commits, the branches on `origin` not merged into `main` (work in flight) and the open `TASKS.md` items.
+- To continue: start the session on the branch the note or `TASKS.md` names (a cloud session from that branch; locally `git switch <branch>; git pull`), then `/feature-slice <id>` picks up at the first open item. Between PRs, start from `main`.
+- Before leaving a session in the middle of a layer, commit the work in progress (`chore(<id>): work in progress on <layer>` is fine on the branch) and push, or it stays on that machine. Local-only files (`.env`, `.claude/settings.local.json`, `.data/`) are never needed to continue: each machine makes its own (`vertex-session` in the cloud, `pnpm db:setup-local` locally).
 
 **What stays local:**
 
