@@ -108,7 +108,15 @@ export class SessionsService implements BeforeApplicationShutdown {
     this.ticking ??= (async () => {
       try {
         if (this.stopped) return;
-        await this.renew();
+        try {
+          await this.renew();
+        } catch (error) {
+          // Rule 1: a renewal that failed closes every connection at once; another instance may
+          // take the leases once they expire. They are taken again here once renewals work.
+          this.logger.error(`Lease renewal failed: ${describeError(error)}`);
+          for (const id of this.runningIds()) await this.letGo(id, 'lease_lost');
+          return;
+        }
         await this.take();
       } finally {
         this.ticking = undefined;
@@ -167,7 +175,15 @@ export class SessionsService implements BeforeApplicationShutdown {
         .from(whatsappSessions)
         .where(and(inArray(whatsappSessions.id, lost), eq(whatsappSessions.state, 'unlinked')));
       const unlinked = new Set(archived.map((row) => row.id));
-      for (const id of lost) await this.letGo(id, unlinked.has(id) ? 'unlinked' : 'lease_lost');
+      for (const id of lost) {
+        if (!unlinked.has(id)) {
+          await this.letGo(id, 'lease_lost');
+          continue;
+        }
+        await this.letGo(id, 'unlinked');
+        // The API keeps the lease on an unlinked session so its holder logs it out; done.
+        await this.releaseLease(id);
+      }
     }
     for (const row of renewed) {
       const session = this.running.get(row.id);
@@ -199,7 +215,12 @@ export class SessionsService implements BeforeApplicationShutdown {
         and(
           isNull(whatsappSessions.archivedAt),
           inArray(whatsappSessions.state, RUNNABLE),
-          or(isNull(whatsappSessions.leaseHolder), lt(whatsappSessions.leaseExpiresAt, sql`now()`)),
+          or(
+            isNull(whatsappSessions.leaseHolder),
+            lt(whatsappSessions.leaseExpiresAt, sql`now()`),
+            // Its own, kept from before a failed renewal closed the connection.
+            eq(whatsappSessions.leaseHolder, this.instance),
+          ),
           busy.length > 0 ? notInArray(whatsappSessions.id, busy) : undefined,
         ),
       )
@@ -352,7 +373,7 @@ export class SessionsService implements BeforeApplicationShutdown {
         });
     if (!this.isCurrent(session, generation)) return;
     if (outcome === 'gone') {
-      await this.letGo(session.id, 'lease_lost');
+      await this.abandon(session);
       return;
     }
     if (outcome === 'duplicate') {
@@ -491,9 +512,12 @@ export class SessionsService implements BeforeApplicationShutdown {
     reason: DisconnectReason,
   ): Promise<void> {
     const from = session.state;
+    const connection = session.connection;
     this.forget(session);
-    await session.connection?.close();
-    if (!canChangeWhatsAppSessionState(from, to, 'gateway')) return;
+    if (!canChangeWhatsAppSessionState(from, to, 'gateway')) {
+      await connection?.close();
+      return;
+    }
     const changed = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(whatsappSessions)
@@ -510,9 +534,14 @@ export class SessionsService implements BeforeApplicationShutdown {
       if (row) await this.event(tx, session.id, to, reason);
       return Boolean(row);
     });
+    if (!changed) {
+      await this.abandon(session, connection);
+      return;
+    }
+    await connection?.close();
     this.logger.log(`Session ${session.id} is ${to}: ${reason}`);
     // A link the admin is watching in the console is not alerted (spec S03, "Alerts" note).
-    if (changed && from !== 'linking') await this.alerts.raise(session.id, to);
+    if (from !== 'linking') await this.alerts.raise(session.id, to);
     await this.alerts.checkHealth();
   }
 
@@ -535,6 +564,28 @@ export class SessionsService implements BeforeApplicationShutdown {
       if (row) await this.event(tx, session.id, 'link_timeout');
     });
     this.logger.log(`Session ${session.id} link timed out`);
+  }
+
+  /**
+   * The stored session moved on under this connection (an admin re-linked or unlinked it, or the
+   * lease went): logs the link out when unlinked, else closes it, and frees the lease at once so
+   * the next tick runs it again without waiting for its expiry.
+   */
+  private async abandon(session: Running, connection = session.connection): Promise<void> {
+    this.forget(session);
+    const [row] = await this.db
+      .select({ state: whatsappSessions.state })
+      .from(whatsappSessions)
+      .where(eq(whatsappSessions.id, session.id));
+    const unlinked = row?.state === 'unlinked';
+    try {
+      if (unlinked) await connection?.logout();
+      else await connection?.close();
+    } catch (error) {
+      this.logger.warn(`Session ${session.id} close failed: ${describeError(error)}`);
+    }
+    await this.releaseLease(session.id);
+    this.logger.log(`Session ${session.id} let go: ${unlinked ? 'unlinked' : 'moved on'}`);
   }
 
   private async releaseLease(id: string): Promise<void> {

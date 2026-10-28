@@ -11,11 +11,12 @@ import {
   receiptOf,
   statusCodeOf,
 } from './baileys-mapping.js';
-import type {
-  CredentialStore,
-  SessionEvents,
-  TransportConnection,
-  WhatsAppTransport,
+import {
+  type CredentialStore,
+  RecipientUnreachableError,
+  type SessionEvents,
+  type TransportConnection,
+  type WhatsAppTransport,
 } from './whatsapp-transport.js';
 
 /** Baileys logs JIDs and message content: it gets a logger that writes nothing (ADR 0016). */
@@ -30,11 +31,6 @@ const silent: BaileysLogger = {
   warn: () => {},
   error: () => {},
 };
-
-/** A recipient that has no WhatsApp account: a transport error like any other (rule 15). */
-export class NotOnWhatsAppError extends Error {
-  override name = 'NotOnWhatsAppError';
-}
 
 /**
  * The Baileys transport (ADR 0034, Vertex Shifa's Spike B): the exact pinned v7 version in
@@ -111,7 +107,7 @@ export class BaileysWhatsAppTransport implements WhatsAppTransport {
         if (!live) throw new Error('The connection is closed');
         const jid = jidOfPhone(to);
         const [found] = (await socket.onWhatsApp(jid)) ?? [];
-        if (!found?.exists) throw new NotOnWhatsAppError('The recipient is not on WhatsApp');
+        if (!found?.exists) throw new RecipientUnreachableError('The recipient is not on WhatsApp');
         const sent = await socket.sendMessage(jid, { text });
         if (!sent?.key.id) throw new Error('WhatsApp returned no message id');
         return { messageId: sent.key.id };

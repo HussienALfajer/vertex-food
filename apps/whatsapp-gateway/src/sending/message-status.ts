@@ -1,10 +1,10 @@
 import type { WhatsAppMessageFailureReason } from '@vertex-food/contracts';
 import { otpChallenges, type Transaction, whatsappMessages } from '@vertex-food/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 /**
- * Ends unsent messages as `failed` or `expired` with their reason, clearing their parameters, and
- * fails the OTP challenge of each (spec S03 rule 19: its `delivery_status` follows the message,
+ * Ends unsent messages as `failed` or `expired` with their reason, clearing their parameters and
+ * text, and fails the OTP challenge of each (spec S03 rule 19: its `delivery_status` follows the message,
  * forward only). Messages already sent or ended are left alone.
  */
 export async function endMessages(
@@ -16,7 +16,14 @@ export async function endMessages(
   if (ids.length === 0) return 0;
   const ended = await tx
     .update(whatsappMessages)
-    .set({ status, failureReason: reason, paramsSealed: null })
+    // A message never sent gets no retry request: its text goes now, with its parameters.
+    .set({
+      status,
+      failureReason: reason,
+      paramsSealed: null,
+      bodySealed: null,
+      updatedAt: sql`now()`,
+    })
     .where(
       and(
         inArray(whatsappMessages.id, [...ids]),

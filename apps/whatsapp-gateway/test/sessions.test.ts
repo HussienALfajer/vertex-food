@@ -185,7 +185,7 @@ describe('the lease', () => {
     expect(a.sessions.runningIds()).toEqual([]);
   });
 
-  it('closes a connection at once when a renewal fails', async () => {
+  it('closes a connection at once when another instance holds its lease', async () => {
     const gw = await gateway();
     const id = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
     await db.execute(sql`update whatsapp_sessions set lease_holder = ${uuidv7()} where id = ${id}`);
@@ -194,14 +194,48 @@ describe('the lease', () => {
     expect(gw.sessions.runningIds()).toEqual([]);
   });
 
-  it('logs out a session an admin unlinked', async () => {
+  it('closes every connection when a renewal fails, and runs them again once it works', async () => {
+    const gw = await gateway();
+    const id = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
+    const renew = vi
+      .spyOn(gw.sessions as unknown as { renew: () => Promise<void> }, 'renew')
+      .mockRejectedValueOnce(new Error('connection terminated'));
+    await gw.tick();
+    expect(gw.transport.isConnected(id)).toBe(false);
+    expect(gw.sessions.runningIds()).toEqual([]);
+    renew.mockRestore();
+    await gw.tick();
+    expect(gw.transport.isConnected(id)).toBe(true);
+    expect((await session(id)).state).toBe('connected');
+  });
+
+  it('logs out a session an admin unlinked and frees its lease', async () => {
     const gw = await gateway();
     const id = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
     await unlink(id);
+    expect((await session(id)).leaseHolder).not.toBeNull();
     await gw.tick();
     expect(gw.transport.loggedOut).toEqual([id]);
     expect(gw.sessions.runningIds()).toEqual([]);
-    expect((await session(id)).state).toBe('unlinked');
+    expect(await session(id)).toMatchObject({ state: 'unlinked', leaseHolder: null });
+  });
+
+  it('restarts the link at once when a re-link races a reconnect', async () => {
+    const gw = await gateway();
+    const id = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
+    gw.transport.disconnect(id, 'connection_lost');
+    await gw.settle();
+    await relink(id);
+    // The reconnect finds no stored link and shows a QR before the next tick saw the re-link.
+    await vi.waitFor(async () => expect((await session(id)).leaseHolder).toBeNull(), {
+      timeout: 3000,
+    });
+    expect((await session(id)).state).toBe('linking');
+    await gw.tick();
+    const linking = await session(id);
+    expect(linking.leaseHolder).not.toBeNull();
+    expect(linking.qrSealed).not.toBeNull();
+    expect(await events(id)).not.toContain('needs_relink:logged_out');
   });
 });
 

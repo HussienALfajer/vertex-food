@@ -85,23 +85,25 @@ export async function relink(sessionId: string): Promise<void> {
     .where(eq(whatsappSessions.id, sessionId));
 }
 
-/** The API's unlink: credentials, known recipients and queued messages deleted; archived. */
+/**
+ * The API's unlink (PR 3): credentials, known recipients and queued messages deleted, except
+ * queued OTPs, handed back to any number (`session_id` null); archived, QR cleared, the lease
+ * kept so its holder logs the link out.
+ */
 export async function unlink(sessionId: string): Promise<void> {
   await db.execute(sql`delete from whatsapp_session_credentials where session_id = ${sessionId}`);
   await db.execute(sql`delete from whatsapp_known_recipients where session_id = ${sessionId}`);
-  await db.execute(
-    sql`delete from whatsapp_messages where session_id = ${sessionId} and status = 'queued'`,
-  );
+  await db.execute(sql`
+    delete from whatsapp_messages
+    where session_id = ${sessionId} and status = 'queued' and kind <> 'otp'
+  `);
+  await db.execute(sql`
+    update whatsapp_messages set session_id = null
+    where session_id = ${sessionId} and status = 'queued' and kind = 'otp'
+  `);
   await db
     .update(whatsappSessions)
-    .set({
-      state: 'unlinked',
-      archivedAt: sql`now()`,
-      leaseHolder: null,
-      leaseExpiresAt: null,
-      qrSealed: null,
-      qrExpiresAt: null,
-    })
+    .set({ state: 'unlinked', archivedAt: sql`now()`, qrSealed: null, qrExpiresAt: null })
     .where(eq(whatsappSessions.id, sessionId));
 }
 

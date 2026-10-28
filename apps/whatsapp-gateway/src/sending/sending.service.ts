@@ -30,7 +30,7 @@ import { DATABASE, MESSAGING_CRYPTO } from '../core/database/database.module.js'
 import { describeError } from '../core/log/describe-error.js';
 import { Tasks } from '../core/tasks.js';
 import { SessionRegistry } from '../sessions/session-registry.js';
-import type { Receipt } from '../transport/whatsapp-transport.js';
+import { type Receipt, RecipientUnreachableError } from '../transport/whatsapp-transport.js';
 import { endMessages } from './message-status.js';
 import { renderMessage } from './render.js';
 
@@ -42,6 +42,8 @@ const OPT_OUT_STOPS = new Set<MessageKind>(['notification', 'alert', 'auto_reply
 const CLAIM_BATCH = 100;
 /** How long a receipt may wait for the send it acknowledges to be recorded. */
 const PENDING_RECEIPT_MS = 60_000;
+/** How long one send may take before it counts as a transport error. */
+const SEND_TIMEOUT_MS = 30_000;
 
 type QueuedRow = {
   id: string;
@@ -146,11 +148,14 @@ export class SendingService {
         `);
         return locked.rows.length > 0;
       };
+      const own = new Set(this.registry.ids());
       const free = new Set(ready);
+      /** People claimed in this batch: their rows have no `sent_at` yet to count (rule 10). */
+      const people = new Set<string>();
       const claimed: Claim[] = [];
       for (const row of queued.rows) {
         if (free.size === 0) break;
-        if (this.inFlight.has(row.recipient_hash)) continue;
+        if (this.inFlight.has(row.recipient_hash) || people.has(row.recipient_hash)) continue;
         if (OPT_OUT_STOPS.has(row.kind) && (await isWhatsAppOptedOut(tx, row.recipient_hash))) {
           if (await lock(row.id)) await endMessages(tx, [row.id], 'failed', 'opted_out');
           continue;
@@ -161,8 +166,8 @@ export class SendingService {
           row.recipient_hash,
           reply ? (row.session_id ?? undefined) : undefined,
         );
-        const usable = candidates
-          .filter((candidate) => free.has(candidate.id))
+        const ours = candidates
+          .filter((candidate) => own.has(candidate.id))
           .map((candidate) => ({
             ...candidate,
             stats: {
@@ -170,6 +175,11 @@ export class SendingService {
               gapSeconds: this.gaps.get(candidate.id) ?? candidate.stats.gapSeconds,
             },
           }));
+        // Rule 12: while the number that knows the person could send but is busy, wait for it
+        // rather than spend another number's first contacts.
+        const preferred = chooseWhatsAppNumber(ours, row.kind, now);
+        if (preferred && !preferred.budget.firstContact && !free.has(preferred.id)) continue;
+        const usable = ours.filter((candidate) => free.has(candidate.id));
         const chosen = chooseWhatsAppNumber(usable, row.kind, now);
         if (!chosen || chosen.budget.notBefore > now || !(await lock(row.id))) continue;
         const body = row.body_sealed ?? this.sealBody(row);
@@ -186,9 +196,12 @@ export class SendingService {
             attempts: row.attempts + 1,
             bodySealed: body,
             paramsSealed: null,
+            // The database's clock: the sweep finds a stuck send by it (rule 11).
+            updatedAt: sql`now()`,
           })
           .where(eq(whatsappMessages.id, row.id));
         free.delete(chosen.id);
+        people.add(row.recipient_hash);
         claimed.push({
           id: row.id,
           kind: row.kind,
@@ -250,11 +263,18 @@ export class SendingService {
       }
       let messageId: string;
       try {
-        ({ messageId } = await connection.sendText(phone, text));
+        ({ messageId } = await withTimeout(connection.sendText(phone, text), SEND_TIMEOUT_MS));
       } catch (error) {
         this.logger.warn(
           `Message ${claim.id} failed on session ${claim.sessionId}: ${describeError(error)}`,
         );
+        if (error instanceof RecipientUnreachableError) {
+          // The person's phone, not the number: no retry, nothing counted against the number.
+          await this.db.transaction((tx) =>
+            endMessages(tx, [claim.id], 'failed', 'transport_error'),
+          );
+          return;
+        }
         await this.sendFailed(claim);
         return;
       }
@@ -438,6 +458,19 @@ export class SendingService {
     if (!row?.bodySealed) return null;
     return this.crypto.box.open(whatsappSealContext(row.id, 'body'), row.bodySealed) ?? null;
   }
+}
+
+/** A send WhatsApp never answered: a transport error, so the number is not held forever. */
+class SendTimeoutError extends Error {
+  override name = 'SendTimeoutError';
+}
+
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new SendTimeoutError('The send timed out')), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
 }
 
 function receiptKey(sessionId: string, messageId: string): string {

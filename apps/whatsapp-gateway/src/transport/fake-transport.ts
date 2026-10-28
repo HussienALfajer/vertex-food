@@ -1,11 +1,12 @@
-import type {
-  CredentialStore,
-  DisconnectReason,
-  IncomingMessage,
-  Receipt,
-  SessionEvents,
-  TransportConnection,
-  WhatsAppTransport,
+import {
+  type CredentialStore,
+  type DisconnectReason,
+  type IncomingMessage,
+  type Receipt,
+  RecipientUnreachableError,
+  type SessionEvents,
+  type TransportConnection,
+  type WhatsAppTransport,
 } from './whatsapp-transport.js';
 
 /** The credential key where the fake keeps a linked session's account. */
@@ -38,6 +39,8 @@ export class FakeWhatsAppTransport implements WhatsAppTransport {
   readonly sent: FakeSentMessage[] = [];
   /** Sessions logged out through `logout`. */
   readonly loggedOut: string[] = [];
+  /** Phones with no WhatsApp account: sending to them is refused as unreachable. */
+  readonly withoutWhatsApp = new Set<string>();
   private readonly live = new Map<string, Live>();
   private codes = 0;
   private messages = 0;
@@ -65,6 +68,9 @@ export class FakeWhatsAppTransport implements WhatsAppTransport {
     return {
       sendText: async (to, text) => {
         if (!live.open) throw new Error('The connection is closed');
+        if (this.withoutWhatsApp.has(to)) {
+          throw new RecipientUnreachableError('The recipient is not on WhatsApp');
+        }
         if (this.failures > 0) {
           this.failures--;
           throw new Error('The fake refused the message');

@@ -83,5 +83,13 @@ export interface Receipt {
   at: Date;
 }
 
+/**
+ * `sendText`'s refusal when the recipient's phone has no WhatsApp account: a problem with the
+ * person's phone, not with the number, so it is never retried or counted against the number.
+ */
+export class RecipientUnreachableError extends Error {
+  override name = 'RecipientUnreachableError';
+}
+
 /** Injection token of the process's `WhatsAppTransport`. */
 export const WHATSAPP_TRANSPORT = Symbol('WhatsAppTransport');

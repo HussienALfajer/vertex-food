@@ -200,6 +200,52 @@ describe('claiming', () => {
     expect(statuses.sort()).toEqual(['queued', 'sent', 'sent']);
   });
 
+  it('sends one message a minute to a person even when two numbers are free', async () => {
+    const gw = await gateway();
+    await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
+    await linkedSession(gw, 'رقم تركي', TURKISH_NUMBER);
+    const alert = (event: 'banned' | 'healthy_again') =>
+      enqueue({
+        kind: 'alert',
+        template: 'alert',
+        phone: ADMIN_PHONE,
+        params: { label: 'رقم سوري', event },
+      });
+    const first = await alert('banned');
+    const second = await alert('healthy_again');
+    await gw.drain();
+    expect((await message(first)).status).toBe('sent');
+    expect((await message(second)).status).toBe('queued');
+    expect(gw.transport.sent).toHaveLength(1);
+  });
+
+  it('waits for the busy number that knows a person rather than spend a first contact', async () => {
+    const gw = await gateway();
+    const syrian = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
+    await linkedSession(gw, 'رقم تركي', TURKISH_NUMBER);
+    for (const phone of [STAFF_PHONE, ADMIN_PHONE]) {
+      await db.insert(whatsappKnownRecipients).values({
+        id: uuidv7(),
+        sessionId: syrian,
+        recipientHash: hashOf(phone),
+        firstSentAt: sql`now() - interval '1 day'`,
+        lastSentAt: sql`now() - interval '1 day'`,
+      });
+    }
+    const { id: first } = await queueOtp(STAFF_PHONE);
+    const { id: second } = await queueOtp(ADMIN_PHONE);
+    await gw.drain();
+    expect(await message(first)).toMatchObject({ status: 'sent', sessionId: syrian });
+    expect((await message(second)).status).toBe('queued');
+    await pastGaps();
+    await gw.drain();
+    expect(await message(second)).toMatchObject({
+      status: 'sent',
+      sessionId: syrian,
+      firstContact: false,
+    });
+  });
+
   it('keeps the gap after a send across a restart, counted from sent_at', async () => {
     let gw = await gateway();
     const sessionId = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
@@ -291,6 +337,25 @@ describe('failures', () => {
     await gw.drain();
     expect(await message(id)).toMatchObject({ status: 'sent', attempts: 2 });
     expect((await session(sessionId)).consecutiveFailures).toBe(0);
+  });
+
+  it('fails a message to a phone without WhatsApp at once, never counting it against the number', async () => {
+    const gw = await gateway();
+    const sessionId = await linkedSession(gw, 'رقم سوري', SYRIAN_NUMBER);
+    gw.transport.withoutWhatsApp.add(STAFF_PHONE);
+    for (let code = 0; code < 4; code++) {
+      const { id, challengeId } = await queueOtp(STAFF_PHONE, `12345${code}`);
+      await gw.drain();
+      expect(await message(id)).toMatchObject({
+        status: 'failed',
+        failureReason: 'transport_error',
+        attempts: 1,
+        bodySealed: null,
+        paramsSealed: null,
+      });
+      expect(await deliveryStatus(challengeId)).toBe('failed');
+    }
+    expect(await session(sessionId)).toMatchObject({ consecutiveFailures: 0, pausedAt: null });
   });
 
   it('pauses a number after three failed sends in a row and alerts admins', async () => {
