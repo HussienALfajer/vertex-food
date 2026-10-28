@@ -35,7 +35,8 @@ export function configureApp(app: INestApplication, config: Config): INestApplic
       console: config.consoleOrigins,
     }),
   );
-  express.useBodyParser('json');
+  // A sync upload carries up to 100 signed commands (spec S04 rule 7).
+  express.useBodyParser('json', { limit: '1mb' });
   express.useBodyParser('urlencoded', { extended: true });
   app.enableShutdownHooks();
   return app;

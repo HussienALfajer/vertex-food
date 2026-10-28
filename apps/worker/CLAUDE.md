@@ -1,15 +1,17 @@
 # apps/worker
 
-The background worker (ADR 0002, ADR 0020): a NestJS process, ESM, Node 24. Copied from Vertex Shifa's worker and adapted. It runs pg-boss as the queue role and the scheduled jobs as the audited jobs role. The outbox dispatcher (Vertex Shifa's `apps/worker/src/core/outbox/`) arrives with the first event that has a consumer.
+The background worker (ADR 0002, ADR 0020): a NestJS process, ESM, Node 24. Copied from Vertex Shifa's worker and adapted. It runs pg-boss as the queue role and its jobs as the audited jobs role, with the outbox dispatcher of Vertex Shifa's worker.
 
 ## Layout
-- `src/main.ts` starts the process; `src/worker.module.ts` (`WorkerModule.forRoot(config, jobs)`) imports the rest; `src/app.ts` (`configureApp`) holds what production and tests both apply.
+- `src/main.ts` starts the process; `src/worker.module.ts` (`WorkerModule.forRoot(config, jobs)`, `jobs` the `WorkerJobs` of `src/jobs/index.ts`) imports the rest; `src/app.ts` (`configureApp`) holds what production and tests both apply.
 - `src/core/config/`: the environment checked by Zod at start-up (`loadConfig`: `WORKER_HOST` default loopback, `WORKER_PORT` default 3101, `DATABASE_QUEUE_URL` as `food_queue`, `DATABASE_JOBS_URL` as `food_jobs`; a URL of the wrong role is refused), provided as `CONFIG`.
 - `src/core/health/`: `GET /health`, answering `livenessSchema` from `packages/contracts`.
-- `src/core/queue/`: `QueueModule` (pg-boss in schema `pgboss`, `createSchema: false`), and `ScheduledJob` (`queue`, `cron`, `run()`): each job's queue is created, scheduled and worked at start.
+- `src/core/queue/`: `QueueModule` (pg-boss in schema `pgboss`, `createSchema: false`; at start the queue role grants the jobs role its hand-off tables, `JOBS_ROLE_GRANTS`), `ScheduledJob` (`queue`, `cron`, `run()`: created, scheduled and worked at start) and `QueueJob` (`queue`, `events`, `work(jobs)`: subscribed to outbox events).
+- `src/core/outbox/`: `OutboxDispatcher`, from Vertex Shifa: every second, as the jobs role, it claims pending events of subscribed types (`skip locked`) and publishes each to pg-boss in the same transaction, the event's id as the job's; an event nobody subscribes to stays pending.
+- `src/core/repeat/`: `RepeatingJob` (`name`, `intervalMs`, `run()`), for intervals under pg-boss's one-minute cron, run in every instance from bootstrap to shutdown.
 - `src/core/jobs-database/`: `JOBS_DATABASE`, the `Database` connected as `food_jobs`.
-- `src/jobs/<area>/<name>.job.ts`: one file per job, listed in `src/jobs/index.ts`. The pattern to copy is `jobs/tenancy/apply-scheduled-status.job.ts` (spec S01, every minute).
-- `test/`: the worker booted on a fresh database per run (`test/global-setup.ts`, `startWorker` in `test/worker.ts`). Unit tests sit next to the code.
+- `src/jobs/<area>/<name>.job.ts`: one file per job, listed in `src/jobs/index.ts`. The pattern to copy is `jobs/tenancy/apply-scheduled-status.job.ts` (spec S01, every minute); S04's `jobs/sync/connectivity-sweep.job.ts` (repeating, every 15 s: lowers silent branches to weak or offline with the change and its event) and `jobs/sync/clear-revoked-hub-role.job.ts` (on `device.revoked.v1`: clears the revoked PC's hub role).
+- `test/`: the worker booted on a fresh database per run (`test/global-setup.ts`, `startWorker(jobs)` in `test/worker.ts`, with the jobs a test names). Unit tests sit next to the code.
 
 ## Rules
 - The health port listens on loopback only; it is never exposed through the reverse proxy.

@@ -14,6 +14,7 @@ import { AreasModule } from './modules/platform/areas/index.js';
 import { FilesModule } from './modules/platform/files/index.js';
 import { IdentityModule } from './modules/platform/identity/index.js';
 import { MessagingModule } from './modules/platform/messaging/index.js';
+import { SyncModule } from './modules/platform/sync/index.js';
 import { TenancyModule } from './modules/platform/tenancy/index.js';
 
 /**
@@ -36,6 +37,7 @@ export class AppModule {
         IdentityModule,
         AccessModule,
         MessagingModule,
+        SyncModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: AccessGuard },

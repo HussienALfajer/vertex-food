@@ -112,21 +112,4 @@ export class TokenSigner {
     const claims = claimsOf[kind].safeParse(body);
     return claims.success ? ({ ...claims.data, exp: body.exp } as unknown as Claims<K>) : undefined;
   }
-
-  /** The public key as a JSON Web Key Set, for the sync service (S04, rule 44). */
-  jwks() {
-    const { x } = this.publicKey.export({ format: 'jwk' }) as { x: string };
-    return {
-      keys: [
-        {
-          kty: 'OKP' as const,
-          crv: 'Ed25519' as const,
-          x,
-          kid: this.keyId,
-          alg: 'EdDSA' as const,
-          use: 'sig' as const,
-        },
-      ],
-    };
-  }
 }

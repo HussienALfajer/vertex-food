@@ -1,6 +1,23 @@
 import type { Type } from '@nestjs/common';
+import type { QueueJob } from '../core/queue/queue-job.js';
 import type { ScheduledJob } from '../core/queue/scheduled-job.js';
+import type { RepeatingJob } from '../core/repeat/repeating-job.js';
+import { ClearRevokedHubRoleJob } from './sync/clear-revoked-hub-role.job.js';
+import { ConnectivitySweepJob } from './sync/connectivity-sweep.job.js';
 import { ApplyScheduledStatusJob } from './tenancy/apply-scheduled-status.job.js';
 
-/** Every scheduled job of the worker: one class per `jobs/<area>/<name>.job.ts` (ADR 0020). */
-export const jobs: Type<ScheduledJob>[] = [ApplyScheduledStatusJob];
+/** The worker's jobs by how they run: one class per `jobs/<area>/<name>.job.ts` (ADR 0020). */
+export type WorkerJobs = {
+  /** On a pg-boss cron schedule (a minute at least). */
+  scheduled: Type<ScheduledJob>[];
+  /** Every few seconds, in every instance. */
+  repeating: Type<RepeatingJob>[];
+  /** On outbox events, through pg-boss queues. */
+  events: Type<QueueJob>[];
+};
+
+export const jobs: WorkerJobs = {
+  scheduled: [ApplyScheduledStatusJob],
+  repeating: [ConnectivitySweepJob],
+  events: [ClearRevokedHubRoleJob],
+};
