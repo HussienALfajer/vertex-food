@@ -1126,7 +1126,7 @@ export interface components {
             note?: string;
         };
         /** @enum {string} */
-        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed";
+        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked";
         /** @enum {string} */
         AuditActorKind: "staff" | "customer" | "driver" | "platform" | "system";
         AuthorizeAccountPasswordReset: {
@@ -1267,7 +1267,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover";
+        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover" | "console.messaging.read" | "console.messaging.manage";
         ConsoleReauth: {
             code: components["schemas"]["TotpCode"];
         };
@@ -1378,6 +1378,9 @@ export interface components {
             /** @default [] */
             revokedPermissions: components["schemas"]["ConsolePermission"][];
         };
+        CreatePlatformWhatsAppSession: {
+            label: string;
+        };
         CreateTenant: {
             nameAr: string;
             nameLatin?: string;
@@ -1447,7 +1450,7 @@ export interface components {
             reason: "signed_out" | "locked" | "idle";
         };
         /** @enum {string} */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT";
         ErrorResponse: {
             code: components["schemas"]["ErrorCode"];
             message: string;
@@ -1606,6 +1609,11 @@ export interface components {
         };
         /** @enum {string} */
         MembershipStatus: "active" | "deactivated";
+        MessagingHealth: {
+            healthy: number;
+            total: number;
+            otpAvailable: boolean;
+        };
         MissingOnboardingItem: {
             item: components["schemas"]["OnboardingItem"];
             branchId: components["schemas"]["Id"] | null;
@@ -1641,6 +1649,11 @@ export interface components {
             challengeId: components["schemas"]["Id"];
         };
         OtpCode: string;
+        OtpDelivery: {
+            status: components["schemas"]["OtpDeliveryStatus"];
+        };
+        /** @enum {string} */
+        OtpDeliveryStatus: "queued" | "sent" | "delivered" | "failed" | "unknown";
         /** @enum {string} */
         OtpPurpose: "new_device" | "first_sign_in" | "password_reset";
         OtpRequest: {
@@ -1701,6 +1714,28 @@ export interface components {
         };
         /** @enum {string} */
         PlatformUserStatus: "pending_setup" | "active" | "disabled";
+        PlatformWhatsAppSession: {
+            id: components["schemas"]["Id"];
+            label: string;
+            phone: string | null;
+            state: components["schemas"]["WhatsAppSessionState"];
+            pausedAt: components["schemas"]["Instant"] | null;
+            pauseReason: components["schemas"]["WhatsAppPauseReason"] | null;
+            linkedAt: components["schemas"]["Instant"] | null;
+            warmUpDay: number | null;
+            sentLast24h: number;
+            dailyCap: number;
+            firstContactsLast24h: number;
+            firstContactCap: number;
+            sentLastHour: number;
+            hourlyCap: number;
+            lastConnectedAt: components["schemas"]["Instant"] | null;
+            leaseHeld: boolean;
+            healthy: boolean;
+            createdAt: components["schemas"]["Instant"];
+            updatedAt: components["schemas"]["Instant"];
+        };
+        PlatformWhatsAppSessionList: components["schemas"]["PlatformWhatsAppSession"][];
         ProofOfWorkChallenge: {
             challenge: string;
             difficulty: number;
@@ -1922,6 +1957,29 @@ export interface components {
             opensAt: components["schemas"]["TimeOfDay"];
             closesAt: components["schemas"]["TimeOfDay"];
         };
+        /** @enum {string} */
+        WhatsAppPauseReason: "manual" | "send_failures";
+        WhatsAppQr: {
+            state: components["schemas"]["WhatsAppSessionState"];
+            qr: string | null;
+            expiresAt: components["schemas"]["Instant"] | null;
+            linkDeadlineAt: components["schemas"]["Instant"] | null;
+        };
+        WhatsAppSessionDetail: {
+            session: components["schemas"]["PlatformWhatsAppSession"];
+            events: components["schemas"]["WhatsAppSessionEvent"][];
+        };
+        WhatsAppSessionEvent: {
+            id: components["schemas"]["Id"];
+            type: components["schemas"]["WhatsAppSessionEventType"];
+            reason: string | null;
+            platformUserName: string | null;
+            createdAt: components["schemas"]["Instant"];
+        };
+        /** @enum {string} */
+        WhatsAppSessionEventType: "created" | "linked" | "connected" | "disconnected" | "needs_relink" | "banned" | "link_timeout" | "duplicate_number" | "paused" | "resumed" | "relink_started" | "unlinked" | "alert_sent";
+        /** @enum {string} */
+        WhatsAppSessionState: "linking" | "connected" | "disconnected" | "needs_relink" | "banned" | "unlinked";
     };
     responses: never;
     parameters: never;

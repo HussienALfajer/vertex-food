@@ -77,6 +77,7 @@ describe('error codes', () => {
       BRANCH_HAS_DEVICES: 409,
       BRANCH_HAS_MEMBERS: 409,
       OTP_DELIVERY_UNAVAILABLE: 503,
+      WHATSAPP_SESSION_LIMIT: 409,
     });
   });
 

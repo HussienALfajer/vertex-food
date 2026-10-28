@@ -82,6 +82,7 @@ const CONTRACTS_LAYERS: Record<string, string | null> = {
     'health-check.ts',
     'identity.ts',
     'maps.ts',
+    'messaging.ts',
     'money.ts',
     'phone.ts',
     'primitives.ts',

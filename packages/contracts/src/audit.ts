@@ -67,6 +67,12 @@ export const auditActions = [
   'platform_user.totp_failed',
   'platform_user.reauthenticated',
   'platform_user.password_changed',
+  // S03 platform WhatsApp numbers, in the platform audit
+  'whatsapp_session.created',
+  'whatsapp_session.relinked',
+  'whatsapp_session.paused',
+  'whatsapp_session.resumed',
+  'whatsapp_session.unlinked',
 ] as const;
 
 export const auditActionSchema = z.enum(auditActions).meta({ id: 'AuditAction' });

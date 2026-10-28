@@ -174,6 +174,19 @@ describe('contractJsonSchemas', () => {
         'TenantOptions',
         'TotpCode',
         'UpdatePlatformUser',
+        // S03
+        'CreatePlatformWhatsAppSession',
+        'MessagingHealth',
+        'OtpDelivery',
+        'OtpDeliveryStatus',
+        'PlatformWhatsAppSession',
+        'PlatformWhatsAppSessionList',
+        'WhatsAppPauseReason',
+        'WhatsAppQr',
+        'WhatsAppSessionDetail',
+        'WhatsAppSessionEvent',
+        'WhatsAppSessionEventType',
+        'WhatsAppSessionState',
       ].sort(),
     );
   });

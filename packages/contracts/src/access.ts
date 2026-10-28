@@ -187,6 +187,9 @@ export const consolePermissions = [
   // S02 identity
   'console.users.manage',
   'console.accounts.recover',
+  // S03 messaging
+  'console.messaging.read',
+  'console.messaging.manage',
 ] as const;
 
 export const consolePermissionSchema = z.enum(consolePermissions).meta({ id: 'ConsolePermission' });
@@ -199,6 +202,8 @@ export const consolePermissionLimits: Record<ConsolePermission, readonly Console
   'console.tenants.status': ['admin', 'finance'],
   'console.users.manage': ['admin'],
   'console.accounts.recover': ['admin', 'support'],
+  'console.messaging.read': ['admin', 'support'],
+  'console.messaging.manage': ['admin'],
 };
 
 export const consolePresets: Record<ConsoleRole, readonly ConsolePermission[]> = {
@@ -206,7 +211,7 @@ export const consolePresets: Record<ConsoleRole, readonly ConsolePermission[]> =
   sales: ['console.tenants.manage'],
   dispatch: [],
   finance: ['console.tenants.status'],
-  support: ['console.accounts.recover'],
+  support: ['console.accounts.recover', 'console.messaging.read'],
 };
 
 export function isWithinConsoleLimit(role: ConsoleRole, permission: ConsolePermission): boolean {

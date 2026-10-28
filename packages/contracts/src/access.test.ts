@@ -54,6 +54,8 @@ const consoleTable: Record<ConsolePermission, ConsoleRole[]> = {
   'console.tenants.status': ['admin', 'finance'],
   'console.users.manage': ['admin'],
   'console.accounts.recover': ['admin', 'support'],
+  'console.messaging.read': ['admin', 'support'],
+  'console.messaging.manage': ['admin'],
 };
 
 function refusedCode(run: () => void): string | undefined {
@@ -192,6 +194,8 @@ describe('console permissions', () => {
       'console.tenants.manage',
       'console.users.manage',
       'console.accounts.recover',
+      'console.messaging.read',
+      'console.messaging.manage',
     ]);
     expect(effectiveConsolePermissions('dispatch', [], [])).toEqual([]);
   });

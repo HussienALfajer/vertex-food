@@ -138,6 +138,8 @@ export const staffConsole = {
     'console.tenants.status': 'إيقاف المطاعم وإغلاقها',
     'console.users.manage': 'إدارة مستخدمي اللوحة',
     'console.accounts.recover': 'استرداد حسابات المالكين',
+    'console.messaging.read': 'عرض أرقام واتساب المنصة',
+    'console.messaging.manage': 'إدارة أرقام واتساب المنصة',
   },
   platformUsers: {
     title: 'مستخدمو اللوحة',

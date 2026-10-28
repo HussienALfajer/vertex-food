@@ -1,4 +1,4 @@
-import { errorCodes } from '@vertex-food/contracts';
+import { errorCodes, messageTemplateKeys, messageTemplates } from '@vertex-food/contracts';
 import { describe, expect, it } from 'vitest';
 import { ar, formatLocale } from './index.js';
 
@@ -27,6 +27,14 @@ describe('Arabic catalog', () => {
 
   it('has a text for every error code', () => {
     expect(Object.keys(ar.errors).sort()).toEqual([...errorCodes].sort());
+  });
+
+  it('has a WhatsApp text for every message template, naming exactly its parameters', () => {
+    expect(Object.keys(ar.messaging.templates).sort()).toEqual([...messageTemplateKeys].sort());
+    for (const key of messageTemplateKeys) {
+      const named = [...ar.messaging.templates[key].matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]);
+      expect(named.sort(), key).toEqual(Object.keys(messageTemplates[key].params.shape).sort());
+    }
   });
 });
 
