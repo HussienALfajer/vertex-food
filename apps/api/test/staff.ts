@@ -103,6 +103,11 @@ export class TestApi {
     return client(this.app);
   }
 
+  /** The last code sent to the account; the messaging tests read it from the queued message. */
+  async lastCode(accountId: string): Promise<string | undefined> {
+    return this.otps.lastCode(accountId);
+  }
+
   async accountId(phone: string): Promise<string> {
     const [row] = await this.db.select().from(accounts).where(eq(accounts.phone, phone));
     if (!row) throw new Error('No account for this phone');
@@ -135,7 +140,7 @@ export class TestApi {
       .post('/api/auth/otp/request')
       .send({ phone, purpose: 'first_sign_in', intent, proofOfWork: solved })
       .expect(200);
-    const code = this.otps.lastCode(await this.accountId(phone));
+    const code = await this.lastCode(await this.accountId(phone));
     const verified = await this.http()
       .post('/api/auth/otp/verify')
       .send({ challengeId: requested.body.challengeId, code, intent })
@@ -160,7 +165,7 @@ export class TestApi {
       .send({ phone, password: PASSWORD, intent, proofOfWork: solved })
       .expect(200);
     if (started.body.step === 'done') return { ticket: started.body.ticket as string, cookies: [] };
-    const code = this.otps.lastCode(await this.accountId(phone));
+    const code = await this.lastCode(await this.accountId(phone));
     const verified = await this.http()
       .post('/api/auth/otp/verify')
       .send({ challengeId: started.body.challengeId, code, intent })

@@ -4,6 +4,7 @@ import {
   DomainError,
   type Me,
   type OtpChallenge,
+  type OtpDelivery,
   type OtpRequest,
   type OtpVerified,
   type OtpVerify,
@@ -88,6 +89,8 @@ export class AuthService {
   private readonly perAddress = new RateLimiter(30, 10 * MINUTE_MS);
   private readonly challengesPerAddress = new RateLimiter(60, 10 * MINUTE_MS);
   private readonly verificationsPerAddress = new RateLimiter(60, 10 * MINUTE_MS);
+  /** The sign-in screen polls a code's delivery every 2 s for up to 60 s (spec S03). */
+  private readonly deliveryReadsPerAddress = new RateLimiter(120, 10 * MINUTE_MS);
   /** Sign-in failures of phones without an account, locked like accounts (rule 11). */
   private readonly decoys = new DecoyLocks();
 
@@ -197,6 +200,12 @@ export class AuthService {
   async resendOtp(challengeId: string, address: string): Promise<OtpChallenge> {
     this.perAddress.take(this.hashes.hash('address', address));
     return { challengeId: await this.otps.resend(challengeId) };
+  }
+
+  /** Spec S03 rule 21: a new-device code's delivery; `unknown` for any other challenge id. */
+  async otpDelivery(challengeId: string, address: string): Promise<OtpDelivery> {
+    this.deliveryReadsPerAddress.take(this.hashes.hash('address', address));
+    return { status: await this.otps.deliveryStatus(challengeId) };
   }
 
   /**

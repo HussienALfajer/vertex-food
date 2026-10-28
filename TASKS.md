@@ -39,11 +39,11 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 
 ## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
 
-- [ ] Config: messaging keys (and in `.env.example`), `OTP_SENDER=gateway`
-- [ ] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change)
-- [ ] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
-- [ ] Console routes: list, detail with events, health (a number's counts start at its `linked_at`, as in `whatsappNumberCandidates`), add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
-- [ ] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
+- [x] Config: messaging keys (and in `.env.example`), `OTP_SENDER=gateway`
+- [x] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change, new-device codes only: first sign-in and reset stay quiet as decoys); QR seal context and the API's side of re-link and unlink agreed with PR 2 (spec, Session states and API and commands)
+- [x] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
+- [x] Console routes: list, detail with events, health (a number's counts start at its `linked_at`, as in `whatsappNumberCandidates`), add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
+- [x] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
 ## PR 4 `feat/s03-console-whatsapp` — console screens (after PR 3, parallel with PR 5)

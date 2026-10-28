@@ -32,6 +32,7 @@ import {
   nonceSchema,
   openSessionSchema,
   otpChallengeSchema,
+  otpDeliverySchema,
   otpRequestSchema,
   otpResendSchema,
   otpVerifiedSchema,
@@ -137,6 +138,13 @@ export class AuthController {
     @Ip() address: string,
   ) {
     return this.auth.resendOtp(input.challengeId, address);
+  }
+
+  @Get('otp/:challengeId/delivery')
+  @Public()
+  @SerializeOptions({ schema: otpDeliverySchema })
+  otpDelivery(@Param('challengeId', idParam) challengeId: string, @Ip() address: string) {
+    return this.auth.otpDelivery(challengeId, address);
   }
 
   @Post('otp/verify')

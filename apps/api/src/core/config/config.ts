@@ -71,8 +71,12 @@ const configSchema = z
     IDENTITY_ENCRYPTION_KEY: base64Key(32).refine((key) => key.length === 32),
     /** Leading zero bits of the sign-in proof of work (ADR 0016). */
     IDENTITY_POW_DIFFICULTY: z.coerce.number().int().min(0).max(32).default(18),
-    /** Only the fake exists until S03 adds the WhatsApp gateway sender. */
-    OTP_SENDER: z.enum(['fake']).default('fake'),
+    /** `gateway` queues each code for the WhatsApp gateway (spec S03); `fake` only prints it. */
+    OTP_SENDER: z.enum(['fake', 'gateway']).default('fake'),
+    /** HMAC-SHA-256 key of message recipients (spec S03), shared with the worker and gateway. */
+    MESSAGING_HASH_KEY: base64Key(32),
+    /** AES-256-GCM key of message recipients, parameters, bodies and QR codes (spec S03). */
+    MESSAGING_ENCRYPTION_KEY: base64Key(32).refine((key) => key.length === 32),
   })
   .superRefine((env, context) => {
     if (env.NODE_ENV !== 'production') return;
@@ -85,6 +89,10 @@ const configSchema = z
     if (isAllZero(seed)) refuse('IDENTITY_TOKEN_KEY', 'The example key');
     if (isAllZero(env.IDENTITY_ENCRYPTION_KEY)) {
       refuse('IDENTITY_ENCRYPTION_KEY', 'The example key');
+    }
+    if (isAllZero(env.MESSAGING_HASH_KEY)) refuse('MESSAGING_HASH_KEY', 'The example key');
+    if (isAllZero(env.MESSAGING_ENCRYPTION_KEY)) {
+      refuse('MESSAGING_ENCRYPTION_KEY', 'The example key');
     }
     if (env.IDENTITY_POW_DIFFICULTY < MIN_PRODUCTION_POW) {
       refuse('IDENTITY_POW_DIFFICULTY', 'Too easy a proof of work');
@@ -108,6 +116,10 @@ const configSchema = z
       encryptionKey: env.IDENTITY_ENCRYPTION_KEY,
       powDifficulty: env.IDENTITY_POW_DIFFICULTY,
       otpSender: env.OTP_SENDER,
+    },
+    messaging: {
+      hashKey: env.MESSAGING_HASH_KEY,
+      encryptionKey: env.MESSAGING_ENCRYPTION_KEY,
     },
   }));
 
