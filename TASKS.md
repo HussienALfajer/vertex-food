@@ -24,13 +24,13 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - [x] db (`/db-migration`): `schema/messaging.ts` (six tables), registry, grants and `refuse_change()` custom migration, `otp_challenges.delivery_status` values; conventions test with the `DELETE` exceptions; `pnpm db:migrate` locally
 - [x] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
 - [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md`, spec notes); the messaging keys reach `.env.example` with the first config that reads them (PR 2 or PR 3)
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, endpoints/rules summary in the report
+- [x] Checks (`pnpm verify` green), reviewer (one finding fixed: a re-linked number counts only its current link's sends; fix-only re-review clean), PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 2 `feat/s03-gateway` — the gateway (after PR 1)
 
 - [ ] Config: `DATABASE_APP_URL`, messaging keys (and in `.env.example`), `WHATSAPP_TRANSPORT` (production refuses `fake`)
 - [ ] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
-- [ ] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at`, duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
+- [ ] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at` (kept for the same phone, restarted for another, with the old phone's known recipients deleted: the counts of `whatsappNumberCandidates` start at `linked_at`), duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
 - [ ] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
 - [ ] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
 - [ ] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
