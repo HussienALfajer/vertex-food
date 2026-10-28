@@ -177,6 +177,9 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     env:
+      # Where the image keeps its browsers; turbo.json passes it through to Playwright (its strict
+      # environment mode hides every variable a task does not list).
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ vars.TURBO_TEAM }}
       TURBO_API: ${{ vars.TURBO_API || 'https://vercel.com/api' }}
