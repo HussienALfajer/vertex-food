@@ -1,8 +1,8 @@
 import { DomainError, type SignInIntent, ticketTtlSeconds } from '@vertex-food/contracts';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { accounts, type Database, type Transaction } from '@vertex-food/db';
 import { eq } from 'drizzle-orm';
 import type { Ticket } from '../../../core/access/actor.js';
-import type { KeyedHash } from '@vertex-food/crypto';
 import { randomToken } from './secrets.js';
 import { isTokenUsed, useToken } from './single-use.js';
 import type { TicketPurpose, TokenSigner } from './tokens.js';

@@ -18,6 +18,7 @@ import {
   signInPolicy,
   ticketTtlSeconds,
 } from '@vertex-food/contracts';
+import type { KeyedHash, SecretBox } from '@vertex-food/crypto';
 import {
   type Database,
   platformSessions,
@@ -32,7 +33,6 @@ import { auditPlatform } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { readTenant } from '../tenancy/index.js';
-import type { KeyedHash, SecretBox } from '@vertex-food/crypto';
 import { DecoyLocks, signInLocked } from './decoy-locks.js';
 import { KEYED_HASH, SECRET_BOX } from './devices.service.js';
 import { ProofOfWork } from './proof-of-work.js';

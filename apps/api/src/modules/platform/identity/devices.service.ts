@@ -13,6 +13,7 @@ import {
   type RegisteredDevice,
   type RevokeDevice,
 } from '@vertex-food/contracts';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { branches, type Database, devices, staffSessions, withTenant } from '@vertex-food/db';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import {
@@ -28,7 +29,6 @@ import { isUniqueViolation } from '../../../core/database/unique-violation.js';
 import { emit } from '../../../core/events/outbox.js';
 import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { permissionsOf, readMembership } from '../access/index.js';
-import type { KeyedHash } from '@vertex-food/crypto';
 import { memberListOf, tenantStatusAt } from './member-lists.js';
 import { verifyEd25519 } from './secrets.js';
 import type { Nonces } from './single-use.js';

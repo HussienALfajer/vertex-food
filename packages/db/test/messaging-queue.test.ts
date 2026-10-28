@@ -29,7 +29,7 @@ const crypto = { hash: new KeyedHash(randomBytes(32)), box: new SecretBox(random
 let phones = 0;
 const newPhone = () => `+9997${String(Date.now() % 1e6).padStart(6, '0')}${phones++}`;
 
-/** A healthy number linked `days` ago, holding a live lease. */
+/** A healthy number linked `days` days and an hour ago, holding a live lease. */
 async function healthyNumber(
   days = 30,
   values: Partial<typeof whatsappSessions.$inferInsert> = {},
@@ -39,7 +39,7 @@ async function healthyNumber(
     .values({
       label: `رقم ${uuidv7().slice(-12)}`,
       state: 'connected',
-      linkedAt: sql`now() - make_interval(days => ${days})`,
+      linkedAt: sql`now() - make_interval(days => ${days}, hours => 1)`,
       leaseHolder: uuidv7(),
       leaseExpiresAt: sql`now() + interval '30 seconds'`,
       ...values,
@@ -307,9 +307,26 @@ describe('sendAvailability', () => {
       // Day 1: 30 a day, 15 first contacts; this recipient would be the 16th.
       expect(await availability(hash, 'otp')).toBeUndefined();
       // Sends older than 24 hours no longer count.
-      const old = await healthyNumber(0);
+      const old = await healthyNumber(2);
       await sent(old.id, `other-${uuidv7()}`, 15, { firstContact: true, ago: '25 hours' });
       expect(await availability(hash, 'otp')).toEqual({ sessionId: old.id, firstContact: true });
+    });
+  });
+
+  it('counts only the current link’s sends after a re-link with another phone', async () => {
+    await only(async () => {
+      const hash = whatsappRecipientHash(crypto, newPhone());
+      const relinked = await healthyNumber(30);
+      await sent(relinked.id, `other-${uuidv7()}`, 30, { ago: '2 hours' });
+      // Day 1 again (a new phone): the old phone's 30 sends would fill its cap of 30.
+      await app
+        .update(whatsappSessions)
+        .set({ linkedAt: sql`now() - interval '1 hour'` })
+        .where(eq(whatsappSessions.id, relinked.id));
+      expect(await availability(hash, 'otp')).toEqual({
+        sessionId: relinked.id,
+        firstContact: true,
+      });
     });
   });
 

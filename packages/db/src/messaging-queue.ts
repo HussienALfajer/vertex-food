@@ -150,8 +150,9 @@ type CandidateRow = {
 /**
  * The healthy platform numbers (rule 2) with their rolling counts and this recipient's, read in
  * one statement against the database's clock (rule 11), as `chooseWhatsAppNumber` takes them.
- * `onlySessionId` limits them to one number (replies, rule 13). The gap after a number's last
- * send is not stored, so it counts as the longest one.
+ * `onlySessionId` limits them to one number (replies, rule 13). A number's counts start at its
+ * `linked_at`; a recipient's span every number. The gap after a number's last send is not stored,
+ * so it counts as the longest one.
  */
 export async function whatsappNumberCandidates(
   tx: Transaction,
@@ -193,7 +194,11 @@ export async function whatsappNumberCandidates(
         count(*)::int as sent_last_24h,
         count(*) filter (where m.first_contact)::int as first_contacts_last_24h
       from whatsapp_messages m
-      where m.session_id = s.id and m.sent_at > now() - interval '24 hours'
+      -- Only the current link's sends: a re-link with another phone restarts linked_at and
+      -- warms up from day 1 (rule 5, edge case 6), the old phone's sends no longer count.
+      where m.session_id = s.id
+        and m.sent_at > now() - interval '24 hours'
+        and m.sent_at >= s.linked_at
     ) sends
     where s.archived_at is null
       and s.state = 'connected'

@@ -42,7 +42,7 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - [ ] Config: messaging keys (and in `.env.example`), `OTP_SENDER=gateway`
 - [ ] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change)
 - [ ] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
-- [ ] Console routes: list, detail with events, health, add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
+- [ ] Console routes: list, detail with events, health (a number's counts start at its `linked_at`, as in `whatsappNumberCandidates`), add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
 - [ ] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 

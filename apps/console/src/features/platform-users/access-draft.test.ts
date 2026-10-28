@@ -57,7 +57,8 @@ describe('withRole', () => {
     const draft = accessDraft({ ...admin, revokedPermissions: ['console.accounts.recover'] });
     const support = withRole(draft, 'support');
     expect(permissionState(support, 'console.accounts.recover')).toBe('removed');
-    expect([...support.held]).toEqual([]);
+    // Support's own preset (console.messaging.read, S03) stays; admin's other permissions go.
+    expect([...support.held]).toEqual(['console.messaging.read']);
     expect(accessChange(support)).toEqual({
       role: 'support',
       grantedPermissions: [],
