@@ -5,7 +5,7 @@ argument-hint: <what changes>
 effort: high
 ---
 
-Schema change: **$ARGUMENTS**. Rules: `packages/db/CLAUDE.md`, ADR 0020 (Data), ADR 0004 (tenancy); order tables also ADR 0007; money and ledger tables ADR 0014; agreement tables ADR 0013; delivery tables ADR 0009.
+Schema change: **$ARGUMENTS**. Rules: `packages/db/CLAUDE.md`, ADR 0020 (Data), ADR 0004 (tenancy), ADR 0025 (generic platform names, no speculative columns); order tables also ADR 0007 and 0029; money and ledger tables ADR 0014 and 0031; agreement tables ADR 0013; delivery tables ADR 0009; identity tables ADR 0005 and 0032; promotion and loyalty tables ADR 0026; trust tables ADR 0027.
 
 1. **Edit** `packages/db/src/schema/<module>.ts` with the shared column helpers. A new schema file is exported from `schema/index.ts`; every new table gets its owning module, scope (tenant or platform) and kind in the schema registry. Every foreign key gets an index; a foreign key between tenant tables is composite, `(tenant_id, x_id) → (tenant_id, id)`, with `unique (tenant_id, id)` on the parent. Command ids, idempotency keys and external references get unique indexes.
 2. **Tenant tables:** `tenant_id` not null; indexes start with `tenant_id`; the custom migration enables and forces RLS and creates the `tenant_isolation` policy against `current_tenant_id()`; the app role gets only the privileges it needs (never `TRUNCATE`, `TRIGGER` or `REFERENCES`; no `DELETE` on business tables).
@@ -21,6 +21,6 @@ Schema change: **$ARGUMENTS**. Rules: `packages/db/CLAUDE.md`, ADR 0020 (Data), 
    Contract steps ship in a later release. Data backfills go in a custom migration and never touch append-only rows.
 6. **Test:** `pnpm verify packages/db/test/conventions.test.ts` with the db test files for the change (migrations, the convention test with RLS checks, triggers as app role and owner), then the test files of the packages that use the tables, with `pnpm verify <files>`. Rerun only the files that failed.
 7. **Confirm no drift:** running `pnpm db:generate` again reports nothing to migrate.
-8. **Dev database:** `pnpm db:migrate` changes the owner's local data, so ask before running it.
+8. **Dev database:** once step 5 found the migration backward compatible, run `pnpm db:migrate` on the local development database without asking (standing approval, ADR 0033) and report it. A contract step, or anything step 5 stopped on, is asked first.
 
 Never use `drizzle-kit push`, never edit a generated migration, and commit the schema and its migration together.

@@ -1,6 +1,6 @@
 ---
 name: feature-slice
-description: Implement an approved spec end to end, layer by layer (contracts → db → sync commands → api/worker → bridge → front ends → E2E), with a check gate and a commit after each layer, the reviewer and the owner's acceptance, then open the PR with auto-merge. The implement step of the feature cycle, after /spec.
+description: Implement an approved spec end to end, layer by layer (contracts → db → sync commands → api/worker → bridge → front ends → E2E), with a check gate and a commit after each layer and the reviewer, then open the PR with auto-merge and Auto-fix; the owner's acceptance follows the merge. The implement step of the feature cycle, after /spec.
 argument-hint: <spec id or path, e.g. S09>
 disable-model-invocation: true
 effort: medium
@@ -18,8 +18,8 @@ Implement **$ARGUMENTS**. This skill orders the work and names the gates; the ru
 - If `TASKS.md` already holds this spec, continue from its first open item instead of planning again; check that earlier PRs are merged into `main`.
 - Split the spec into PRs. Default: PR 1 is contracts, db, sync commands, api and worker with their tests; then one PR per front end (restaurant, hub clients, web, customer, driver, console) with its E2E. A small spec is one PR. A PR never leaves `main` broken or half-wired, never ships an offline command without its late, duplicate and conflict tests, tenant data without isolation tests, or a ledger posting without balance tests.
 - Mark which front-end PRs can run in parallel sessions after PR 1 merges (different apps, no shared files) (`docs/workflow.md`).
-- Write `TASKS.md` for this spec (replace the previous one): a heading per PR, one item per layer below, the wiring items that apply, and "checks, reviewer, acceptance, PR with auto-merge" at the end of each PR.
-- Show the owner the PR split and the task list in a few lines, in Arabic, then **stop and wait for approval**.
+- Write `TASKS.md` for this spec (replace the previous one): a heading per PR, one item per layer below, the wiring items that apply, and "checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report" at the end of each PR.
+- Show the owner the PR split and the task list in a few lines, in Arabic, then **stop and wait for approval**. This is the skill's only stop before the PR opens ("Stop and ask when" below lists the exceptions).
 
 ## 2. Build, one layer at a time
 Finish a layer, run its gate, fix root causes, tick the item in `TASKS.md`, **commit the layer** (`feat(<id>): <layer> …`), then start the next layer. Never start a layer while the previous gate fails. A gate runs the layer's own test files with `pnpm verify <files>` (paths from the root; it builds their dependencies first) and typechecks with `pnpm typecheck` (Turborepo replays untouched packages); when one fails, fix it and rerun only the files its summary names. Never run a whole suite at a gate (`docs/testing.md`).
@@ -39,18 +39,18 @@ Layers a PR does not include are skipped. Helpers arrive with their first real u
 
 ## 3. Close each PR
 1. Walk the wiring checklist in `wiring.md` against the diff (`git diff main...HEAD --stat`).
-2. Verify the branch once: `pnpm verify` (lint, typecheck, test, build, migration drift, the changed E2E specs) through the `checker`, to keep its output out of the context, and at the same time the `reviewer` (next step). Edit nothing until both are done.
-3. Run the `reviewer` subagent with the spec path. Fix every blocking finding and every failure of step 2 together, commit the fixes, then run `pnpm verify` once more: Turborepo replays what the fixes did not touch.
-4. Owner acceptance, in Arabic:
-   - PR with screens: turn the spec's "Acceptance" section into numbered steps (how to start the apps, which test account, what to click, what to see, how to simulate offline or a hub cut). Ask before `pnpm db:migrate` on the dev database.
+2. Verify the branch once: `pnpm verify` (lint, typecheck, test, build, migration drift, the whole E2E suite of each app the branch affects) through the `checker`, to keep its output out of the context, and at the same time the `reviewer` (next step). Edit nothing until both are done.
+3. Run the `reviewer` subagent once on the whole branch, with the spec path; note the commit it reviewed. Fix every blocking finding and every failure of step 2 together, commit the fixes, then run `pnpm verify` once more: Turborepo replays what the fixes did not touch. Then run the `reviewer` in fix-only mode: the findings it gave and `git diff <reviewed commit>..HEAD`, nothing else. At most two fix-only rounds; a blocking finding still open after the second stops the PR: report it under "Needs from you".
+4. Tick the PR's items in `TASKS.md` and finish the PR in the same turn, without asking: follow "Finishing a task" in `AGENTS.md` (opening the PR, auto-merge and Auto-fix are standing approvals, ADR 0033). A backward-compatible migration of the PR is already applied to the local database (`/db-migration`, step 8).
+5. Owner acceptance, after the PR opens, in the report's "Needs from you", in Arabic:
+   - PR with screens: turn the spec's "Acceptance" section into numbered steps (how to start the apps, which test account, what to click, what to see, how to simulate offline or a hub cut).
    - PR without screens: summarize the endpoints, commands, jobs and ledger postings and their rules.
-   Fix what the owner reports in the same session, then run `pnpm verify` and the reviewer on the fix.
-5. Tick the PR's items in `TASKS.md`, then, as soon as the owner accepts, finish the PR in the same turn: follow "Finishing a task" in `AGENTS.md`.
+   What the owner reports is fixed on the branch while the PR is open, or in a new `fix/<id>-<topic>` branch and PR once it merged; that fix gets `pnpm verify` and a fix-only review.
 
 ## Stop and ask when
 - The spec is ambiguous in a way that changes the result, or the work needs an answer from `docs/open-questions.md`.
 - The migration review in `/db-migration` finds a destructive or non-backward-compatible change.
-- A command changes the owner's data (`pnpm db:migrate`), is destructive on a server (`AGENTS.md`, "How to work"; deploying `main` and other production changes are a standing approval), sends a real WhatsApp message, prints on a real printer the owner did not set up for tests, or publishes an app.
+- A migration is not backward compatible (applying it changes the owner's data), a command is destructive on a server (`AGENTS.md`, "How to work"; deploying `main` and other production changes are a standing approval), sends a real WhatsApp message, prints on a real printer the owner did not set up for tests, or publishes an app.
 - The work would go beyond the spec: record the idea as a follow-up instead.
 
 ## Keep this skill true

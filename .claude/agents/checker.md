@@ -1,6 +1,6 @@
 ---
 name: checker
-description: Runs the Vertex Food checks through `pnpm verify` (lint, typecheck, tests, build, migration drift, the changed E2E specs of each app) and returns its summary, failures first, each with its file:line. Use it to keep a long check run out of the main context, for example while the reviewer reads the branch, and do not edit files while it runs. Say "the branch" for the whole verify, or name the test files to run.
+description: Runs the Vertex Food checks through `pnpm verify` (lint, typecheck, tests, build, migration drift, the whole E2E suite of each app the branch affects) and returns its summary, failures first, each with its file:line. Use it to keep a long check run out of the main context, for example while the reviewer reads the branch, and do not edit files while it runs. Say "the branch" for the whole verify, or name the test files to run.
 tools: Bash, Read, Grep, Glob
 model: haiku
 effort: low

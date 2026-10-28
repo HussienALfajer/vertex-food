@@ -18,13 +18,14 @@ The unit of work is a spec from `docs/ROADMAP.md` (`S01`…`S29`). Each session 
 
 | # | Session | Model and effort | First message | The owner | Ends with |
 |---|---|---|---|---|---|
-| 1 | Spec | Opus 5.5, `high` | `/spec <id>` | Answers the interview; approves the spec | The spec's PR (`docs/<id>-spec`) |
-| 2 | Backend PR | Opus 5.5, `high` for sync and hub, tenancy, access, orders, money and ledger, agreements, dispatch, the WhatsApp gateway; else `medium` | `/feature-slice <id>` | Approves the PR split and `TASKS.md`; may try endpoints at `/api/docs` | PR 1 (contracts, db, sync commands, api, worker) |
-| 3 | Front-end PR | Opus 5.5, `medium` | `/feature-slice <id>` | Runs the acceptance steps in the app | PR 2 (screens and E2E); `docs/ROADMAP.md` updated |
+| 1 | Spec | Opus 5.5, `high` | `/spec <id>` | Answers the interview; approves the spec | The spec's PR (`docs/<id>-spec`), with auto-merge and Auto-fix |
+| 2 | Backend PR | Opus 5.5, `xhigh` for the sync protocol and branch hub core; `high` for tenancy and RLS, access, orders, money and ledger, agreements and entitlements, promotions, loyalty and trust policies, dispatch, the WhatsApp gateway; else `medium` | `/feature-slice <id>` | Approves the PR split and `TASKS.md`; after the merge, reads the summary of endpoints and rules (may try them at `/api/docs`) | PR 1 (contracts, db, sync commands, api, worker), with auto-merge and Auto-fix |
+| 3 | Front-end PR | Opus 5.5, `medium` | `/feature-slice <id>` | After the merge, runs the acceptance steps in the app | PR 2 (screens and E2E), with auto-merge and Auto-fix; `docs/ROADMAP.md` updated |
 | 4 | Phase deploy (once per phase) | Opus 5.5, `low` | `Deploy phase <n> to production` | Checks the live system after the deploy (deploys are a standing approval, `AGENTS.md`) | Deploy done, ticked in `docs/ROADMAP.md` |
 
 - A large spec needs more than two PRs; a small spec does sessions 2 and 3 in one PR.
 - `/feature-slice` reads `TASKS.md` and continues from the first open PR, so a session can stop between PRs.
+- **No question at the end:** a finished PR is committed, pushed, opened, set to auto-merge and given Auto-fix without asking (standing approvals, ADR 0033 and `AGENTS.md` "How to work"). The owner's acceptance comes after the merge; what it finds becomes a fix PR.
 - **Each layer is committed when its gate passes**, so a crash or a wrong `/rewind` never loses a PR.
 - After each merge the owner runs the cleanup line from the report, then `/clear`.
 - **Spikes** (Phase 0) run on `spike/<topic>` branches with throwaway code under `spikes/`; they end with a findings report in `docs/spikes/` and the ADR amendments they justify.
@@ -58,7 +59,7 @@ A rule a machine can check belongs in a test, lint rule or hook, not in prose.
 | Task | Model | Effort |
 |---|---|---|
 | Sync protocol and branch hub core | Opus 5.5 | `xhigh` |
-| Tenancy and RLS, access, orders, money and ledger, agreements and entitlements, dispatch, WhatsApp gateway | Opus 5.5 | `high` |
+| Tenancy and RLS, access, orders, money and ledger, agreements and entitlements, promotions, loyalty and trust policies, dispatch, WhatsApp gateway | Opus 5.5 | `high` |
 | Spec interviews, spikes | Opus 5.5 | `high` |
 | A clearly specified feature outside those areas, screens | Opus 5.5 | `medium` |
 | Phase deploys, mechanical edits | Opus 5.5 | `low` |
