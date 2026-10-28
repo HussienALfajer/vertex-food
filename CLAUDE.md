@@ -27,7 +27,7 @@
 - Biome formats and lint-fixes every edited file; remaining problems come back to fix.
 - A test guard refuses a second test run while one is going, a Playwright run of a whole suite outside `pnpm verify` (which runs the suites the branch affects; `--e2e-all` runs all five) and `timeout` around a test command (`.claude/hooks/test-guard.mjs`, tested in `packages/config`).
 - A git guard refuses `git commit` on `main`, pushes to `main`, and broad staging (`git add -A`, `-u`, `.`, `:/`), however `git` is called (`.claude/hooks/git-guard.mjs`, tested in `packages/config`).
-- At session start, a note shows the branch, uncommitted files and the open items of `TASKS.md`: continue from them.
+- At session start, a note fetches `origin` and shows the branch, uncommitted and unpushed work, branches not merged into `main` and the open items of `TASKS.md`: continue from them.
 
 ## Context hygiene
 

@@ -10,18 +10,18 @@ Implement **$ARGUMENTS**. This skill orders the work and names the gates; the ru
 ## 0. Preconditions (stop and tell the owner if one fails)
 - The spec (`docs/specs/<id>-*.md`) says `Status: Approved`, and its "Open questions" block nothing this work touches. Never answer an open question yourself.
 - The branch is not `main`. Name it `feat/<id>-<slice>`, e.g. `feat/s09-pos-orders-api`.
-- The working tree is clean, and `main` is pulled.
+- The working tree is clean, and `main` is pulled. When `TASKS.md` or the session-start note names a branch of this spec that is not merged, switch to it and pull it instead of starting a new one: the work may have been started in another session, local or cloud.
 
 ## 1. Plan (no code)
 - Read only: the spec, the ADRs it lists, `wiring.md`, and the `CLAUDE.md` of each folder you will touch. Open reference files by range when you write the layer that needs them; for a pattern not yet in this repository, ask the `explorer` subagent for the matching Vertex Shifa files.
 - If `TASKS.md` already holds this spec, continue from its first open item instead of planning again; check that earlier PRs are merged into `main`.
 - Split the spec into PRs. Default: PR 1 is contracts, db, sync commands, api and worker with their tests; then one PR per front end (restaurant, hub clients, web, customer, driver, console) with its E2E. A small spec is one PR. A PR never leaves `main` broken or half-wired, never ships an offline command without its late, duplicate and conflict tests, tenant data without isolation tests, or a ledger posting without balance tests.
 - Mark which front-end PRs can run in parallel sessions after PR 1 merges (different apps, no shared files) (`docs/workflow.md`).
-- Write `TASKS.md` for this spec (replace the previous one): a heading per PR, one item per layer below, the wiring items that apply, and "checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report" at the end of each PR.
+- Write `TASKS.md` for this spec (replace the previous spec's items; keep its "Follow-ups" section): a heading per PR naming its branch, one item per layer below, the wiring items that apply, and "checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report" at the end of each PR.
 - Show the owner the PR split and the task list in a few lines, in Arabic, then **stop and wait for approval**. This is the skill's only stop before the PR opens, a scope decision (`AGENTS.md` "How to work", ADR 0033); "Stop and ask when" below lists the exceptions.
 
 ## 2. Build, one layer at a time
-Finish a layer, run its gate, fix root causes, tick the item in `TASKS.md`, **commit the layer** (`feat(<id>): <layer> …`), then start the next layer. Never start a layer while the previous gate fails. A gate runs the layer's own test files with `pnpm verify <files>` (paths from the root; it builds their dependencies first) and typechecks with `pnpm typecheck` (Turborepo replays untouched packages); when one fails, fix it and rerun only the files its summary names. Never run a whole suite at a gate (`docs/testing.md`).
+Finish a layer, run its gate, fix root causes, tick the item in `TASKS.md`, **commit the layer** with `TASKS.md` (`feat(<id>): <layer> …`), **push the branch** (`git push -u origin <branch>`), then start the next layer. Never start a layer while the previous gate fails. A gate runs the layer's own test files with `pnpm verify <files>` (paths from the root; it builds their dependencies first) and typechecks with `pnpm typecheck` (Turborepo replays untouched packages); when one fails, fix it and rerun only the files its summary names. Never run a whole suite at a gate (`docs/testing.md`).
 
 | # | Layer | Build | Gate |
 |---|---|---|---|

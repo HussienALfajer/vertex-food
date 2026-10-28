@@ -83,7 +83,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 - The owner's acceptance test comes after the merge and never holds a PR (ADR 0033): the report gives its steps when the PR opens; what the owner finds is fixed on the branch while the PR is open, or in a new branch and PR once it merged.
 - A task is done only when `pnpm verify` passes on its final state (documentation-only changes: none, step 4 below), CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
 - Fix root causes. Never silence a failing test, type error or lint rule.
-- For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes.
+- For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes, with `TASKS.md` in the commit, and push the branch at once: a spec moves between local and cloud sessions, and the next session continues only from what is on GitHub (`docs/workflow.md`, "Local and cloud handoff").
 - Mark anything you could not confirm and say where you looked.
 - Match the surrounding code: copy the pattern named in the folder's `CLAUDE.md`. No speculative code.
 

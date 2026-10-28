@@ -1,6 +1,13 @@
 # Tasks
 
-The live checklist of the current spec or task, replaced when the next one starts. Tick items as they finish; add work you discover.
+The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
+
+## docs/cloud-handoff — continue a spec from local or cloud
+
+- [x] Repository audit of 2026-10-28: every branch merged into `main`, local `main` equals `origin/main`; merged `chore/workflow-speed` deleted on origin, empty `.claude/worktrees/` removed
+- [x] Push after every layer commit with `TASKS.md` in it (`AGENTS.md`, `/feature-slice`); resume on the spec's unmerged branch
+- [x] Session-start note fetches `origin`, shows unpushed commits and unmerged branches
+- [x] `docs/workflow.md` "Local and cloud handoff"; `pnpm verify`, PR with auto-merge and Auto-fix
 
 ## chore/workflow-speed — faster checks, no approval questions, consistent instructions
 
