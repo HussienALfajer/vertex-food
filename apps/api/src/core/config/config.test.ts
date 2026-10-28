@@ -11,6 +11,8 @@ const EXAMPLE = {
   IDENTITY_TOKEN_KEY: 'MC4CAQAwBQYDK2VwBCIEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   MESSAGING_HASH_KEY: Buffer.alloc(32).toString('base64'),
   MESSAGING_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
+  SYNC_TOKEN_KEY: 'MC4CAQAwBQYDK2VwBCIEIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+  SYNC_CA_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
 };
 
 const REAL = {
@@ -21,6 +23,11 @@ const REAL = {
     .toString('base64'),
   MESSAGING_HASH_KEY: randomBytes(32).toString('base64'),
   MESSAGING_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  SYNC_TOKEN_KEY: generateKeyPairSync('ed25519')
+    .privateKey.export({ format: 'der', type: 'pkcs8' })
+    .toString('base64'),
+  SYNC_CA_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+  SYNC_ENDPOINT: 'https://sync.example.test',
 };
 
 const base = { DATABASE_APP_URL, ...EXAMPLE };
@@ -35,6 +42,7 @@ describe('loadConfig', () => {
       consoleOrigins: ['http://localhost:5274', 'http://localhost:4274'],
       production: false,
       identity: { powDifficulty: 18, otpSender: 'fake' },
+      sync: { endpoint: 'http://localhost:8080', minimumAppVersion: '0.0.0' },
     });
   });
 
@@ -87,9 +95,9 @@ describe('loadConfig', () => {
     expect(load).not.toThrow(/fake-password/);
   });
 
-  it('requires the identity and messaging keys, and an Ed25519 token key', () => {
+  it('requires the identity, messaging and sync keys, and Ed25519 token keys', () => {
     expect(() => loadConfig({ DATABASE_APP_URL })).toThrow(
-      'Invalid API environment: IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY',
+      'Invalid API environment: IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY, SYNC_TOKEN_KEY, SYNC_CA_ENCRYPTION_KEY',
     );
     expect(() =>
       loadConfig({ ...base, MESSAGING_ENCRYPTION_KEY: randomBytes(48).toString('base64') }),
@@ -100,6 +108,9 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, IDENTITY_TOKEN_KEY: rsa })).toThrow(
       'Invalid API environment: IDENTITY_TOKEN_KEY',
     );
+    expect(() => loadConfig({ ...base, SYNC_TOKEN_KEY: rsa })).toThrow(
+      'Invalid API environment: SYNC_TOKEN_KEY',
+    );
     expect(() =>
       loadConfig({ ...base, IDENTITY_HASH_KEY: randomBytes(16).toString('base64') }),
     ).toThrow('Invalid API environment: IDENTITY_HASH_KEY');
@@ -108,13 +119,29 @@ describe('loadConfig', () => {
   it('refuses in production the example keys, the fake sender and an easy proof of work', () => {
     const production = { DATABASE_APP_URL, NODE_ENV: 'production' };
     expect(() => loadConfig({ ...production, ...EXAMPLE, IDENTITY_POW_DIFFICULTY: '4' })).toThrow(
-      'Invalid API environment: OTP_SENDER, IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY, IDENTITY_POW_DIFFICULTY',
+      'Invalid API environment: OTP_SENDER, IDENTITY_HASH_KEY, IDENTITY_TOKEN_KEY, IDENTITY_ENCRYPTION_KEY, MESSAGING_HASH_KEY, MESSAGING_ENCRYPTION_KEY, SYNC_TOKEN_KEY, SYNC_CA_ENCRYPTION_KEY, SYNC_ENDPOINT, IDENTITY_POW_DIFFICULTY',
     );
     expect(() => loadConfig({ ...production, ...REAL })).toThrow(
       'Invalid API environment: OTP_SENDER',
     );
     expect(() => loadConfig({ ...production, ...REAL, OTP_SENDER: 'whatsapp' })).toThrow(
       'Invalid API environment: OTP_SENDER',
+    );
+  });
+
+  it('reads the sync service URL and the minimum app version (spec S04 rule 45)', () => {
+    expect(
+      loadConfig({
+        ...base,
+        SYNC_ENDPOINT: 'https://sync.example.test',
+        SYNC_MINIMUM_APP_VERSION: '1.4.0',
+      }).sync,
+    ).toMatchObject({ endpoint: 'https://sync.example.test', minimumAppVersion: '1.4.0' });
+    expect(() => loadConfig({ ...base, SYNC_MINIMUM_APP_VERSION: 'latest' })).toThrow(
+      'Invalid API environment: SYNC_MINIMUM_APP_VERSION',
+    );
+    expect(() => loadConfig({ ...base, SYNC_ENDPOINT: 'ftp://sync.example.test' })).toThrow(
+      'Invalid API environment: SYNC_ENDPOINT',
     );
   });
 });

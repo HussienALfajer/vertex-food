@@ -1,4 +1,5 @@
 import { createPrivateKey, type KeyObject } from 'node:crypto';
+import { compareAppVersions } from '@vertex-food/contracts';
 import { z } from 'zod';
 
 /** The restaurant app's Electron renderer (`apps/restaurant/electron/main.ts`). */
@@ -34,6 +35,9 @@ const ed25519PrivateKey = base64Key(32).transform((der, context): KeyObject => {
 });
 
 const isAllZero = (bytes: Buffer) => bytes.every((byte) => byte === 0);
+
+/** The sync service of `pnpm sync:up` (`packages/sync/powersync/`), outside production only. */
+const DEVELOPMENT_SYNC_ENDPOINT = 'http://localhost:8080';
 
 /** The least proof of work production accepts (ADR 0016); tests use less. */
 const MIN_PRODUCTION_POW = 16;
@@ -77,6 +81,17 @@ const configSchema = z
     MESSAGING_HASH_KEY: base64Key(32),
     /** AES-256-GCM key of message recipients, parameters, bodies and QR codes (spec S03). */
     MESSAGING_ENCRYPTION_KEY: base64Key(32).refine((key) => key.length === 32),
+    /** Signs the sync service's tokens (spec S04, EdDSA); its public key is the JWKS. */
+    SYNC_TOKEN_KEY: ed25519PrivateKey,
+    /** AES-256-GCM key of the branch CAs' private keys (spec S04, `sync.branch-ca`). */
+    SYNC_CA_ENCRYPTION_KEY: base64Key(32).refine((key) => key.length === 32),
+    /** The sync service's URL the PCs connect to; required in production. */
+    SYNC_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
+    /** Rule 45: a PC below it uploads, then gets `UPDATE_REQUIRED` (ADR 0035). */
+    SYNC_MINIMUM_APP_VERSION: z
+      .string()
+      .refine((version) => compareAppVersions(version, '0.0.0') >= 0)
+      .default('0.0.0'),
   })
   .superRefine((env, context) => {
     if (env.NODE_ENV !== 'production') return;
@@ -94,6 +109,10 @@ const configSchema = z
     if (isAllZero(env.MESSAGING_ENCRYPTION_KEY)) {
       refuse('MESSAGING_ENCRYPTION_KEY', 'The example key');
     }
+    const syncSeed = env.SYNC_TOKEN_KEY.export({ format: 'der', type: 'pkcs8' }).subarray(-32);
+    if (isAllZero(syncSeed)) refuse('SYNC_TOKEN_KEY', 'The example key');
+    if (isAllZero(env.SYNC_CA_ENCRYPTION_KEY)) refuse('SYNC_CA_ENCRYPTION_KEY', 'The example key');
+    if (!env.SYNC_ENDPOINT) refuse('SYNC_ENDPOINT', 'No sync service URL');
     if (env.IDENTITY_POW_DIFFICULTY < MIN_PRODUCTION_POW) {
       refuse('IDENTITY_POW_DIFFICULTY', 'Too easy a proof of work');
     }
@@ -120,6 +139,12 @@ const configSchema = z
     messaging: {
       hashKey: env.MESSAGING_HASH_KEY,
       encryptionKey: env.MESSAGING_ENCRYPTION_KEY,
+    },
+    sync: {
+      tokenKey: env.SYNC_TOKEN_KEY,
+      caEncryptionKey: env.SYNC_CA_ENCRYPTION_KEY,
+      endpoint: env.SYNC_ENDPOINT ?? DEVELOPMENT_SYNC_ENDPOINT,
+      minimumAppVersion: env.SYNC_MINIMUM_APP_VERSION,
     },
   }));
 

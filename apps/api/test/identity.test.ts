@@ -734,13 +734,6 @@ describe('the authentication step (rule 46, BE-01)', () => {
       .send('{"this is": not json');
     expect([response.status, response.body.code]).toEqual([400, 'VALIDATION_FAILED']);
   });
-
-  it('publishes the token key as a JWKS', async () => {
-    const response = await api.http().get('/api/.well-known/jwks.json').expect(200);
-    expect(response.body.keys).toEqual([
-      expect.objectContaining({ kty: 'OKP', crv: 'Ed25519', alg: 'EdDSA', use: 'sig' }),
-    ]);
-  });
 });
 
 function sessionCookie(header: unknown): string {

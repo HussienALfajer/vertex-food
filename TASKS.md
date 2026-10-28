@@ -49,12 +49,12 @@ Rules that keep the parallel PRs apart:
 
 ## PR 3 `feat/s04-sync-api` — API and worker (after PR 1, parallel with PR 2)
 
-- [ ] Config: `SYNC_CA_ENCRYPTION_KEY`, the PowerSync token key and endpoint, minimum app version (and in `.env.example`)
-- [ ] `platform/sync` module: `POST /api/sync/commands` executor (lock per id, replays and mismatches, the check order of rule 8, signature, device and revocation time, access snapshot at the effective time, savepoint and `server_error`, attention items, clock rules 14–16, `426`); executors of `sync.network_check` and `audit.record_local_events`
-- [ ] Number blocks (allocation idempotent per device and day, hub lowest and standby next, `numberBlocks.check`, uniqueness helper), certificates (branch CA at the first registration, CSR, private IPv4 only), token (EdDSA, 5 min, `UPDATE_REQUIRED`), heartbeat and connectivity, hub roles (first two PCs, `HUB_ROLE_ACTIVE`), sync status, attention list and resolve, quarantine upload (signed nonce, one batch, 10 000 cap), review, accept and reject with re-auth
-- [ ] Worker: `sync/connectivity-sweep` every 15 s; outbox dispatcher (from Vertex Shifa) and the `device.revoked.v1` consumer clearing `hub_role`; jobs role grants
-- [ ] Tests: `test/sync*.test.ts` (each route's success, 401, 403, other tenant, other branch's device, client PC on hub-only routes, every rejection reason, concurrent uploads of one id, SYNC-01 rollback, member deactivated on both sides of 10 minutes, clock-suspect, quarantine, attention), worker tests, architecture tests; OpenAPI and client types regenerated
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
+- [x] Config: `SYNC_CA_ENCRYPTION_KEY`, the PowerSync token key and endpoint, minimum app version (and in `.env.example`)
+- [x] `platform/sync` module: `POST /api/sync/commands` executor (lock per id, replays and mismatches, the check order of rule 8, signature, device and revocation time, access snapshot at the effective time, savepoint and `server_error`, attention items, clock rules 14–16, `426`); executors of `sync.network_check` and `audit.record_local_events`
+- [x] Number blocks (allocation idempotent per device and day, hub lowest and standby next, `numberBlocks.check`, uniqueness helper), certificates (branch CA at the first registration, CSR, private IPv4 only), token (EdDSA, 5 min, `UPDATE_REQUIRED`), heartbeat and connectivity, hub roles (first two PCs, `HUB_ROLE_ACTIVE`), sync status, attention list and resolve, quarantine upload (signed nonce, one batch, 10 000 cap), review, accept and reject with re-auth
+- [x] Worker: `sync/connectivity-sweep` every 15 s; outbox dispatcher (from Vertex Shifa) and the `device.revoked.v1` consumer clearing `hub_role`; jobs role grants
+- [x] Tests: `test/sync*.test.ts` (each route's success, 401, 403, other tenant, other branch's device, client PC on hub-only routes, every rejection reason, concurrent uploads of one id, SYNC-01 rollback, member deactivated on both sides of 10 minutes, clock-suspect, quarantine, attention), worker tests, architecture tests; OpenAPI and client types regenerated
+- [x] Docs, checks (`pnpm verify` green), reviewer (six findings fixed: no command added to or run from a decided quarantine batch, a revoked PC holds only its own commands and another PC's run only with their executor's signature, accept in one transaction per command, Node `ERR_*` codes are `server_error`, the batch's overflow audited, another branch's id unanswered; fix-only re-reviews clean), PR with auto-merge and Auto-fix, endpoints summary in the report
 
 ## PR 4 `feat/s04-restaurant-local-db` — restaurant main process: local database and sync client (after PR 3, parallel with PR 2)
 
@@ -87,6 +87,10 @@ Rules that keep the parallel PRs apart:
 
 ## Follow-ups (not this spec)
 
+- From PR 3's review (S04): `POST /api/sync/commands` still records `rejected: signature_invalid` under the uploaded id, so an active hub or standby could pre-empt another PC's command id with a forged envelope; answering every `signature_invalid` unstored needs a decision on its attention item (S04 rule 47)
+- Rule 13's re-run of a `server_error` command needs a `linkedCommandId` in the envelope (`packages/contracts`, a protocol change); `command_log.linked_command_id` is never set until then (S04, before S09)
+- A quarantine accept cut short (a crash or 5xx midway) shows `accept` with commands not yet run until the owner accepts again; the review screen (PR 6) should show the count still to run
+- PR 4: the revoked PC sends its quarantine upload in parts under the API's 1 MB JSON limit (each with a fresh challenge nonce, all into the revocation's one batch)
 - The restaurant's logo on the lock screen (spec S02 screen 4): the PC has no session there, so the main process must fetch and keep the logo (a device route for it, or the local database of S04); until then the lock screen shows the name. Do it with S04 or S08 branding
 - The sign-in lock message shows the policy's 15 minutes: the API answers `RATE_LIMITED` without the retry time, and a per-address limit reads the same (PR 1 API)
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC

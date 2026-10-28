@@ -8,7 +8,7 @@ describe('GET /health', () => {
   afterEach(() => app.close());
 
   it('answers ok while the process is up', async () => {
-    app = await startWorker([]);
+    app = await startWorker();
     const response = await request(app.getHttpServer()).get('/health').expect(200);
     expect(response.body).toEqual({ status: 'ok' });
     expect(response.headers['x-powered-by']).toBeUndefined();
