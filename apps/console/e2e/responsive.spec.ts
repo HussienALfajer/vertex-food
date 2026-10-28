@@ -67,6 +67,36 @@ for (const viewport of viewports) {
       await laidOut(page, testInfo, 'account');
     });
 
+    test('lays out WhatsApp numbers, the link dialog and a number', async ({ page }, testInfo) => {
+      const api = await mockConsoleApi(page, { signedIn: 'admin' });
+      // One number paused: the warning banner shows on the page too.
+      const [syrian] = api.whatsapp.sessions;
+      if (syrian)
+        Object.assign(syrian, { pausedAt: new Date().toISOString(), pauseReason: 'send_failures' });
+      await page.goto('/whatsapp');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('أرقام واتساب');
+      await expect(page.getByText('يعمل رقم واحد فقط، لا يوجد بديل عند تعطله')).toBeVisible();
+      await laidOut(page, testInfo, 'whatsapp');
+
+      await page.getByRole('button', { name: 'إضافة رقم' }).click();
+      await page.getByLabel('اسم الرقم').fill('رقم احتياطي');
+      await page.getByRole('button', { name: 'متابعة' }).click();
+      const reauth = page.getByRole('dialog', { name: 'تأكيد هويتك' });
+      await reauth.getByLabel('رمز تطبيق المصادقة').fill(totpCode);
+      await reauth.getByRole('button', { name: 'تأكيد' }).click();
+      await expect(page.getByRole('img', { name: 'رمز QR لربط رقم واتساب بالمنصة' })).toBeVisible();
+      await laidOut(page, testInfo, 'whatsapp-link-qr');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      await page
+        .getByRole('listitem', { name: 'رقم سوري', exact: true })
+        .getByRole('link', { name: 'التفاصيل' })
+        .click();
+      await expect(page.getByRole('list', { name: 'آخر 50 حدثًا' })).toBeVisible();
+      await laidOut(page, testInfo, 'whatsapp-session');
+    });
+
     test('lays out the setup of a new user', async ({ page }, testInfo) => {
       const api = await mockConsoleApi(page);
       const pending = api.addPendingUser({

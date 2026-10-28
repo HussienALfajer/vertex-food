@@ -2,16 +2,16 @@ import { cn } from '@vertex-food/ui';
 import { encode } from 'uqr';
 
 /**
- * A QR code drawn as SVG modules (copied from Vertex Shifa's design system; here it serves only
- * the TOTP setup). Dark on white in both themes: phone scanners expect it, so its colors do not
- * follow the dark theme.
+ * A QR code drawn as SVG modules (copied from Vertex Shifa's design system): the TOTP setup and
+ * the WhatsApp link dialog. Dark on white in both themes: phone scanners expect it, so its colors
+ * do not follow the dark theme.
  */
 export function QrCode({
   value,
   label,
   className,
 }: {
-  /** The text the code holds: the `otpauth://` URI of the new TOTP secret. */
+  /** The text the code holds: a TOTP secret's `otpauth://` URI, or a WhatsApp link's QR. */
   value: string;
   /** What the code is, for screen readers. */
   label: string;
