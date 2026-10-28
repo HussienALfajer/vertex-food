@@ -375,7 +375,7 @@ export const personalSessionRequestSchema = z
 // Devices and their member lists.
 
 const osSchema = z.string().trim().min(1).max(100);
-const appVersionSchema = z.string().trim().min(1).max(50);
+export const appVersionSchema = z.string().trim().min(1).max(50);
 
 export const registerDeviceSchema = z
   .object({

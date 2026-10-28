@@ -3439,6 +3439,168 @@
         },
         "additionalProperties": false
       },
+      "AttentionItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "commandId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AttentionKind"
+          },
+          "membershipId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "command": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "#/components/schemas/CommandName"
+              },
+              "summary": {
+                "$ref": "#/components/schemas/CommandSummary"
+              },
+              "outcome": {
+                "$ref": "#/components/schemas/CommandOutcome"
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CommandReason"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "details": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "receivedAt": {
+                "$ref": "#/components/schemas/Instant"
+              }
+            },
+            "required": [
+              "name",
+              "summary",
+              "outcome",
+              "reason",
+              "details",
+              "receivedAt"
+            ],
+            "additionalProperties": false
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "resolvedByMembershipId": {
+                    "$ref": "#/components/schemas/Id"
+                  },
+                  "resolvedAt": {
+                    "$ref": "#/components/schemas/Instant"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "resolvedByMembershipId",
+                  "resolvedAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "branchId",
+          "commandId",
+          "kind",
+          "membershipId",
+          "createdAt",
+          "command",
+          "resolution"
+        ],
+        "additionalProperties": false
+      },
+      "AttentionKind": {
+        "type": "string",
+        "enum": [
+          "adjusted",
+          "rejected",
+          "replay_mismatch",
+          "number_taken",
+          "clock_suspect",
+          "server_error"
+        ]
+      },
+      "AttentionPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttentionItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "additionalProperties": false
+      },
       "AuditAction": {
         "type": "string",
         "enum": [
@@ -3501,7 +3663,28 @@
           "whatsapp_session.relinked",
           "whatsapp_session.paused",
           "whatsapp_session.resumed",
-          "whatsapp_session.unlinked"
+          "whatsapp_session.unlinked",
+          "branch.hub_roles_changed",
+          "branch_ca.created",
+          "device_certificate.issued",
+          "quarantine_batch.received",
+          "quarantine_batch.accepted",
+          "quarantine_batch.rejected",
+          "attention_item.resolved",
+          "hub.promoted",
+          "hub.demoted",
+          "hub.rejoined",
+          "hub.divergence_adopted",
+          "hub_pairing.opened",
+          "hub_pairing.paired",
+          "hub_pairing.revoked",
+          "hub_pairing.expired",
+          "hub_session.pin_locked",
+          "sync.network_check_run",
+          "staff_pin.failed_offline",
+          "staff_pin.locked_offline",
+          "staff_pin.reenabled_offline",
+          "staff_approval.granted"
         ]
       },
       "AuditActorKind": {
@@ -3825,6 +4008,146 @@
           "$ref": "#/components/schemas/Branch"
         }
       },
+      "BranchPc": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hubRole": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HubRole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sync": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "lastHeartbeatAt": {
+                    "$ref": "#/components/schemas/Instant"
+                  },
+                  "liveRole": {
+                    "$ref": "#/components/schemas/LiveRole"
+                  },
+                  "hubEpoch": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "standbyInSync": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "pendingUploads": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "appVersion": {
+                    "type": "string"
+                  },
+                  "protocol": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "lanAddresses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "recentRoundTripsMs": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "clockOffsetMs": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lastHeartbeatAt",
+                  "liveRole",
+                  "hubEpoch",
+                  "standbyInSync",
+                  "pendingUploads",
+                  "appVersion",
+                  "protocol",
+                  "lanAddresses",
+                  "recentRoundTripsMs",
+                  "clockOffsetMs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "certificate": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "fingerprint": {
+                    "$ref": "#/components/schemas/Sha256Hex"
+                  },
+                  "lanAddresses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "expiresAt": {
+                    "$ref": "#/components/schemas/Instant"
+                  }
+                },
+                "required": [
+                  "fingerprint",
+                  "lanAddresses",
+                  "expiresAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "hubRole",
+          "sync",
+          "certificate"
+        ],
+        "additionalProperties": false
+      },
       "BranchScope": {
         "oneOf": [
           {
@@ -3864,6 +4187,42 @@
           }
         ]
       },
+      "BranchSyncStatus": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "connectivity": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "$ref": "#/components/schemas/ConnectivityState"
+              },
+              "since": {
+                "$ref": "#/components/schemas/Instant"
+              }
+            },
+            "required": [
+              "state",
+              "since"
+            ],
+            "additionalProperties": false
+          },
+          "pcs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BranchPc"
+            }
+          }
+        },
+        "required": [
+          "branchId",
+          "connectivity",
+          "pcs"
+        ],
+        "additionalProperties": false
+      },
       "BusinessDayEnd": {
         "type": "string",
         "pattern": "^(0[0-7]:(00|30)|08:00)$"
@@ -3883,6 +4242,25 @@
         },
         "required": [
           "cancelScheduled"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateRequest": {
+        "type": "object",
+        "properties": {
+          "csr": {
+            "type": "string",
+            "minLength": 100,
+            "maxLength": 8000
+          },
+          "lanAddresses": {
+            "minItems": 1,
+            "$ref": "#/components/schemas/LanAddresses"
+          }
+        },
+        "required": [
+          "csr",
+          "lanAddresses"
         ],
         "additionalProperties": false
       },
@@ -4051,6 +4429,293 @@
           "archivedAt"
         ],
         "additionalProperties": false
+      },
+      "CommandActor": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "member"
+              },
+              "membershipId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "sessionKind": {
+                "type": "string",
+                "enum": [
+                  "pc",
+                  "hub_client"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "membershipId",
+              "sessionKind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "station"
+              },
+              "pairingId": {
+                "$ref": "#/components/schemas/Id"
+              }
+            },
+            "required": [
+              "kind",
+              "pairingId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "device"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CommandEnvelope": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/CommandName"
+          },
+          "version": {
+            "$ref": "#/components/schemas/CommandVersion"
+          },
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "originKind": {
+            "$ref": "#/components/schemas/CommandOriginKind"
+          },
+          "originDeviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "executedByDeviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/CommandActor"
+          },
+          "approvedByMembershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceTime": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "clockOffsetMs": {
+            "type": "integer",
+            "minimum": -1000000000000,
+            "maximum": 1000000000000
+          },
+          "highestSeenTime": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "afterOfflineWindow": {
+            "type": "boolean"
+          },
+          "hubEpoch": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hubSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "payload": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "resolved": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "payloadHash": {
+            "$ref": "#/components/schemas/Sha256Hex"
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "protocol",
+          "originKind",
+          "originDeviceId",
+          "executedByDeviceId",
+          "actor",
+          "deviceTime",
+          "clockOffsetMs",
+          "highestSeenTime",
+          "afterOfflineWindow",
+          "hubEpoch",
+          "hubSeq",
+          "payload",
+          "resolved",
+          "payloadHash",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "CommandFlag": {
+        "type": "string",
+        "enum": [
+          "clock_suspect",
+          "after_offline_window",
+          "from_quarantine",
+          "mirrored_false"
+        ]
+      },
+      "CommandName": {
+        "type": "string",
+        "maxLength": 80,
+        "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
+      },
+      "CommandOriginKind": {
+        "type": "string",
+        "enum": [
+          "pc",
+          "hub_client"
+        ]
+      },
+      "CommandOutcome": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "adjusted",
+          "rejected"
+        ]
+      },
+      "CommandReason": {
+        "type": "string",
+        "enum": [
+          "payload_invalid",
+          "permission_missing",
+          "pin_session_ended",
+          "station_not_allowed",
+          "unknown_command",
+          "version_unsupported",
+          "protocol_unsupported",
+          "signature_invalid",
+          "device_revoked",
+          "member_inactive",
+          "approver_not_allowed",
+          "number_out_of_block",
+          "server_error"
+        ]
+      },
+      "CommandResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "adjusted",
+              "rejected",
+              "quarantined"
+            ]
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CommandReason"
+          },
+          "details": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "replay": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "replay"
+        ],
+        "additionalProperties": false
+      },
+      "CommandSummary": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "params": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "params"
+        ],
+        "additionalProperties": false
+      },
+      "CommandVersion": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "ConnectivityState": {
+        "type": "string",
+        "enum": [
+          "online",
+          "weak",
+          "offline"
+        ]
       },
       "ConsoleAccount": {
         "type": "object",
@@ -4880,6 +5545,11 @@
         ],
         "additionalProperties": false
       },
+      "DecisionReason": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 500
+      },
       "Device": {
         "type": "object",
         "properties": {
@@ -5176,7 +5846,19 @@
           "BRANCH_HAS_DEVICES",
           "BRANCH_HAS_MEMBERS",
           "OTP_DELIVERY_UNAVAILABLE",
-          "WHATSAPP_SESSION_LIMIT"
+          "WHATSAPP_SESSION_LIMIT",
+          "PROTOCOL_UNSUPPORTED",
+          "UPDATE_REQUIRED",
+          "DEVICE_NOT_HUB_CAPABLE",
+          "DEVICE_NOT_REVOKED",
+          "HUB_ROLE_ACTIVE",
+          "CERTIFICATE_ADDRESS_INVALID",
+          "ATTENTION_ALREADY_RESOLVED",
+          "QUARANTINE_ALREADY_DECIDED",
+          "PAIRING_CLOSED",
+          "PAIRING_CODE_INVALID",
+          "PAIRING_LOCKED",
+          "NOT_HUB"
         ]
       },
       "ErrorResponse": {
@@ -5337,6 +6019,108 @@
         ],
         "additionalProperties": false
       },
+      "Heartbeat": {
+        "type": "object",
+        "properties": {
+          "lastRoundTripMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pendingUploads": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "liveRole": {
+            "$ref": "#/components/schemas/LiveRole"
+          },
+          "hubEpoch": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "standbyInSync": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "lanAddresses": {
+            "$ref": "#/components/schemas/LanAddresses"
+          },
+          "clockOffsetMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -1000000000000,
+                "maximum": 1000000000000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "lastRoundTripMs",
+          "pendingUploads",
+          "liveRole",
+          "hubEpoch",
+          "standbyInSync",
+          "appVersion",
+          "protocol",
+          "lanAddresses",
+          "clockOffsetMs"
+        ],
+        "additionalProperties": false
+      },
+      "HeartbeatAnswer": {
+        "type": "object",
+        "properties": {
+          "serverTime": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "connectivity": {
+            "$ref": "#/components/schemas/ConnectivityState"
+          },
+          "minimumAppVersion": {
+            "type": "string"
+          },
+          "protocols": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "required": [
+          "serverTime",
+          "connectivity",
+          "minimumAppVersion",
+          "protocols"
+        ],
+        "additionalProperties": false
+      },
       "HourException": {
         "type": "object",
         "properties": {
@@ -5384,6 +6168,414 @@
         ],
         "additionalProperties": false
       },
+      "HubCommand": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/CommandName"
+          },
+          "version": {
+            "$ref": "#/components/schemas/CommandVersion"
+          },
+          "payload": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "deviceTime": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/CommandActor"
+          },
+          "approvedByMembershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "afterOfflineWindow": {
+            "type": "boolean"
+          },
+          "resent": {
+            "$ref": "#/components/schemas/CommandEnvelope"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "payload",
+          "deviceTime"
+        ],
+        "additionalProperties": false
+      },
+      "HubCommandAnswer": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "ok"
+              },
+              "mirrored": {
+                "type": "boolean"
+              },
+              "envelope": {
+                "$ref": "#/components/schemas/CommandEnvelope"
+              }
+            },
+            "required": [
+              "status",
+              "mirrored",
+              "envelope"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "duplicate"
+              },
+              "mirrored": {
+                "type": "boolean"
+              },
+              "envelope": {
+                "$ref": "#/components/schemas/CommandEnvelope"
+              }
+            },
+            "required": [
+              "status",
+              "mirrored",
+              "envelope"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "refused"
+              },
+              "reason": {
+                "$ref": "#/components/schemas/HubRefusalReason"
+              }
+            },
+            "required": [
+              "status",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "not_hub"
+              },
+              "epoch": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "hubDeviceId": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "status",
+              "epoch",
+              "hubDeviceId"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "HubHello": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "role": {
+            "$ref": "#/components/schemas/LiveRole"
+          },
+          "epoch": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "appVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "role",
+          "epoch",
+          "protocol",
+          "appVersion"
+        ],
+        "additionalProperties": false
+      },
+      "HubLiveSnapshot": {
+        "type": "object",
+        "properties": {
+          "hub": {
+            "type": "object",
+            "properties": {
+              "deviceId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "role": {
+                "$ref": "#/components/schemas/LiveRole"
+              },
+              "epoch": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "standby": {
+                "type": "string",
+                "enum": [
+                  "in_sync",
+                  "not_in_sync",
+                  "none"
+                ]
+              },
+              "connectivity": {
+                "$ref": "#/components/schemas/ConnectivityState"
+              }
+            },
+            "required": [
+              "deviceId",
+              "role",
+              "epoch",
+              "standby",
+              "connectivity"
+            ],
+            "additionalProperties": false
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubPairing"
+            }
+          },
+          "networkChecks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NetworkCheckRecord"
+            }
+          }
+        },
+        "required": [
+          "hub",
+          "clients",
+          "networkChecks"
+        ],
+        "additionalProperties": false
+      },
+      "HubMembers": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "membershipId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "roles": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffRole"
+                  }
+                }
+              },
+              "required": [
+                "membershipId",
+                "name",
+                "roles"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "additionalProperties": false
+      },
+      "HubPairing": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PairingKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "lastUsedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "createdAt",
+          "lastUsedAt"
+        ],
+        "additionalProperties": false
+      },
+      "HubPairRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/PairingCode"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "HubPairResult": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "pairingId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PairingKind"
+          },
+          "peers": {
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "ipv4",
+              "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+            }
+          },
+          "caFingerprint": {
+            "$ref": "#/components/schemas/Sha256Hex"
+          }
+        },
+        "required": [
+          "token",
+          "pairingId",
+          "kind",
+          "peers",
+          "caFingerprint"
+        ],
+        "additionalProperties": false
+      },
+      "HubRefusalReason": {
+        "type": "string",
+        "enum": [
+          "payload_invalid",
+          "permission_missing",
+          "pin_session_ended",
+          "station_not_allowed",
+          "unknown_command",
+          "version_unsupported"
+        ]
+      },
+      "HubRole": {
+        "type": "string",
+        "enum": [
+          "hub",
+          "standby"
+        ]
+      },
+      "HubSession": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "membershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffPermission"
+            }
+          },
+          "idleLockMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "token",
+          "membershipId",
+          "name",
+          "permissions",
+          "idleLockMinutes",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "HubSessionRequest": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "pin": {
+            "$ref": "#/components/schemas/Pin"
+          }
+        },
+        "required": [
+          "membershipId",
+          "pin"
+        ],
+        "additionalProperties": false
+      },
       "Id": {
         "type": "string",
         "format": "uuid",
@@ -5398,6 +6590,26 @@
         "type": "string",
         "format": "date-time",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+      },
+      "IssuedCertificate": {
+        "type": "object",
+        "properties": {
+          "certificate": {
+            "type": "string"
+          },
+          "caCertificate": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "$ref": "#/components/schemas/Sha256Hex"
+          }
+        },
+        "required": [
+          "certificate",
+          "caCertificate",
+          "fingerprint"
+        ],
+        "additionalProperties": false
       },
       "Jwks": {
         "type": "object",
@@ -5444,6 +6656,65 @@
         },
         "required": [
           "keys"
+        ],
+        "additionalProperties": false
+      },
+      "LanAddresses": {
+        "maxItems": 8,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "format": "ipv4",
+          "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+        }
+      },
+      "ListAttentionQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pageSize": {
+            "default": 50,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "createdAt"
+            ]
+          },
+          "order": {
+            "default": "asc",
+            "$ref": "#/components/schemas/SortOrder"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "status": {
+            "default": "open",
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AttentionKind"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "order",
+          "branchId",
+          "status"
         ],
         "additionalProperties": false
       },
@@ -5542,10 +6813,38 @@
         ],
         "additionalProperties": false
       },
+      "LiveRole": {
+        "type": "string",
+        "enum": [
+          "hub",
+          "standby",
+          "client",
+          "rejoining"
+        ]
+      },
       "LocalDate": {
         "type": "string",
         "format": "date",
         "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+      },
+      "LocalEventAction": {
+        "type": "string",
+        "enum": [
+          "hub.promoted",
+          "hub.demoted",
+          "hub.rejoined",
+          "hub.divergence_adopted",
+          "hub_pairing.opened",
+          "hub_pairing.paired",
+          "hub_pairing.revoked",
+          "hub_pairing.expired",
+          "hub_session.pin_locked",
+          "sync.network_check_run",
+          "staff_pin.failed_offline",
+          "staff_pin.locked_offline",
+          "staff_pin.reenabled_offline",
+          "staff_approval.granted"
+        ]
       },
       "Me": {
         "type": "object",
@@ -5899,6 +7198,55 @@
         ],
         "additionalProperties": false
       },
+      "NetworkCheckRecord": {
+        "type": "object",
+        "properties": {
+          "commandId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "run": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "originDeviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "sentAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "receivedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "mirroredAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "committedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "commandId",
+          "run",
+          "sequence",
+          "originDeviceId",
+          "sentAt",
+          "receivedAt",
+          "mirroredAt",
+          "committedAt"
+        ],
+        "additionalProperties": false
+      },
       "NoContent": {
         "type": "null"
       },
@@ -5917,6 +7265,67 @@
           "expiresAt"
         ],
         "additionalProperties": false
+      },
+      "NumberBlock": {
+        "type": "object",
+        "properties": {
+          "businessDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "first": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "last": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "businessDate",
+          "first",
+          "last"
+        ],
+        "additionalProperties": false
+      },
+      "NumberBlocks": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "$ref": "#/components/schemas/NumberSeries"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NumberBlock"
+            }
+          }
+        },
+        "required": [
+          "series",
+          "blocks"
+        ],
+        "additionalProperties": false
+      },
+      "NumberBlocksRequest": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "$ref": "#/components/schemas/NumberSeries"
+          }
+        },
+        "required": [
+          "series"
+        ],
+        "additionalProperties": false
+      },
+      "NumberSeries": {
+        "type": "string",
+        "enum": [
+          "order"
+        ]
       },
       "OnboardingCompleteness": {
         "type": "object",
@@ -5962,6 +7371,22 @@
         "required": [
           "opensAt",
           "closesAt"
+        ],
+        "additionalProperties": false
+      },
+      "OpenPairing": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PairingKind"
+          },
+          "name": {
+            "$ref": "#/components/schemas/PairingName"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
         ],
         "additionalProperties": false
       },
@@ -6136,6 +7561,22 @@
         ],
         "additionalProperties": false
       },
+      "PairingCode": {
+        "type": "string",
+        "pattern": "^\\d{6}$"
+      },
+      "PairingKind": {
+        "type": "string",
+        "enum": [
+          "station",
+          "personal"
+        ]
+      },
+      "PairingName": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 50
+      },
       "Password": {
         "type": "string",
         "minLength": 10,
@@ -6147,7 +7588,8 @@
           "tenant",
           "branch",
           "staff",
-          "devices"
+          "devices",
+          "sync"
         ]
       },
       "PersonalDevice": {
@@ -6494,6 +7936,241 @@
         "type": "string",
         "pattern": "^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$"
       },
+      "QuarantineBatch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/QuarantineReason"
+          },
+          "membershipId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "commandCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuarantineDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "branchId",
+          "deviceId",
+          "deviceName",
+          "reason",
+          "membershipId",
+          "commandCount",
+          "createdAt",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineBatchDetail": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/QuarantineBatch"
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuarantineCommand"
+            }
+          }
+        },
+        "required": [
+          "batch",
+          "commands"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineBatchList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuarantineBatch"
+        }
+      },
+      "QuarantineCommand": {
+        "type": "object",
+        "properties": {
+          "commandId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "$ref": "#/components/schemas/CommandName"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CommandSummary"
+          },
+          "deviceTime": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "hubEpoch": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hubSeq": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "alreadyExecuted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "commandId",
+          "name",
+          "summary",
+          "deviceTime",
+          "hubEpoch",
+          "hubSeq",
+          "alreadyExecuted"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineDecision": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accept",
+              "reject"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedByMembershipId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "decidedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "decision",
+          "reason",
+          "decidedByMembershipId",
+          "decidedAt"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineDecisionResult": {
+        "type": "object",
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/QuarantineBatch"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandResult"
+            }
+          }
+        },
+        "required": [
+          "batch",
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineReason": {
+        "type": "string",
+        "enum": [
+          "device_revoked",
+          "member_inactive"
+        ]
+      },
+      "QuarantineUpload": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "nonce": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "signature": {
+            "$ref": "#/components/schemas/Signature"
+          },
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "commands": {
+            "minItems": 1,
+            "maxItems": 10000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandEnvelope"
+            }
+          }
+        },
+        "required": [
+          "tenantId",
+          "deviceId",
+          "nonce",
+          "signature",
+          "protocol",
+          "commands"
+        ],
+        "additionalProperties": false
+      },
+      "QuarantineUploadResult": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "batchId"
+        ],
+        "additionalProperties": false
+      },
       "Reauthenticate": {
         "type": "object",
         "properties": {
@@ -6582,6 +8259,18 @@
         ],
         "additionalProperties": false
       },
+      "RejectQuarantine": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/DecisionReason"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "RenameDevice": {
         "type": "object",
         "properties": {
@@ -6635,6 +8324,18 @@
           "businessDayEndsAt",
           "periods",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ResolveAttention": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "$ref": "#/components/schemas/DecisionReason"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "additionalProperties": false
       },
@@ -6733,6 +8434,21 @@
         ],
         "additionalProperties": false
       },
+      "SetHubRoles": {
+        "type": "object",
+        "properties": {
+          "hubDeviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "standbyDeviceId": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "required": [
+          "hubDeviceId"
+        ],
+        "additionalProperties": false
+      },
       "SetMemberPin": {
         "type": "object",
         "properties": {
@@ -6776,6 +8492,10 @@
       "SetupCode": {
         "type": "string",
         "pattern": "^[A-Z2-7]{4}(-[A-Z2-7]{4}){2}$"
+      },
+      "Sha256Hex": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
       },
       "Signature": {
         "type": "string",
@@ -7032,7 +8752,10 @@
           "staff.manage",
           "staff.permissions.adjust",
           "devices.manage",
-          "backoffice.remote"
+          "backoffice.remote",
+          "hub.manage",
+          "sync.attention.resolve",
+          "sync.quarantine.review"
         ]
       },
       "StaffRole": {
@@ -7068,6 +8791,27 @@
           "device",
           "personal"
         ]
+      },
+      "SyncToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "endpoint": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "endpoint"
+        ],
+        "additionalProperties": false
       },
       "Tenant": {
         "type": "object",
@@ -7506,6 +9250,60 @@
           "nameLatin",
           "defaultCurrency",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "UploadCommands": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "commands": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UploadedCommand"
+            }
+          }
+        },
+        "required": [
+          "protocol",
+          "commands"
+        ],
+        "additionalProperties": false
+      },
+      "UploadCommandsResult": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandResult"
+            }
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "additionalProperties": false
+      },
+      "UploadedCommand": {
+        "type": "object",
+        "properties": {
+          "envelope": {
+            "$ref": "#/components/schemas/CommandEnvelope"
+          },
+          "mirrored": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "envelope",
+          "mirrored"
         ],
         "additionalProperties": false
       },

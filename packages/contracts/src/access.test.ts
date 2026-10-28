@@ -21,7 +21,7 @@ import {
 import { DomainError } from './errors.js';
 
 // The two tables of spec S02 ("Permission catalog and role presets", "Console permissions and
-// presets"), written out so a change to either is a visible change to this test.
+// presets") and spec S04's permissions ("Access and entitlements"), written out so a change to either is a visible change to this test.
 
 const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRole[] }> = {
   'tenant.view': {
@@ -37,6 +37,10 @@ const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRol
   'staff.permissions.adjust': { roles: ['owner'], limit: ['owner'] },
   'devices.manage': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
   'backoffice.remote': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
+  // S04
+  'hub.manage': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
+  'sync.attention.resolve': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
+  'sync.quarantine.review': { roles: ['owner'], limit: ['owner'] },
 };
 
 const branchScoped: StaffPermission[] = [
@@ -47,6 +51,8 @@ const branchScoped: StaffPermission[] = [
   'staff.view',
   'staff.manage',
   'devices.manage',
+  'hub.manage',
+  'sync.attention.resolve',
 ];
 
 const consoleTable: Record<ConsolePermission, ConsoleRole[]> = {
@@ -107,6 +113,8 @@ describe('effectivePermissions', () => {
         'staff.view',
         'staff.manage',
         'backoffice.remote',
+        'hub.manage',
+        'sync.attention.resolve',
       ],
     );
   });

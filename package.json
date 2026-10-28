@@ -16,7 +16,9 @@
     "verify": "node scripts/verify.mjs",
     "db:generate": "pnpm --filter @vertex-food/db db:generate",
     "db:migrate": "pnpm --filter @vertex-food/db db:migrate",
-    "db:setup-local": "pnpm --filter @vertex-food/db db:setup-local"
+    "db:setup-local": "pnpm --filter @vertex-food/db db:setup-local",
+    "sync:up": "docker compose -f packages/sync/powersync/docker-compose.yaml --env-file .env up -d",
+    "sync:down": "docker compose -f packages/sync/powersync/docker-compose.yaml --env-file .env down"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

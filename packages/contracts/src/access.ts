@@ -30,6 +30,10 @@ export const staffPermissions = [
   'staff.permissions.adjust',
   'devices.manage',
   'backoffice.remote',
+  // S04 sync and the branch hub
+  'hub.manage',
+  'sync.attention.resolve',
+  'sync.quarantine.review',
 ] as const;
 
 export const staffPermissionSchema = z.enum(staffPermissions).meta({ id: 'StaffPermission' });
@@ -37,7 +41,7 @@ export const staffPermissionSchema = z.enum(staffPermissions).meta({ id: 'StaffP
 export type StaffPermission = z.infer<typeof staffPermissionSchema>;
 
 export const permissionGroupSchema = z
-  .enum(['tenant', 'branch', 'staff', 'devices'])
+  .enum(['tenant', 'branch', 'staff', 'devices', 'sync'])
   .meta({ id: 'PermissionGroup' });
 
 export type PermissionGroup = z.infer<typeof permissionGroupSchema>;
@@ -65,6 +69,9 @@ export const permissionCatalog: Record<StaffPermission, PermissionDefinition> = 
   'staff.permissions.adjust': { group: 'staff', branchScoped: false, limit: ownerOnly },
   'devices.manage': { group: 'devices', branchScoped: true, limit: ownerManager },
   'backoffice.remote': { group: 'devices', branchScoped: false, limit: ownerManager },
+  'hub.manage': { group: 'sync', branchScoped: true, limit: ownerManager },
+  'sync.attention.resolve': { group: 'sync', branchScoped: true, limit: ownerManager },
+  'sync.quarantine.review': { group: 'sync', branchScoped: false, limit: ownerOnly },
 };
 
 /** What each role holds without adjustments. */
@@ -78,6 +85,8 @@ export const rolePresets: Record<StaffRole, readonly StaffPermission[]> = {
     'staff.manage',
     'devices.manage',
     'backoffice.remote',
+    'hub.manage',
+    'sync.attention.resolve',
   ],
   cashier: ['tenant.view'],
   waiter: ['tenant.view'],

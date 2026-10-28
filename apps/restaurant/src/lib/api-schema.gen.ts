@@ -1269,8 +1269,39 @@ export interface components {
         ArchiveBranch: {
             note?: string;
         };
+        AttentionItem: {
+            id: components["schemas"]["Id"];
+            branchId: components["schemas"]["Id"];
+            commandId: components["schemas"]["Id"];
+            kind: components["schemas"]["AttentionKind"];
+            membershipId: components["schemas"]["Id"] | null;
+            createdAt: components["schemas"]["Instant"];
+            command: {
+                name: components["schemas"]["CommandName"];
+                summary: components["schemas"]["CommandSummary"];
+                outcome: components["schemas"]["CommandOutcome"];
+                reason: components["schemas"]["CommandReason"] | null;
+                details: {
+                    [key: string]: unknown;
+                } | null;
+                receivedAt: components["schemas"]["Instant"];
+            };
+            resolution: {
+                reason: string;
+                resolvedByMembershipId: components["schemas"]["Id"];
+                resolvedAt: components["schemas"]["Instant"];
+            } | null;
+        };
         /** @enum {string} */
-        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked";
+        AttentionKind: "adjusted" | "rejected" | "replay_mismatch" | "number_taken" | "clock_suspect" | "server_error";
+        AttentionPage: {
+            items: components["schemas"]["AttentionItem"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        /** @enum {string} */
+        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked" | "branch.hub_roles_changed" | "branch_ca.created" | "device_certificate.issued" | "quarantine_batch.received" | "quarantine_batch.accepted" | "quarantine_batch.rejected" | "attention_item.resolved" | "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted";
         /** @enum {string} */
         AuditActorKind: "staff" | "customer" | "driver" | "platform" | "system";
         AuthorizeAccountPasswordReset: {
@@ -1329,6 +1360,28 @@ export interface components {
             updatedAt: components["schemas"]["Instant"];
         };
         BranchList: components["schemas"]["Branch"][];
+        BranchPc: {
+            deviceId: components["schemas"]["Id"];
+            name: string;
+            hubRole: components["schemas"]["HubRole"] | null;
+            sync: {
+                lastHeartbeatAt: components["schemas"]["Instant"];
+                liveRole: components["schemas"]["LiveRole"];
+                hubEpoch: number;
+                standbyInSync: boolean | null;
+                pendingUploads: number;
+                appVersion: string;
+                protocol: number;
+                lanAddresses: string[];
+                recentRoundTripsMs: number[];
+                clockOffsetMs: number | null;
+            } | null;
+            certificate: {
+                fingerprint: components["schemas"]["Sha256Hex"];
+                lanAddresses: string[];
+                expiresAt: components["schemas"]["Instant"];
+            } | null;
+        };
         BranchScope: {
             /** @constant */
             allBranches: true;
@@ -1337,11 +1390,23 @@ export interface components {
             allBranches: false;
             branchIds: components["schemas"]["Id"][];
         };
+        BranchSyncStatus: {
+            branchId: components["schemas"]["Id"];
+            connectivity: {
+                state: components["schemas"]["ConnectivityState"];
+                since: components["schemas"]["Instant"];
+            };
+            pcs: components["schemas"]["BranchPc"][];
+        };
         BusinessDayEnd: string;
         CancelScheduledTenantStatus: {
             /** @constant */
             cancelScheduled: true;
             note?: string;
+        };
+        CertificateRequest: {
+            csr: string;
+            lanAddresses: components["schemas"]["LanAddresses"];
         };
         ChangeAccountPhone: {
             phone: components["schemas"]["MobilePhoneNumber"];
@@ -1379,6 +1444,73 @@ export interface components {
             nameLatin: string;
             archivedAt: components["schemas"]["Instant"] | null;
         };
+        CommandActor: {
+            /** @constant */
+            kind: "member";
+            membershipId: components["schemas"]["Id"];
+            /** @enum {string} */
+            sessionKind: "pc" | "hub_client";
+        } | {
+            /** @constant */
+            kind: "station";
+            pairingId: components["schemas"]["Id"];
+        } | {
+            /** @constant */
+            kind: "device";
+        };
+        CommandEnvelope: {
+            id: components["schemas"]["Id"];
+            name: components["schemas"]["CommandName"];
+            version: components["schemas"]["CommandVersion"];
+            protocol: number;
+            originKind: components["schemas"]["CommandOriginKind"];
+            originDeviceId: components["schemas"]["Id"];
+            executedByDeviceId: components["schemas"]["Id"];
+            actor: components["schemas"]["CommandActor"];
+            approvedByMembershipId?: components["schemas"]["Id"];
+            deviceTime: components["schemas"]["Instant"];
+            clockOffsetMs: number;
+            highestSeenTime: components["schemas"]["Instant"];
+            afterOfflineWindow: boolean;
+            hubEpoch: number;
+            hubSeq: number;
+            payload: {
+                [key: string]: unknown;
+            };
+            resolved: {
+                [key: string]: unknown;
+            };
+            payloadHash: components["schemas"]["Sha256Hex"];
+            signature: components["schemas"]["Signature"];
+        };
+        /** @enum {string} */
+        CommandFlag: "clock_suspect" | "after_offline_window" | "from_quarantine" | "mirrored_false";
+        CommandName: string;
+        /** @enum {string} */
+        CommandOriginKind: "pc" | "hub_client";
+        /** @enum {string} */
+        CommandOutcome: "accepted" | "adjusted" | "rejected";
+        /** @enum {string} */
+        CommandReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported" | "protocol_unsupported" | "signature_invalid" | "device_revoked" | "member_inactive" | "approver_not_allowed" | "number_out_of_block" | "server_error";
+        CommandResult: {
+            id: components["schemas"]["Id"];
+            /** @enum {string} */
+            outcome: "accepted" | "adjusted" | "rejected" | "quarantined";
+            reason?: components["schemas"]["CommandReason"];
+            details?: {
+                [key: string]: unknown;
+            };
+            replay: boolean;
+        };
+        CommandSummary: {
+            key: string;
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        CommandVersion: number;
+        /** @enum {string} */
+        ConnectivityState: "online" | "weak" | "offline";
         ConsoleAccount: {
             id: components["schemas"]["Id"];
             phone: string;
@@ -1545,6 +1677,7 @@ export interface components {
         DeactivateStaffMember: {
             reason: string;
         };
+        DecisionReason: string;
         Device: {
             id: components["schemas"]["Id"];
             branchId: components["schemas"]["Id"];
@@ -1594,7 +1727,7 @@ export interface components {
             reason: "signed_out" | "locked" | "idle";
         };
         /** @enum {string} */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT" | "PROTOCOL_UNSUPPORTED" | "UPDATE_REQUIRED" | "DEVICE_NOT_HUB_CAPABLE" | "DEVICE_NOT_REVOKED" | "HUB_ROLE_ACTIVE" | "CERTIFICATE_ADDRESS_INVALID" | "ATTENTION_ALREADY_RESOLVED" | "QUARANTINE_ALREADY_DECIDED" | "PAIRING_CLOSED" | "PAIRING_CODE_INVALID" | "PAIRING_LOCKED" | "NOT_HUB";
         ErrorResponse: {
             code: components["schemas"]["ErrorCode"];
             message: string;
@@ -1634,6 +1767,23 @@ export interface components {
             /** @constant */
             database: "ok";
         };
+        Heartbeat: {
+            lastRoundTripMs: number | null;
+            pendingUploads: number;
+            liveRole: components["schemas"]["LiveRole"];
+            hubEpoch: number;
+            standbyInSync: boolean | null;
+            appVersion: string;
+            protocol: number;
+            lanAddresses: components["schemas"]["LanAddresses"];
+            clockOffsetMs: number | null;
+        };
+        HeartbeatAnswer: {
+            serverTime: components["schemas"]["Instant"];
+            connectivity: components["schemas"]["ConnectivityState"];
+            minimumAppVersion: string;
+            protocols: number[];
+        };
         HourException: {
             id: components["schemas"]["Id"];
             branchId: components["schemas"]["Id"];
@@ -1644,11 +1794,108 @@ export interface components {
             createdAt: components["schemas"]["Instant"];
             updatedAt: components["schemas"]["Instant"];
         };
+        HubCommand: {
+            id: components["schemas"]["Id"];
+            name: components["schemas"]["CommandName"];
+            version: components["schemas"]["CommandVersion"];
+            payload: {
+                [key: string]: unknown;
+            };
+            deviceTime: components["schemas"]["Instant"];
+            actor?: components["schemas"]["CommandActor"];
+            approvedByMembershipId?: components["schemas"]["Id"];
+            afterOfflineWindow?: boolean;
+            resent?: components["schemas"]["CommandEnvelope"];
+        };
+        HubCommandAnswer: {
+            /** @constant */
+            status: "ok";
+            mirrored: boolean;
+            envelope: components["schemas"]["CommandEnvelope"];
+        } | {
+            /** @constant */
+            status: "duplicate";
+            mirrored: boolean;
+            envelope: components["schemas"]["CommandEnvelope"];
+        } | {
+            /** @constant */
+            status: "refused";
+            reason: components["schemas"]["HubRefusalReason"];
+        } | {
+            /** @constant */
+            status: "not_hub";
+            epoch: number;
+            hubDeviceId: components["schemas"]["Id"] | null;
+        };
+        HubHello: {
+            deviceId: components["schemas"]["Id"];
+            role: components["schemas"]["LiveRole"];
+            epoch: number;
+            protocol: number;
+            appVersion: string;
+        };
+        HubLiveSnapshot: {
+            hub: {
+                deviceId: components["schemas"]["Id"];
+                role: components["schemas"]["LiveRole"];
+                epoch: number;
+                /** @enum {string} */
+                standby: "in_sync" | "not_in_sync" | "none";
+                connectivity: components["schemas"]["ConnectivityState"];
+            };
+            clients: components["schemas"]["HubPairing"][];
+            networkChecks: components["schemas"]["NetworkCheckRecord"][];
+        };
+        HubMembers: {
+            members: {
+                membershipId: components["schemas"]["Id"];
+                name: string;
+                roles: components["schemas"]["StaffRole"][];
+            }[];
+        };
+        HubPairing: {
+            id: components["schemas"]["Id"];
+            kind: components["schemas"]["PairingKind"];
+            name: string;
+            createdAt: components["schemas"]["Instant"];
+            lastUsedAt: components["schemas"]["Instant"];
+        };
+        HubPairRequest: {
+            code: components["schemas"]["PairingCode"];
+        };
+        HubPairResult: {
+            token: string;
+            pairingId: components["schemas"]["Id"];
+            kind: components["schemas"]["PairingKind"];
+            peers: string[];
+            caFingerprint: components["schemas"]["Sha256Hex"];
+        };
+        /** @enum {string} */
+        HubRefusalReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported";
+        /** @enum {string} */
+        HubRole: "hub" | "standby";
+        HubSession: {
+            token: string;
+            membershipId: components["schemas"]["Id"];
+            name: string;
+            permissions: components["schemas"]["StaffPermission"][];
+            idleLockMinutes: number;
+            expiresAt: components["schemas"]["Instant"];
+        };
+        HubSessionRequest: {
+            membershipId: components["schemas"]["Id"];
+            pin: components["schemas"]["Pin"];
+        };
         /** Format: uuid */
         Id: string;
         IdleLockMinutes: number;
         /** Format: date-time */
         Instant: string;
+        IssuedCertificate: {
+            certificate: string;
+            caCertificate: string;
+            fingerprint: components["schemas"]["Sha256Hex"];
+        };
         Jwks: {
             keys: {
                 /** @constant */
@@ -1662,6 +1909,24 @@ export interface components {
                 /** @constant */
                 use: "sig";
             }[];
+        };
+        LanAddresses: string[];
+        ListAttentionQuery: {
+            /** @default 1 */
+            page: number;
+            /** @default 50 */
+            pageSize: number;
+            /** @enum {string} */
+            sort?: "createdAt";
+            /** @default asc */
+            order: components["schemas"]["SortOrder"];
+            branchId: components["schemas"]["Id"];
+            /**
+             * @default open
+             * @enum {string}
+             */
+            status: "open" | "closed" | "all";
+            kind?: components["schemas"]["AttentionKind"];
         };
         ListConsoleTenantsQuery: {
             /** @default 1 */
@@ -1691,8 +1956,12 @@ export interface components {
             /** @constant */
             status: "ok";
         };
+        /** @enum {string} */
+        LiveRole: "hub" | "standby" | "client" | "rejoining";
         /** Format: date */
         LocalDate: string;
+        /** @enum {string} */
+        LocalEventAction: "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted";
         Me: {
             account: {
                 id: components["schemas"]["Id"];
@@ -1767,11 +2036,35 @@ export interface components {
             amount: number;
             currency: components["schemas"]["CurrencyCode"];
         };
+        NetworkCheckRecord: {
+            commandId: components["schemas"]["Id"];
+            run: components["schemas"]["Id"];
+            sequence: number;
+            originDeviceId: components["schemas"]["Id"];
+            sentAt: components["schemas"]["Instant"];
+            receivedAt: components["schemas"]["Instant"];
+            mirroredAt: components["schemas"]["Instant"] | null;
+            committedAt: components["schemas"]["Instant"];
+        };
         NoContent: null;
         Nonce: {
             nonce: string;
             expiresAt: components["schemas"]["Instant"];
         };
+        NumberBlock: {
+            businessDate: components["schemas"]["LocalDate"];
+            first: number;
+            last: number;
+        };
+        NumberBlocks: {
+            series: components["schemas"]["NumberSeries"];
+            blocks: components["schemas"]["NumberBlock"][];
+        };
+        NumberBlocksRequest: {
+            series: components["schemas"]["NumberSeries"];
+        };
+        /** @enum {string} */
+        NumberSeries: "order";
         OnboardingCompleteness: {
             complete: boolean;
             missing: components["schemas"]["MissingOnboardingItem"][];
@@ -1781,6 +2074,10 @@ export interface components {
         OpeningPeriod: {
             opensAt: components["schemas"]["TimeOfDay"];
             closesAt: components["schemas"]["TimeOfDay"];
+        };
+        OpenPairing: {
+            kind: components["schemas"]["PairingKind"];
+            name: components["schemas"]["PairingName"];
         };
         OpenSession: {
             membershipId: components["schemas"]["Id"];
@@ -1821,9 +2118,13 @@ export interface components {
             code: components["schemas"]["OtpCode"];
             intent: components["schemas"]["SignInIntent"];
         };
+        PairingCode: string;
+        /** @enum {string} */
+        PairingKind: "station" | "personal";
+        PairingName: string;
         Password: string;
         /** @enum {string} */
-        PermissionGroup: "tenant" | "branch" | "staff" | "devices";
+        PermissionGroup: "tenant" | "branch" | "staff" | "devices" | "sync";
         PersonalDevice: {
             id: components["schemas"]["Id"];
             label: string;
@@ -1890,6 +2191,55 @@ export interface components {
             nonce: string;
         };
         PublicKey: string;
+        QuarantineBatch: {
+            id: components["schemas"]["Id"];
+            branchId: components["schemas"]["Id"];
+            deviceId: components["schemas"]["Id"];
+            deviceName: string;
+            reason: components["schemas"]["QuarantineReason"];
+            membershipId: components["schemas"]["Id"] | null;
+            commandCount: number;
+            createdAt: components["schemas"]["Instant"];
+            decision: components["schemas"]["QuarantineDecision"] | null;
+        };
+        QuarantineBatchDetail: {
+            batch: components["schemas"]["QuarantineBatch"];
+            commands: components["schemas"]["QuarantineCommand"][];
+        };
+        QuarantineBatchList: components["schemas"]["QuarantineBatch"][];
+        QuarantineCommand: {
+            commandId: components["schemas"]["Id"];
+            name: components["schemas"]["CommandName"];
+            summary: components["schemas"]["CommandSummary"];
+            deviceTime: components["schemas"]["Instant"];
+            hubEpoch: number;
+            hubSeq: number;
+            alreadyExecuted: boolean;
+        };
+        QuarantineDecision: {
+            /** @enum {string} */
+            decision: "accept" | "reject";
+            reason: string | null;
+            decidedByMembershipId: components["schemas"]["Id"];
+            decidedAt: components["schemas"]["Instant"];
+        };
+        QuarantineDecisionResult: {
+            batch: components["schemas"]["QuarantineBatch"];
+            results: components["schemas"]["CommandResult"][];
+        };
+        /** @enum {string} */
+        QuarantineReason: "device_revoked" | "member_inactive";
+        QuarantineUpload: {
+            tenantId: components["schemas"]["Id"];
+            deviceId: components["schemas"]["Id"];
+            nonce: string;
+            signature: components["schemas"]["Signature"];
+            protocol: number;
+            commands: components["schemas"]["CommandEnvelope"][];
+        };
+        QuarantineUploadResult: {
+            batchId: components["schemas"]["Id"];
+        };
         Reauthenticate: {
             password: string;
         };
@@ -1910,6 +2260,9 @@ export interface components {
             members: components["schemas"]["MemberList"];
             session: components["schemas"]["SessionTokens"];
         };
+        RejectQuarantine: {
+            reason: components["schemas"]["DecisionReason"];
+        };
         RenameDevice: {
             name: components["schemas"]["DeviceName"];
         };
@@ -1921,6 +2274,9 @@ export interface components {
             businessDayEndsAt: components["schemas"]["BusinessDayEnd"];
             periods: components["schemas"]["WeeklyPeriod"][];
             updatedAt: components["schemas"]["Instant"];
+        };
+        ResolveAttention: {
+            reason: components["schemas"]["DecisionReason"];
         };
         ResolveMapLink: {
             /** Format: uri */
@@ -1946,6 +2302,10 @@ export interface components {
             refreshToken: string;
             expiresAt: components["schemas"]["Instant"];
         };
+        SetHubRoles: {
+            hubDeviceId: components["schemas"]["Id"];
+            standbyDeviceId?: components["schemas"]["Id"];
+        };
         SetMemberPin: {
             pin: components["schemas"]["Pin"];
         };
@@ -1957,6 +2317,7 @@ export interface components {
             slug: string;
         };
         SetupCode: string;
+        Sha256Hex: string;
         Signature: string;
         SignIn: {
             phone: components["schemas"]["MobilePhoneNumber"];
@@ -2009,13 +2370,19 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote";
+        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote" | "hub.manage" | "sync.attention.resolve" | "sync.quarantine.review";
         /** @enum {string} */
         StaffRole: "owner" | "manager" | "cashier" | "waiter" | "kitchen" | "driver";
         /** @enum {string} */
         StaffSessionEndReason: "signed_out" | "locked" | "idle" | "expired" | "member_deactivated" | "branch_left" | "device_revoked" | "password_reset" | "tenant_closed" | "refresh_reused" | "access_lost";
         /** @enum {string} */
         StaffSessionKind: "device" | "personal";
+        SyncToken: {
+            token: string;
+            expiresAt: components["schemas"]["Instant"];
+            /** Format: uri */
+            endpoint: string;
+        };
         Tenant: {
             id: components["schemas"]["Id"];
             slug: components["schemas"]["Slug"];
@@ -2094,6 +2461,17 @@ export interface components {
             nameLatin: string | null;
             defaultCurrency: components["schemas"]["CurrencyCode"];
             updatedAt: components["schemas"]["Instant"];
+        };
+        UploadCommands: {
+            protocol: number;
+            commands: components["schemas"]["UploadedCommand"][];
+        };
+        UploadCommandsResult: {
+            results: components["schemas"]["CommandResult"][];
+        };
+        UploadedCommand: {
+            envelope: components["schemas"]["CommandEnvelope"];
+            mirrored: boolean;
         };
         Weekday: number;
         WeeklyPeriod: {

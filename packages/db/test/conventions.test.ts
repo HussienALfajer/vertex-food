@@ -40,12 +40,33 @@ const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: s
       'updated_at',
     ],
   },
+  // sync/connectivity-sweep (spec S04): every branch's state through its own policy; inside each
+  // tenant, the PCs' heartbeats, the move and its change row.
+  branch_connectivity: {
+    select: true,
+    update: ['healthy_streak', 'since', 'state', 'updated_at'],
+  },
+  branch_connectivity_changes: { select: false, insert: true, update: [] },
+  device_sync_states: { select: true, update: [] },
+  // The device.revoked.v1 consumer clears the revoked PC's hub role (spec S04).
+  devices: { select: true, update: ['hub_role', 'updated_at'] },
 };
 // The tables the sync service replicates to devices (ADR 0022): it reads them whole, bypassing RLS,
 // so each one is listed here by the migration that publishes it (S04). Through SQL it reads nothing
 // else and writes nothing. Its REPLICATION attribute reaches the WAL itself, which no grant limits:
 // that is closed on the server (only pgoutput installed, packages/db/CLAUDE.md, Q20), not here.
-const SYNC_ACCESS: string[] = [];
+// Its snapshot reads whole rows, so a published table holds nothing a device must not get
+// (`command_payloads` and `branch_ca_keys` stay unpublished).
+const SYNC_ACCESS: string[] = [
+  'attention_items',
+  'attention_resolutions',
+  'branch_certificate_authorities',
+  'branches',
+  'command_log',
+  'device_certificates',
+  'devices',
+  'tenants',
+];
 // Queue tables the app role deletes from besides the replaceable sets, each for its reason (spec
 // S03): no other table is deleted from.
 const APP_DELETES: Record<string, string> = {

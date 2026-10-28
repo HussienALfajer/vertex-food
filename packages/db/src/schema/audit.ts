@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, idIsUuidV7, tenantId, timestamptz } from './columns.js';
 import { tenants } from './tenancy.js';
 
@@ -34,6 +34,8 @@ export const auditEntries = pgTable(
     details: jsonb(),
     /** When it happened: the device's time for actions recorded offline (ADR 0008). */
     occurredAt: timestamptz().notNull(),
+    /** Recorded on a PC and uploaded later by `audit.record_local_events` (spec S04). */
+    recordedOffline: boolean().notNull().default(false),
     /** When the server stored it. */
     createdAt: createdAt(),
   },
