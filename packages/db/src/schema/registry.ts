@@ -46,6 +46,12 @@ export const tableRegistry = {
   tenant_slugs: { module: 'tenancy', scope: 'platform', kind: 'business' },
   tenants: { module: 'tenancy', scope: 'platform', kind: 'business' },
   used_tokens: { module: 'identity', scope: 'platform', kind: 'append-only' },
+  whatsapp_known_recipients: { module: 'messaging', scope: 'platform', kind: 'queue' },
+  whatsapp_messages: { module: 'messaging', scope: 'platform', kind: 'queue' },
+  whatsapp_opt_outs: { module: 'messaging', scope: 'platform', kind: 'business' },
+  whatsapp_session_credentials: { module: 'messaging', scope: 'platform', kind: 'queue' },
+  whatsapp_session_events: { module: 'messaging', scope: 'platform', kind: 'append-only' },
+  whatsapp_sessions: { module: 'messaging', scope: 'platform', kind: 'business' },
 } as const satisfies Record<string, TableInfo>;
 
 export type TableScope = 'tenant' | 'platform';

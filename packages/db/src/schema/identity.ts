@@ -97,7 +97,12 @@ export const otpChallenges = pgTable(
       sql`${t.purpose} in ('new_device', 'first_sign_in', 'password_reset')`,
     ),
     check('otp_challenges_attempts', sql`${t.attempts} between 0 and 5`),
-    check('otp_challenges_delivery_status', sql`${t.deliveryStatus} in ('sent', 'failed')`),
+    // `otpChallengeDeliveryStatuses`: queued by the gateway sender, then moved forward with its
+    // message (spec S03 rule 19); `sent` and `failed` are also S02's values.
+    check(
+      'otp_challenges_delivery_status',
+      sql`${t.deliveryStatus} in ('queued', 'sent', 'delivered', 'failed')`,
+    ),
     // The hourly limit per phone and the resend cooldown.
     index('otp_challenges_account_created_idx').on(t.accountId, t.createdAt),
   ],

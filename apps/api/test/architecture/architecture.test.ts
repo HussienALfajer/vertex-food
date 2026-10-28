@@ -103,6 +103,7 @@ const SCHEMA_LAYERS: Record<string, string | null> = {
     'events.ts',
     'files.ts',
     'identity.ts',
+    'messaging.ts',
     'tenancy.ts',
   ]),
   'index.ts': null,

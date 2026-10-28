@@ -46,6 +46,13 @@ const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: s
 // else and writes nothing. Its REPLICATION attribute reaches the WAL itself, which no grant limits:
 // that is closed on the server (only pgoutput installed, packages/db/CLAUDE.md, Q20), not here.
 const SYNC_ACCESS: string[] = [];
+// Queue tables the app role deletes from besides the replaceable sets, each for its reason (spec
+// S03): no other table is deleted from.
+const APP_DELETES: Record<string, string> = {
+  whatsapp_known_recipients: 'keyed hashes of a WhatsApp session that no longer exists',
+  whatsapp_messages: 'the sweep after 30 days and an unlinked session’s queued messages',
+  whatsapp_session_credentials: 'Baileys’ store of a link that was replaced or ended',
+};
 // Partial indexes on a tenant table that do not start with tenant_id, for the jobs role's claims
 // across tenants, on a table listed in JOBS_ACCESS only.
 const CROSS_TENANT_INDEXES: Record<string, string[]> = {
@@ -222,6 +229,12 @@ describe('table registry', () => {
     }
   });
 
+  it('lets the app role delete only from queues', () => {
+    for (const table of Object.keys(APP_DELETES)) {
+      expect(registry[table]?.kind, table).toBe('queue');
+    }
+  });
+
   it('gives the sync role only tables that exist', () => {
     for (const table of SYNC_ACCESS) expect(Object.keys(registry)).toContain(table);
   });
@@ -308,8 +321,8 @@ describe.each(tables)('$name', (table) => {
   it('gives the app role no privilege that ignores RLS, rewrites history or deletes records', async () => {
     const privileges = await appPrivileges(table.name);
     expect(privileges).toMatchObject({ truncate: false, trigger: false, references: false });
-    // Only a set replaced whole (a branch's weekly hours) is deleted from; nothing else is.
-    if (info?.kind !== 'replaceable') expect(privileges.delete).toBe(false);
+    // Only a set replaced whole (a branch's weekly hours) and the listed queues are deleted from.
+    expect(privileges.delete).toBe(info?.kind === 'replaceable' || table.name in APP_DELETES);
     if (info?.kind === 'append-only' || info?.kind === 'replaceable') {
       expect(privileges.update).toBe(false);
     }

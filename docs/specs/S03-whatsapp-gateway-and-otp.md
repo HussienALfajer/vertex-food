@@ -90,8 +90,8 @@ Grants: `SELECT, INSERT, UPDATE`. Index `(state)` where not archived. There is n
 
 Indexes: `(status, kind, next_attempt_at)` where `status = 'queued'` (the claim); `(session_id, sent_at)` (per-number limits); `(recipient_hash, sent_at)` (per-recipient limits). Grants: `SELECT, INSERT, UPDATE, DELETE` (the purge). Every transaction that queues a message also runs `NOTIFY whatsapp_messages`, which wakes the gateway.
 
-### `whatsapp_known_recipients` (kind `business`)
-`id`, `session_id`, `recipient_hash`, `first_sent_at`, `last_sent_at`, `last_auto_reply_at` (nullable), `created_at`, `updated_at`; unique `(session_id, recipient_hash)`. A recipient becomes known to a number when that number sends them a message. Deleted with the session's credentials on unlink or on a re-link with another phone (grants `SELECT, INSERT, UPDATE, DELETE`; a listed exception to "no `DELETE` on business tables" in `conventions.test.ts`, as these rows are keyed hashes tied to a WhatsApp session that no longer exists).
+### `whatsapp_known_recipients` (kind `queue`)
+`id`, `session_id`, `recipient_hash`, `first_sent_at`, `last_sent_at`, `last_auto_reply_at` (nullable), `created_at`, `updated_at`; unique `(session_id, recipient_hash)`. A recipient becomes known to a number when that number sends them a message. Deleted with the session's credentials on unlink or on a re-link with another phone (grants `SELECT, INSERT, UPDATE, DELETE`). Derived from sends and deleted, so kind `queue` with no `archived_at` (as in Vertex Shifa; changed from `business` during implementation, ADR 0025): `APP_DELETES` in `conventions.test.ts` lists it with `whatsapp_messages` and `whatsapp_session_credentials`, the only queues the app role deletes from.
 
 ### `whatsapp_opt_outs` (kind `business`)
 `id`, `recipient_hash` (unique), `opted_out_at` (nullable), `opted_in_at` (nullable), `last_keyword_at` (the incoming message's time, for ordering), `created_at`, `updated_at`. A phone is opted out when `opted_out_at` is set and later than `opted_in_at` (or that is null). Grants: `SELECT, INSERT, UPDATE`.

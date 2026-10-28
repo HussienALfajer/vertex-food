@@ -782,6 +782,12 @@ importers:
 
   packages/db:
     dependencies:
+      '@vertex-food/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@vertex-food/crypto':
+        specifier: workspace:*
+        version: link:../crypto
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
