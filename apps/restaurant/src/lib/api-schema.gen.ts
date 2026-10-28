@@ -1157,7 +1157,7 @@ export interface components {
             nameLatin: string | null;
             rateBp: number;
             mode: components["schemas"]["ChargeMode"];
-            orderTypes: components["schemas"]["OrderType"][];
+            salesChannels: components["schemas"]["SalesChannel"][];
             position: number;
         };
         BranchChargeInput: {
@@ -1166,7 +1166,7 @@ export interface components {
             nameLatin?: string | null;
             rateBp: number;
             mode: components["schemas"]["ChargeMode"];
-            orderTypes: components["schemas"]["OrderType"][];
+            salesChannels: components["schemas"]["SalesChannel"][];
         };
         BranchCharges: {
             lines: components["schemas"]["BranchCharge"][];
@@ -1637,8 +1637,6 @@ export interface components {
             membershipId: components["schemas"]["Id"];
             ticket: string;
         };
-        /** @enum {string} */
-        OrderType: "dine_in" | "takeaway" | "delivery" | "pickup";
         OtpChallenge: {
             challengeId: components["schemas"]["Id"];
         };
@@ -1753,6 +1751,8 @@ export interface components {
             reason: components["schemas"]["DeviceRevokeReason"];
             note?: string;
         };
+        /** @enum {string} */
+        SalesChannel: "dine_in" | "takeaway" | "delivery" | "pickup";
         ScheduledStatusChange: {
             status: components["schemas"]["ScheduledTenantStatus"];
             reason: components["schemas"]["TenantStatusReason"];

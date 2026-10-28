@@ -31,8 +31,8 @@ import {
   hasErrorsUnder,
   type MoneyDraft,
   newCharge,
-  orderTypes,
   parseRate,
+  salesChannels,
 } from './branch-draft';
 import { currencyCodes } from './profile-fields';
 
@@ -307,21 +307,21 @@ function ChargeRow({
         </div>
         <FieldGroup
           legend={t('fields.charges.orderTypes')}
-          error={error('orderTypes') ? t('validation.chargeOrderTypes') : undefined}
+          error={error('salesChannels') ? t('validation.chargeOrderTypes') : undefined}
           disabled={disabled}
         >
           <div className="flex flex-wrap gap-4">
-            {orderTypes.map((type) => (
+            {salesChannels.map((type) => (
               // biome-ignore lint/a11y/noLabelWithoutControl: Base UI's checkbox renders the control inside the label.
               <label key={type} className="flex items-center gap-2">
                 <Checkbox
-                  checked={charge.orderTypes.includes(type)}
+                  checked={charge.salesChannels.includes(type)}
                   disabled={disabled}
                   onCheckedChange={(checked) =>
                     onChange({
-                      orderTypes: checked
-                        ? [...charge.orderTypes, type]
-                        : charge.orderTypes.filter((item) => item !== type),
+                      salesChannels: checked
+                        ? [...charge.salesChannels, type]
+                        : charge.salesChannels.filter((item) => item !== type),
                     })
                   }
                 />

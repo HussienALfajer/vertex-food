@@ -15,11 +15,11 @@ import {
   MAX_CONTACT_PHONES,
   MAX_PERIODS_PER_DAY,
   type OpeningPeriod,
-  type OrderType,
-  orderTypeSchema,
   parsePhoneNumber,
   periodNextDay,
   type ReplaceBranchHours,
+  type SalesChannel,
+  salesChannelSchema,
   type TimeOfDay,
   type UpdateBranch,
   updateBranchSchema,
@@ -56,7 +56,7 @@ export const weekdayKeys = [
 
 export const weekdayKey = (weekday: Weekday) => weekdayKeys[weekday - 1] ?? 'saturday';
 
-export const orderTypes = orderTypeSchema.options;
+export const salesChannels = salesChannelSchema.options;
 
 // Location: city, address, pin and phones (wizard step 2, branch settings).
 
@@ -326,7 +326,7 @@ export type ChargeDraft = {
   /** The rate as typed, in percent (`10`, `2.5`). */
   rate: string;
   mode: ChargeMode;
-  orderTypes: OrderType[];
+  salesChannels: SalesChannel[];
 };
 
 export type MoneyDraft = {
@@ -345,7 +345,7 @@ export function moneyDraft(branch: Branch, charges: readonly BranchCharge[]): Mo
       nameLatin: charge.nameLatin ?? '',
       rate: formatRateBp(charge.rateBp),
       mode: charge.mode,
-      orderTypes: [...charge.orderTypes],
+      salesChannels: [...charge.salesChannels],
     })),
   };
 }
@@ -356,7 +356,7 @@ export const newCharge = (): ChargeDraft => ({
   nameLatin: '',
   rate: '',
   mode: 'added',
-  orderTypes: [...orderTypes],
+  salesChannels: [...salesChannels],
 });
 
 export const canAddCharge = (charges: readonly ChargeDraft[]) => charges.length < MAX_CHARGE_LINES;
@@ -390,7 +390,8 @@ export function moneyErrors(draft: MoneyDraft): FieldErrors {
       errors[`charges.${index}.nameLatin`] = 'chargeNameLatin';
     }
     if (parseRate(charge.rate) === undefined) errors[`charges.${index}.rate`] = 'chargeRate';
-    if (charge.orderTypes.length === 0) errors[`charges.${index}.orderTypes`] = 'chargeOrderTypes';
+    if (charge.salesChannels.length === 0)
+      errors[`charges.${index}.salesChannels`] = 'chargeOrderTypes';
   });
   return errors;
 }
@@ -415,7 +416,7 @@ export function chargeLines(draft: MoneyDraft): BranchChargeInput[] {
     nameLatin: charge.nameLatin.trim() || null,
     rateBp: parseRate(charge.rate) ?? 0,
     mode: charge.mode,
-    orderTypes: orderTypes.filter((type) => charge.orderTypes.includes(type)),
+    salesChannels: salesChannels.filter((type) => charge.salesChannels.includes(type)),
   }));
 }
 
@@ -427,7 +428,7 @@ export function chargesChanged(draft: MoneyDraft, saved: readonly BranchCharge[]
     nameLatin: charge.nameLatin,
     rateBp: charge.rateBp,
     mode: charge.mode,
-    orderTypes: orderTypes.filter((type) => charge.orderTypes.includes(type)),
+    salesChannels: salesChannels.filter((type) => charge.salesChannels.includes(type)),
   }));
   return JSON.stringify(chargeLines(draft)) !== JSON.stringify(current);
 }

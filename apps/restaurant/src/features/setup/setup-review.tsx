@@ -161,7 +161,7 @@ export function SetupReview({
                     t(`fields.charges.summary.${charge.mode}`, {
                       name: charge.nameAr,
                       rate: formatRateBp(charge.rateBp),
-                      types: list(charge.orderTypes.map((type) => t(`orderTypes.${type}`))),
+                      types: list(charge.salesChannels.map((type) => t(`orderTypes.${type}`))),
                     }),
                   ),
                 )}

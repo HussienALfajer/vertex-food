@@ -129,7 +129,7 @@ Tax and service charge lines (Q10 holds the values used in Azaz; this is their s
 | `name_ar`, `name_latin` | text | Arabic required 2–40; Latin optional |
 | `rate_bp` | integer | basis points, 1–5000 (0.01 % to 50 %); never a float |
 | `mode` | text | `inclusive` (already inside the prices) or `added` (on top) |
-| `order_types` | text[] | non-empty subset of `dine_in`, `takeaway`, `delivery`, `pickup` (ADR 0007) |
+| `order_types` | text[] | non-empty subset of `dine_in`, `takeaway`, `delivery`, `pickup` (ADR 0007); *as built (2026-10-28, ADR 0025 amendment): the sales channels, `salesChannels` in code and contracts* |
 | `position` | smallint | display and computation order |
 | `archived_at` | | |
 

@@ -106,7 +106,7 @@ export function toCharge(row: ChargeRow): BranchCharge {
     nameLatin: row.nameLatin,
     rateBp: row.rateBp,
     mode: row.mode as BranchCharge['mode'],
-    orderTypes: row.orderTypes as BranchCharge['orderTypes'],
+    salesChannels: row.salesChannels as BranchCharge['salesChannels'],
     position: row.position,
   };
 }

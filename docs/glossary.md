@@ -57,7 +57,7 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | نفد | sold out | An item unavailable for now |
 | الطلب | order | One customer's order, whatever the channel |
 | قناة الطلب | channel | `pos`, `waiter`, `phone`, `qr`, `restaurant_web`, `marketplace` (the planned values; the contracts get them with S09) |
-| نوع الطلب | order type | `dine_in` (صالة), `takeaway` (سفري), `delivery` (توصيل), `pickup` (استلام) |
+| نوع الطلب | order type | `dine_in` (صالة), `takeaway` (سفري), `delivery` (توصيل), `pickup` (استلام); in the platform layer the **sales channel** (`salesChannelSchema`) a branch's charges apply to (ADR 0025) |
 | وضع استقبال الطلبات | order-intake mode | A mode of the restaurant app, online only, for a restaurant that keeps its own cashier system (ADR 0028) |
 | الوقت الموعود | promised time | The ready or delivery time given to the customer at acceptance |
 | الاستلام السريع | express pickup | An online pickup order with a pickup code and a "ready" notification, paid at pickup |

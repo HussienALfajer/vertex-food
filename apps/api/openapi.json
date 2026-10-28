@@ -3320,10 +3320,10 @@
           "mode": {
             "$ref": "#/components/schemas/ChargeMode"
           },
-          "orderTypes": {
+          "salesChannels": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OrderType"
+              "$ref": "#/components/schemas/SalesChannel"
             }
           },
           "position": {
@@ -3339,7 +3339,7 @@
           "nameLatin",
           "rateBp",
           "mode",
-          "orderTypes",
+          "salesChannels",
           "position"
         ],
         "additionalProperties": false
@@ -3376,12 +3376,12 @@
           "mode": {
             "$ref": "#/components/schemas/ChargeMode"
           },
-          "orderTypes": {
+          "salesChannels": {
             "minItems": 1,
             "maxItems": 4,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/OrderType"
+              "$ref": "#/components/schemas/SalesChannel"
             }
           }
         },
@@ -3390,7 +3390,7 @@
           "nameAr",
           "rateBp",
           "mode",
-          "orderTypes"
+          "salesChannels"
         ],
         "additionalProperties": false
       },
@@ -5616,15 +5616,6 @@
           }
         ]
       },
-      "OrderType": {
-        "type": "string",
-        "enum": [
-          "dine_in",
-          "takeaway",
-          "delivery",
-          "pickup"
-        ]
-      },
       "OtpChallenge": {
         "type": "object",
         "properties": {
@@ -6126,6 +6117,15 @@
           "reason"
         ],
         "additionalProperties": false
+      },
+      "SalesChannel": {
+        "type": "string",
+        "enum": [
+          "dine_in",
+          "takeaway",
+          "delivery",
+          "pickup"
+        ]
       },
       "ScheduledStatusChange": {
         "type": "object",

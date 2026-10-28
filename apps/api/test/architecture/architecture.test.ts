@@ -29,6 +29,7 @@ import {
   boundaryViolations,
   injectionViolations,
   routeViolations,
+  sharedLayerViolations,
   tableOwnershipViolations,
 } from './rules.js';
 
@@ -50,14 +51,63 @@ const OWNED_TABLES = {
   accountTenantLinks: 'platform/access',
 };
 
-function sourceFiles(): Map<string, string> {
+/** The `.ts` files under `root`; a shared package's tests are left out (they import any file). */
+function sourceFiles(
+  root = src,
+  options: { tests: boolean } = { tests: true },
+): Map<string, string> {
   const files = new Map<string, string>();
-  for (const entry of readdirSync(src, { recursive: true, encoding: 'utf8' })) {
-    if (!entry.endsWith('.ts')) continue;
-    files.set(entry.split(sep).join('/'), readFileSync(new URL(entry, src), 'utf8'));
+  for (const entry of readdirSync(root, { recursive: true, encoding: 'utf8' })) {
+    if (!entry.endsWith('.ts') || (!options.tests && entry.endsWith('.test.ts'))) continue;
+    files.set(entry.split(sep).join('/'), readFileSync(new URL(entry, root), 'utf8'));
   }
   return files;
 }
+
+/**
+ * The layer of each per-module file of the shared packages (ADR 0025); `null` gathers them all.
+ * Every file is platform today: food files (menus, orders) arrive with their specs.
+ */
+const platform = (names: string[]) => Object.fromEntries(names.map((name) => [name, 'platform']));
+const CONTRACTS_LAYERS: Record<string, string | null> = {
+  ...platform([
+    'access.ts',
+    'areas.ts',
+    'audit.ts',
+    'common-passwords.ts',
+    'console-identity.ts',
+    'errors.ts',
+    'events.ts',
+    'files.ts',
+    'health-check.ts',
+    'identity.ts',
+    'maps.ts',
+    'money.ts',
+    'phone.ts',
+    'primitives.ts',
+    'proof-of-work.ts',
+    'staff.ts',
+    'tenancy.ts',
+    'time.ts',
+  ]),
+  'index.ts': null,
+  'json-schema.ts': null,
+};
+const SCHEMA_LAYERS: Record<string, string | null> = {
+  ...platform([
+    'access.ts',
+    'areas.ts',
+    'audit.ts',
+    'columns.ts',
+    'events.ts',
+    'files.ts',
+    'identity.ts',
+    'tenancy.ts',
+  ]),
+  'index.ts': null,
+  'registry.ts': null,
+};
+const packages = new URL('../../../../packages/', import.meta.url);
 
 describe('the API', () => {
   let app: INestApplication;
@@ -84,6 +134,20 @@ describe('the API', () => {
 
   it('keeps the platform tables to their modules', () => {
     expect(tableOwnershipViolations(sourceFiles(), OWNED_TABLES)).toEqual([]);
+  });
+});
+
+describe('the shared packages (ADR 0025)', () => {
+  it('keep the platform files of packages/contracts free of food files', () => {
+    const files = sourceFiles(new URL('contracts/src/', packages), { tests: false });
+    expect(files.has('tenancy.ts')).toBe(true);
+    expect(sharedLayerViolations(files, CONTRACTS_LAYERS)).toEqual([]);
+  });
+
+  it('keep the platform files of packages/db/src/schema free of food files', () => {
+    const files = sourceFiles(new URL('db/src/schema/', packages), { tests: false });
+    expect(files.has('tenancy.ts')).toBe(true);
+    expect(sharedLayerViolations(files, SCHEMA_LAYERS)).toEqual([]);
   });
 });
 
@@ -254,6 +318,27 @@ describe('the rules catch', () => {
       'core/access/access.guard.ts imports modules/platform/access/index.ts: the core imports no module',
       'modules/billing.ts is not in modules/<platform|food|restaurant|marketplace|dispatch>/<module>/',
       'modules/health/lab/lab.service.ts is not in modules/<platform|food|restaurant|marketplace|dispatch>/<module>/',
+    ]);
+  });
+
+  it('a platform file of a shared package importing a food file, an unplaced file', () => {
+    const files = new Map([
+      ['tenancy.ts', "import { orderTypeSchema } from './orders.js';"],
+      ['orders.ts', "import { idSchema } from './primitives.js';"],
+      ['primitives.ts', ''],
+      ['index.ts', "export * from './orders.js';"],
+      ['menus.ts', ''],
+    ]);
+    expect(
+      sharedLayerViolations(files, {
+        'tenancy.ts': 'platform',
+        'orders.ts': 'food',
+        'primitives.ts': 'platform',
+        'index.ts': null,
+      }),
+    ).toEqual([
+      'tenancy.ts imports orders.ts: the platform layer may not use food',
+      'menus.ts has no layer: add it to the architecture test',
     ]);
   });
 

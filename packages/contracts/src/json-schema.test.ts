@@ -62,7 +62,7 @@ describe('contractJsonSchemas', () => {
         'OnboardingCompleteness',
         'OnboardingItem',
         'OpeningPeriod',
-        'OrderType',
+        'SalesChannel',
         'PhoneNumber',
         'ReplaceBranchCharges',
         'ReplaceBranchHours',

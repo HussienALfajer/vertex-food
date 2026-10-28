@@ -175,7 +175,7 @@ test.describe('onboarding wizard', () => {
       closesAt: '01:00',
     });
     expect(api.charges.get(id ?? '')).toMatchObject([
-      { kind: 'service', nameAr: 'خدمة', rateBp: 1000, mode: 'added', orderTypes: ['dine_in'] },
+      { kind: 'service', nameAr: 'خدمة', rateBp: 1000, mode: 'added', salesChannels: ['dine_in'] },
     ]);
 
     // Elsewhere, the banner says the same; Vertex staff activate it and the banner goes.

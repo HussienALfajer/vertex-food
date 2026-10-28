@@ -148,6 +148,36 @@ export function boundaryViolations(files: Map<string, string>): string[] {
 }
 
 /**
+ * ADR 0025 in a shared package (`packages/contracts/src`, `packages/db/src/schema`): `layers` names
+ * the layer of each per-module file, or `null` for a file that gathers them all (`index.ts`), and a
+ * file imports only files of its own layer or below. A file missing from `layers` is a violation,
+ * so a new one is placed when it is added.
+ */
+export function sharedLayerViolations(
+  files: Map<string, string>,
+  layers: Record<string, string | null>,
+): string[] {
+  const violations: string[] = [];
+  for (const [file, source] of files) {
+    if (!(file in layers)) {
+      violations.push(`${file} has no layer: add it to the architecture test`);
+      continue;
+    }
+    const from = layers[file];
+    if (!from) continue;
+    for (const { fileName } of ts.preProcessFile(source, true, true).importedFiles) {
+      if (!fileName.startsWith('.')) continue;
+      const target = posix.join(posix.dirname(file), fileName).replace(/\.js$/, '.ts');
+      const to = layers[target];
+      if (to && !mayImport(from, to)) {
+        violations.push(`${file} imports ${target}: the ${from} layer may not use ${to}`);
+      }
+    }
+  }
+  return violations;
+}
+
+/**
  * Tables only their owning module touches (ADR 0004): platform tables reached without RLS. A file
  * outside the module that imports one of them from `@vertex-food/db` is a violation.
  */

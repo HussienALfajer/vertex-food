@@ -314,7 +314,8 @@ export const branchCharges = pgTable(
     rateBp: integer().notNull(),
     /** `inclusive` (inside the prices) or `added` (on top). */
     mode: text().notNull(),
-    orderTypes: text().array().notNull(),
+    /** Sales channels (`salesChannelSchema`); the column keeps its first name. */
+    salesChannels: text('order_types').array().notNull(),
     position: smallint().notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -334,7 +335,7 @@ export const branchCharges = pgTable(
     check('branch_charges_rate_bp', sql`${t.rateBp} between 1 and 5000`),
     check(
       'branch_charges_order_types',
-      sql`cardinality(${t.orderTypes}) between 1 and 4 and ${t.orderTypes} <@ array['dine_in', 'takeaway', 'delivery', 'pickup']`,
+      sql`cardinality(${t.salesChannels}) between 1 and 4 and ${t.salesChannels} <@ array['dine_in', 'takeaway', 'delivery', 'pickup']`,
     ),
     check('branch_charges_position', sql`${t.position} between 1 and 3`),
     index('branch_charges_branch_idx').on(t.tenantId, t.branchId, t.position),

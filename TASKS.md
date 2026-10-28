@@ -2,6 +2,15 @@
 
 The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
 
+## refactor/sales-channels — TEST-01 of the audit of 2026-10-28
+
+Owner, 2026-10-28: "do the best". Branch charges stay platform (architecture), on generic sales channels.
+
+- [x] `salesChannelSchema` in `contracts/tenancy.ts`, `orders.ts` removed; `salesChannels` in contracts, db (column `order_types` kept), API, restaurant app; OpenAPI and clients regenerated; no migration
+- [x] Architecture test: every file of `packages/contracts/src` and `packages/db/src/schema` has a layer; no platform → food import; proof on a broken example
+- [x] ADR 0025 amendment, glossary, S01 spec, contracts `CLAUDE.md`, audit record
+- [x] `pnpm verify`, PR with auto-merge and Auto-fix
+
 ## fix/S02-audit — the external audit of 2026-10-28 (Phase 0, S01, S02)
 
 Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/audits/2026-10-28-S02-audit.md`.
@@ -41,7 +50,6 @@ From the analysis of 2026-10-28 (S02 sessions and CI runs 26–30), approved by 
 
 ## Follow-ups (not this spec)
 
-- TEST-01 (audit of 2026-10-28): ADR 0025's platform → food boundary test for `packages/contracts` and `packages/db`. Waits for the owner: S01's branch charges by order type (`contracts/tenancy.ts` imports `orders.ts`; `branch_charges_order_types` lists the food order types) either stay platform with a generic sales channel, or move to the food domain
 - The restaurant's logo on the lock screen (spec S02 screen 4): the PC has no session there, so the main process must fetch and keep the logo (a device route for it, or the local database of S04); until then the lock screen shows the name. Do it with S04 or S08 branding
 - The sign-in lock message shows the policy's 15 minutes: the API answers `RATE_LIMITED` without the retry time, and a per-address limit reads the same (PR 1 API)
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
