@@ -115,6 +115,19 @@ export class TestMembers implements MemberDirectory {
   async verifyPin(verifier: string, pin: string): Promise<boolean> {
     return verifier === `pin:${pin}`;
   }
+  /** S02's lockout on the PC: 5 wrong PINs disable the member's PIN there. */
+  readonly pcFailures = new Map<string, number>();
+  async checkPcPin(membershipId: string, pin: string): Promise<'ok' | 'invalid' | 'disabled'> {
+    const member = this.member(membershipId);
+    if (!member) return 'invalid';
+    if ((this.pcFailures.get(membershipId) ?? 0) >= 5) return 'disabled';
+    if (member.pinVerifier === `pin:${pin}`) {
+      this.pcFailures.delete(membershipId);
+      return 'ok';
+    }
+    this.pcFailures.set(membershipId, (this.pcFailures.get(membershipId) ?? 0) + 1);
+    return 'invalid';
+  }
 }
 
 // --- Order-like test commands (a test-only family that writes rows, spec S04 "Tests") ----------
@@ -197,9 +210,7 @@ export const testRechecks: Record<string, ResolvedCheck> = {
       number: number | null;
       businessDate: string;
     };
-    return (
-      number === null || context.numberInBlock(envelope.executedByDeviceId, businessDate, number)
-    );
+    return number === null || context.claimNumber(businessDate, number);
   },
   'test.add_line': (envelope) => {
     const price = menu.get(String(envelope.payload.itemId));

@@ -28,6 +28,7 @@ import {
   entryHash,
   type JournalBody,
   type JournalEntry,
+  type NumberUse,
   refOf,
   sameRef,
   toWire,
@@ -36,22 +37,23 @@ import {
 import { WriterLock } from './lock.js';
 import { type HubResolveContext, inBlock, prepareNumbering } from './numbering.js';
 import { PairingDesk } from './pairing.js';
-import type {
-  ForwardAnswer,
-  ForwardRequest,
-  HeartbeatAnswer,
-  HeartbeatRequest,
-  JournalAnswer,
-  JournalRequest,
-  MirrorAnswer,
-  MirrorRequest,
-  PeerHandlers,
-  PeerStateAnswer,
-  PeerStateRequest,
-  PeerStatus,
-  PeerTransport,
+import {
+  type ForwardAnswer,
+  type ForwardRequest,
+  type HeartbeatAnswer,
+  type HeartbeatRequest,
+  type JournalAnswer,
+  type JournalRequest,
+  type MirrorAnswer,
+  type MirrorRequest,
+  outranks,
+  PEER_BATCH,
+  type PeerHandlers,
+  type PeerStateAnswer,
+  type PeerStateRequest,
+  type PeerStatus,
+  type PeerTransport,
 } from './peer.js';
-import { outranks } from './peer.js';
 import type {
   BranchData,
   HubClock,
@@ -72,19 +74,27 @@ import type {
 // disagreement; a PC that meets a higher epoch demotes itself, catches up and forwards what it
 // took alone. Timers belong to the runtime: it calls `tick()` every `hubPolicy.heartbeatMs`.
 
-/** How long a catch-up or a forward may take on the LAN. */
+/** How long one page of a catch-up or a forward may take on the LAN. */
 const CATCH_UP_TIMEOUT_MS = 5000;
-const FORWARD_BATCH = 500;
 const NETWORK_CHECKS_SHOWN = 20;
 const RETENTION_BUSINESS_DAYS = hubPolicy.journalRetentionBusinessDays;
 
-/** A command-specific re-check of a re-sent or forwarded version (rule 26), by command name. */
-export type ResolvedCheck = (envelope: CommandEnvelope, context: RecheckContext) => boolean;
+/**
+ * A command-specific re-check of a re-sent or forwarded version (rule 26), by command name: the
+ * prices in force, the order's lines, and its number through `claimNumber`.
+ */
+export type ResolvedCheck = (
+  envelope: CommandEnvelope,
+  context: RecheckContext,
+) => boolean | Promise<boolean>;
 
 export interface RecheckContext {
   now: Date;
-  /** Whether a number lies in that PC's block of the date (rule 26). */
-  numberInBlock(deviceId: string, businessDate: string, number: number): boolean;
+  /**
+   * Whether the number lies in the executor's block of the date and no other entry holds it;
+   * if so it becomes the entry's number, which advances this hub's counter when it executed it.
+   */
+  claimNumber(businessDate: string, number: number): Promise<boolean>;
 }
 
 export type BranchHubConfig = {
@@ -136,13 +146,23 @@ export type HubStatus = {
   missing: number;
 };
 
+type ForwardStatus = 'applied' | 'resolved' | 'duplicate' | 'refused';
+
+type Granted = Extract<AccessDecision, { ok: true }>;
+
 class NotHub extends Error {
   constructor(readonly status: PeerStatus | null) {
     super('not the hub');
   }
 }
 
-function timing(envelope: CommandEnvelope) {
+/** When and how a command was made, kept when a hub resolves it again (rule 26). */
+type Timing = Pick<
+  CommandEnvelope,
+  'deviceTime' | 'clockOffsetMs' | 'highestSeenTime' | 'afterOfflineWindow'
+>;
+
+function timingOf(envelope: CommandEnvelope): Timing {
   return {
     deviceTime: envelope.deviceTime,
     clockOffsetMs: envelope.clockOffsetMs,
@@ -151,9 +171,7 @@ function timing(envelope: CommandEnvelope) {
   };
 }
 
-type Timing = ReturnType<typeof timing>;
-
-/** The source a forwarded or re-checked envelope came from, for the local access check. */
+/** The source a signed envelope names, for the local access check of a version made elsewhere. */
 function sourceOf(envelope: CommandEnvelope): CommandSource {
   if (envelope.actor.kind === 'station') {
     return { kind: 'station', pairingId: envelope.actor.pairingId };
@@ -168,6 +186,10 @@ function sourceOf(envelope: CommandEnvelope): CommandSource {
   return { kind: 'pc', deviceId: envelope.originDeviceId };
 }
 
+function originOf(source: CommandSource): string {
+  return source.kind === 'pc' ? source.deviceId : source.pairingId;
+}
+
 export class BranchHub implements PeerHandlers {
   readonly pairing: PairingDesk;
   private state: HubState;
@@ -176,10 +198,12 @@ export class BranchHub implements PeerHandlers {
   private readonly listeners = new Set<() => void>();
   private readonly protocol: number;
   private lastHeartbeatMs = 0;
+  private lastRejoinTryMs = 0;
   private liveClients = 0;
   private started = false;
   private rejoinInFlight = false;
   private rejoinFailures = 0;
+  private catchingUp = false;
 
   constructor(
     private readonly config: BranchHubConfig,
@@ -219,7 +243,7 @@ export class BranchHub implements PeerHandlers {
   async start(): Promise<void> {
     const saved = await this.ports.store.loadState();
     if (saved) this.state = saved;
-    else await this.ports.store.transaction((tx) => tx.saveState(this.state));
+    else await this.write(this.state);
     // The silence before an automatic promotion counts from the start.
     this.lastHeartbeatMs = this.nowMs();
     for (const peerId of this.config.peerDeviceIds) {
@@ -371,37 +395,48 @@ export class BranchHub implements PeerHandlers {
       const { definition } = lookup;
       const payload = definition.payload.safeParse(command.payload);
       if (!payload.success) return { status: 'refused', reason: 'payload_invalid' };
-      const decision = checkLocalAccess({
-        access: definition.access,
-        source,
-        command,
-        member: (id) => this.ports.members.member(id),
-      });
-      if (!decision.ok) return { status: 'refused', reason: decision.reason };
       try {
-        // A version another hub resolved and answered `mirrored: false`, re-sent after a
-        // failover: applied as it is when every check passes, never resolved again (rule 31).
-        if (command.resent && this.resentMatches(command.resent, command, payload.data, decision)) {
-          if (this.recheck(command.resent, definition)) {
-            const entry = await this.commitNew(
-              { kind: 'command', envelope: command.resent, numberUsed: null },
-              command.id,
-            );
-            return this.okAnswer(entry);
-          }
-        }
-        const now = this.ports.clock.now();
-        const entry = await this.resolveAndCommit(definition, command.id, payload.data, decision, {
-          deviceTime: now.toISOString(),
-          clockOffsetMs: this.ports.clock.offsetMs(),
-          highestSeenTime: this.ports.clock.highestSeenTime().toISOString(),
-          afterOfflineWindow:
-            source.kind === 'pc'
-              ? (command.afterOfflineWindow ?? this.ports.branch.afterOfflineWindow())
-              : this.ports.branch.afterOfflineWindow(),
+        // A version another hub resolved and answered `mirrored: false`, re-sent after a failover
+        // (rule 31). Its signed envelope, not the client's current session, says who made it.
+        const resent =
+          command.resent && this.resentMatches(command.resent, command, payload.data, source)
+            ? command.resent
+            : null;
+        const decision = checkLocalAccess({
+          access: definition.access,
+          source: resent ? sourceOf(resent) : source,
+          command: resent ? this.commandOf(resent) : command,
+          member: (id) => this.ports.members.member(id),
         });
-        if (!entry) return { status: 'refused', reason: 'payload_invalid' };
-        return this.okAnswer(entry);
+        if (!decision.ok) return { status: 'refused', reason: decision.reason };
+        let entry: JournalEntry | null;
+        if (resent) {
+          const check = await this.recheck(resent, definition, null);
+          entry = check.ok
+            ? await this.commitNew(
+                { kind: 'command', envelope: resent, numberUsed: check.numberUsed },
+                command.id,
+              )
+            : await this.resolveAndCommit(
+                definition,
+                command.id,
+                payload.data,
+                decision,
+                timingOf(resent),
+              );
+        } else {
+          const now = this.ports.clock.now();
+          entry = await this.resolveAndCommit(definition, command.id, payload.data, decision, {
+            deviceTime: now.toISOString(),
+            clockOffsetMs: this.ports.clock.offsetMs(),
+            highestSeenTime: this.ports.clock.highestSeenTime().toISOString(),
+            afterOfflineWindow:
+              source.kind === 'pc'
+                ? (command.afterOfflineWindow ?? this.ports.branch.afterOfflineWindow())
+                : this.ports.branch.afterOfflineWindow(),
+          });
+        }
+        return entry ? this.okAnswer(entry) : { status: 'refused', reason: 'payload_invalid' };
       } catch (error) {
         if (error instanceof NotHub) return this.notHubAnswer(error.status);
         throw error;
@@ -409,58 +444,103 @@ export class BranchHub implements PeerHandlers {
     });
   }
 
+  /** The actor fields of a signed envelope, for the access check. */
+  private commandOf(
+    envelope: CommandEnvelope,
+  ): Pick<HubCommand, 'actor' | 'approvedByMembershipId'> {
+    return {
+      actor: envelope.actor,
+      ...(envelope.approvedByMembershipId
+        ? { approvedByMembershipId: envelope.approvedByMembershipId }
+        : {}),
+    };
+  }
+
+  /**
+   * A re-sent version is the client's own command, signed by a hub-capable PC of the branch:
+   * same id, name, version, payload and origin. Anything else is ignored and the command is
+   * resolved as new.
+   */
   private resentMatches(
     resent: CommandEnvelope,
     command: HubCommand,
     payload: unknown,
-    decision: Extract<AccessDecision, { ok: true }>,
+    source: CommandSource,
   ): boolean {
     try {
       return (
         resent.id === command.id &&
         resent.name === command.name &&
         resent.version === command.version &&
+        resent.originDeviceId === originOf(source) &&
         canonicalJson(resent.payload) === canonicalJson(payload) &&
-        canonicalJson(resent.actor) === canonicalJson(decision.actor) &&
-        resent.originKind === decision.originKind &&
-        resent.originDeviceId === decision.originDeviceId &&
-        (resent.approvedByMembershipId ?? null) === decision.approvedByMembershipId
+        this.signedByBranchPc(resent)
       );
     } catch {
       return false;
     }
   }
 
-  /**
-   * Rule 26: a version made elsewhere is applied only with the signature of a hub-capable PC of
-   * the branch, a resolved version of the command's shape, and the command's own checks of it
-   * against this hub's data.
-   */
-  private recheck(envelope: CommandEnvelope, definition: CommandDefinition): boolean {
+  private signedByBranchPc(envelope: CommandEnvelope): boolean {
     const executor = envelope.executedByDeviceId;
     if (executor !== this.config.deviceId && !this.config.peerDeviceIds.includes(executor)) {
       return false;
     }
     const verify = this.ports.branch.verifierOf(executor);
-    if (!verify || !checkEnvelope(envelope, verify).ok) return false;
-    if (!definition.resolved.safeParse(envelope.resolved).success) return false;
-    const check = this.ports.rechecks?.[envelope.name];
-    if (!check) return true;
-    return check(envelope, {
-      now: this.ports.clock.now(),
-      numberInBlock: (deviceId, businessDate, number) =>
-        inBlock(this.ports.branch.numberBlockOf(deviceId, 'order', businessDate), number),
-    });
+    return verify !== null && checkEnvelope(envelope, verify).ok;
   }
 
-  /** Resolves a command on this hub and commits it; null when its resolved version cannot be signed. */
+  /**
+   * Rule 26: a version made elsewhere is applied only with the signature of a hub-capable PC of
+   * the branch, a resolved version of the command's shape, a number no other entry holds, and the
+   * command's own checks against this hub's data. Answers the number it brings, if any.
+   */
+  private async recheck(
+    envelope: CommandEnvelope,
+    definition: CommandDefinition,
+    numberUsed: NumberUse | null,
+  ): Promise<{ ok: true; numberUsed: NumberUse | null } | { ok: false }> {
+    if (!this.signedByBranchPc(envelope)) return { ok: false };
+    if (!definition.resolved.safeParse(envelope.resolved).success) return { ok: false };
+    const claimed: NumberUse[] = [];
+    const claim = async (use: NumberUse): Promise<boolean> => {
+      const block = this.ports.branch.numberBlockOf(
+        envelope.executedByDeviceId,
+        use.series,
+        use.businessDate,
+      );
+      if (!inBlock(block, use.number)) return false;
+      if (await this.ports.store.numberTaken(use, envelope.id)) return false;
+      claimed.push(use);
+      return true;
+    };
+    if (numberUsed && !(await claim(numberUsed))) return { ok: false };
+    const check = this.ports.rechecks?.[envelope.name];
+    if (check) {
+      let passed: boolean;
+      try {
+        passed = await check(envelope, {
+          now: this.ports.clock.now(),
+          claimNumber: (businessDate, number) => claim({ series: 'order', businessDate, number }),
+        });
+      } catch {
+        passed = false;
+      }
+      if (!passed) return { ok: false };
+    }
+    return { ok: true, numberUsed: claimed[0] ?? null };
+  }
+
+  /**
+   * Resolves a command on this hub and commits it. Null when its `resolve` fails or its resolved
+   * version cannot be signed: the command is refused and nothing is written (rule 6).
+   */
   private async resolveAndCommit(
     definition: CommandDefinition,
     id: string,
     payload: unknown,
-    decision: Extract<AccessDecision, { ok: true }>,
+    decision: Granted,
     time: Timing,
-    except?: string,
   ): Promise<JournalEntry | null> {
     const now = this.ports.clock.now();
     const businessDate = businessDateOf(
@@ -478,10 +558,10 @@ export class BranchHub implements PeerHandlers {
       businessDate,
       takeNumber: numbering.take,
     };
-    const resolved = definition.resolved.safeParse(definition.resolve(payload, context));
-    if (!resolved.success) return null;
     let envelope: CommandEnvelope;
     try {
+      const resolved = definition.resolved.safeParse(definition.resolve(payload, context));
+      if (!resolved.success) return null;
       envelope = signEnvelope(
         {
           id,
@@ -504,10 +584,11 @@ export class BranchHub implements PeerHandlers {
         this.ports.sign,
       );
     } catch {
-      // A payload the canonical form cannot hold (a fraction, a lone surrogate) is refused.
+      // A failing `resolve`, or a payload the canonical form cannot hold (a fraction, a lone
+      // surrogate): refused, so one bad command never blocks a client's outbox.
       return null;
     }
-    return this.commitNew({ kind: 'command', envelope, numberUsed: numbering.used() }, id, except);
+    return this.commitNew({ kind: 'command', envelope, numberUsed: numbering.used() }, id);
   }
 
   /** Journals a local entry (a pairing, a session, a lockout) like a command. */
@@ -526,26 +607,22 @@ export class BranchHub implements PeerHandlers {
   /**
    * Mirror first, then commit (rules 5, 21): the entry goes to the standby, which has 0.8 s to
    * answer; then the optimistic rows, the journal row, the upload-queue row and the result row are
-   * written in one local transaction. Runs under the writer lock.
+   * written in one local transaction. `heldBy` is a PC that already holds the entry (it forwarded
+   * it). Runs under the writer lock.
    */
-  private async commitNew(body: JournalBody, id: string, except?: string): Promise<JournalEntry> {
+  private async commitNew(body: JournalBody, id: string, heldBy?: string): Promise<JournalEntry> {
     const wire: WireEntry = { id, seq: this.state.appliedSeq + 1, epoch: this.state.epoch, body };
-    const mirrored = await this.mirror(wire, except);
+    const mirrored = (await this.mirror(wire, heldBy)) || heldBy !== undefined;
     const at = this.ports.clock.now().toISOString();
     const entry: JournalEntry = {
       ...wire,
-      mirrored: mirrored || except !== undefined,
+      mirrored,
       mirroredAt: mirrored ? at : null,
       committedAt: at,
       ownLineage: false,
       forwardedAt: null,
     };
-    const next = { ...this.state, appliedSeq: wire.seq };
-    await this.ports.store.transaction(async (tx) => {
-      await tx.appendEntry(entry);
-      await tx.saveState(next);
-    });
-    this.state = next;
+    await this.write({ ...this.state, appliedSeq: wire.seq }, (tx) => tx.appendEntry(entry));
     this.changed();
     return entry;
   }
@@ -581,7 +658,7 @@ export class BranchHub implements PeerHandlers {
       if (!view?.reachable || !view.compatible || view.status?.role !== 'standby') continue;
       if (view.status.rejoining) continue;
       try {
-        mirrored = (await this.pushEntries(peerId, [entry])) || mirrored;
+        mirrored = (await this.pushEntries(peerId, [entry], hubPolicy.mirrorTimeoutMs)) || mirrored;
       } catch (error) {
         if (error instanceof NotHub) throw error;
         view.reachable = false;
@@ -597,15 +674,24 @@ export class BranchHub implements PeerHandlers {
     return entry ? refOf(entry) : null;
   }
 
-  /** Sends entries to a standby; true when it holds them. Throws `NotHub` on a higher epoch. */
-  private async pushEntries(peerId: string, entries: WireEntry[], depth = 0): Promise<boolean> {
+  /**
+   * Sends at most one batch of entries to a standby; true when it holds them. A standby that
+   * misses earlier entries gets the first batch it lacks and the rest at the next heartbeats.
+   * Throws `NotHub` on a higher epoch.
+   */
+  private async pushEntries(
+    peerId: string,
+    entries: WireEntry[],
+    timeoutMs: number,
+    retried = false,
+  ): Promise<boolean> {
     const first = entries[0];
     if (!first) return true;
     const answer = await this.ports
       .peers(peerId)
       .mirror(
         { ...this.request(), prev: await this.refAt(first.seq - 1), entries: entries.map(toWire) },
-        hubPolicy.mirrorTimeoutMs,
+        timeoutMs,
       );
     const view = this.view(peerId);
     switch (answer.result) {
@@ -613,7 +699,7 @@ export class BranchHub implements PeerHandlers {
         view.reachable = true;
         if (view.status) view.status = { ...view.status, appliedSeq: answer.appliedSeq };
         view.inSync = answer.appliedSeq >= this.state.appliedSeq;
-        return true;
+        return answer.appliedSeq >= (entries.at(-1)?.seq ?? 0);
       case 'stale':
         this.see(peerId, answer.status);
         if (outranks(answer.status, this.me())) {
@@ -622,19 +708,16 @@ export class BranchHub implements PeerHandlers {
         }
         return false;
       case 'need_from': {
-        if (depth > 0) return false;
-        const missing = await this.ports.store.entriesAfter(answer.from - 1);
-        // An entry the standby lacks that retention dropped: it cannot catch up from here (rule 29).
+        if (retried) return false;
+        const missing = await this.ports.store.entriesAfter(answer.from - 1, PEER_BATCH);
+        // An entry the standby lacks that retention dropped: it rejoins (rule 29).
         if (missing[0]?.seq !== answer.from) {
           view.inSync = false;
           return false;
         }
         const ids = new Set(missing.map((e) => e.id));
-        return this.pushEntries(
-          peerId,
-          [...missing.map(toWire), ...entries.filter((e) => !ids.has(e.id))],
-          depth + 1,
-        );
+        const batch = [...missing.map(toWire), ...entries.filter((e) => !ids.has(e.id))];
+        return this.pushEntries(peerId, batch.slice(0, PEER_BATCH), timeoutMs, true);
       }
       case 'protocol_mismatch':
         view.compatible = false;
@@ -645,6 +728,32 @@ export class BranchHub implements PeerHandlers {
         view.inSync = false;
         if (view.status) view.status = { ...view.status, rejoining: true };
         return false;
+    }
+  }
+
+  /**
+   * Brings a standby that is behind up to date, one batch per lock so commands keep running in
+   * between (rule 22). One catch-up at a time.
+   */
+  private async catchUp(peerId: string, from: number): Promise<void> {
+    if (this.catchingUp) return;
+    this.catchingUp = true;
+    try {
+      let after = from;
+      while (this.state.role === 'hub' && after < this.state.appliedSeq) {
+        const sent = await this.lock.run(async () => {
+          const batch = await this.ports.store.entriesAfter(after, PEER_BATCH);
+          if (batch.length === 0) return null;
+          const held = await this.pushEntries(peerId, batch.map(toWire), CATCH_UP_TIMEOUT_MS);
+          return held ? (batch.at(-1)?.seq ?? null) : null;
+        });
+        if (sent === null) return;
+        after = sent;
+      }
+    } catch {
+      this.view(peerId).inSync = false;
+    } finally {
+      this.catchingUp = false;
     }
   }
 
@@ -691,55 +800,60 @@ export class BranchHub implements PeerHandlers {
         // The standby holds entries this hub copied and never committed (it lost power).
         await this.lock.run(() => this.recoverFromStandby(peerId)).catch(() => undefined);
       } else if (status.appliedSeq < this.state.appliedSeq) {
-        await this.lock
-          .run(async () => {
-            const missing = await this.ports.store.entriesAfter(status.appliedSeq);
-            if (missing.length > 0) await this.pushEntries(peerId, missing.map(toWire));
-          })
-          .catch(() => {
-            this.view(peerId).inSync = false;
-          });
+        await this.catchUp(peerId, status.appliedSeq);
       }
     }
   }
 
-  /** The standby promotes itself after 3 s of silence when it holds every reported entry. */
+  /**
+   * The standby promotes itself after 3 s of silence when it holds every reported entry. A
+   * rejoining PC whose hub fell silent keeps trying to rejoin, so after 3 tries the screen says
+   * the other PC is needed (rule 27).
+   */
   private async watchdog(): Promise<void> {
-    if (this.state.rejoining || !this.state.hubDeviceId) return;
-    if (this.nowMs() - this.lastHeartbeatMs < hubPolicy.promoteAfterSilenceMs) return;
-    if (this.state.appliedSeq < this.state.hubSeq) return;
+    if (!this.state.hubDeviceId) return;
+    const silent = this.nowMs() - this.lastHeartbeatMs >= hubPolicy.promoteAfterSilenceMs;
+    if (this.state.rejoining) {
+      if (
+        silent &&
+        this.state.notice !== 'too_far_behind' &&
+        this.nowMs() - this.lastRejoinTryMs >= hubPolicy.promoteAfterSilenceMs
+      ) {
+        this.resumeRejoin(this.state.hubDeviceId);
+      }
+      return;
+    }
+    if (!silent || this.state.appliedSeq < this.state.hubSeq) return;
     await this.promote('auto');
   }
 
   /**
-   * Rule 23: takes back the entries the standby holds after this hub's last one, when they
-   * continue this hub's lineage; anything else is a divergence the standby settles by rejoining.
-   * Runs under the writer lock.
+   * Rule 23: takes back the entries the standby holds after this hub's last one, page by page,
+   * when they continue this hub's lineage; anything else is a divergence the standby settles by
+   * rejoining. Runs under the writer lock.
    */
   private async recoverFromStandby(peerId: string): Promise<number> {
-    const answer = await this.ports
-      .peers(peerId)
-      .journal(
-        { ...this.request(), after: Math.max(this.state.appliedSeq - 1, 0) },
-        CATCH_UP_TIMEOUT_MS,
-      );
-    if (answer.result !== 'ok') return 0;
-    let entries = answer.entries;
-    if (this.state.appliedSeq > 0) {
-      const [first, ...rest] = entries;
-      if (!first || !sameRef(refOf(first), await this.refAt(this.state.appliedSeq))) return 0;
-      entries = rest;
-    }
     let taken = 0;
-    for (const entry of entries) {
-      if (entry.seq !== this.state.appliedSeq + 1) break;
-      const next = { ...this.state, appliedSeq: entry.seq };
-      await this.ports.store.transaction(async (tx) => {
-        await this.applyFromHub(tx, entry);
-        await tx.saveState(next);
+    for (;;) {
+      const after = Math.max(this.state.appliedSeq - 1, 0);
+      const answer = await this.ports
+        .peers(peerId)
+        .journal({ ...this.request(), after, limit: PEER_BATCH }, CATCH_UP_TIMEOUT_MS);
+      if (answer.result !== 'ok') break;
+      let entries = answer.entries;
+      if (this.state.appliedSeq > 0) {
+        const [first, ...rest] = entries;
+        if (!first || !sameRef(refOf(first), await this.refAt(this.state.appliedSeq))) break;
+        entries = rest;
+      }
+      const page = entries.filter((e, i) => e.seq === this.state.appliedSeq + i + 1);
+      const last = page.at(-1);
+      if (!last) break;
+      await this.write({ ...this.state, appliedSeq: last.seq }, async (tx) => {
+        for (const entry of page) await this.applyFromHub(tx, entry);
       });
-      this.state = next;
-      taken += 1;
+      taken += page.length;
+      if (answer.entries.length < PEER_BATCH) break;
     }
     if (taken > 0) this.changed();
     return taken;
@@ -753,26 +867,21 @@ export class BranchHub implements PeerHandlers {
   }
 
   /**
-   * Manual promotion (rule 27): a member with `hub.manage` types their PIN on the standby; it
-   * promotes itself with epoch + 1 even without every entry, once the warning naming how many it
-   * lacks was acknowledged. During a pending rejoin its own entries join the new lineage.
+   * Manual promotion (rule 27): a member with `hub.manage` types their PIN on the standby,
+   * checked by S02's PIN check of this PC with its lockout; the PC promotes itself with
+   * epoch + 1 even without every entry, once the warning naming how many it lacks was
+   * acknowledged. During a pending rejoin its own entries join the new lineage.
    */
   async promoteManually(input: {
     membershipId: string;
     pin: string;
     acknowledgedMissing: number;
   }): Promise<void> {
+    const pin = await this.ports.members.checkPcPin(input.membershipId, input.pin);
+    if (pin === 'disabled') throw new DomainError('PIN_DISABLED', 'This PIN is disabled');
+    if (pin !== 'ok') throw new DomainError('INVALID_PIN', 'Wrong PIN');
     const member = this.ports.members.member(input.membershipId);
-    if (
-      !member ||
-      member.pinDisabled ||
-      member.pinVerifier === null ||
-      (await this.ports.store.pinDisabled(member.membershipId)) ||
-      !(await this.ports.members.verifyPin(member.pinVerifier, input.pin))
-    ) {
-      throw new DomainError('INVALID_PIN', 'Wrong PIN');
-    }
-    if (!member.permissions.includes('hub.manage')) {
+    if (!member?.permissions.includes('hub.manage')) {
       throw new DomainError('FORBIDDEN', 'Promotion needs hub.manage');
     }
     if (this.state.role !== 'standby') throw new DomainError('CONFLICT', 'Only a standby promotes');
@@ -794,6 +903,7 @@ export class BranchHub implements PeerHandlers {
         if (this.state.appliedSeq < this.state.hubSeq) return;
       }
       const fromEpoch = this.state.epoch;
+      const held = this.state.appliedSeq;
       const own = this.state.rejoining ? await this.ports.store.ownLineage() : [];
       const next: HubState = {
         ...this.state,
@@ -802,14 +912,13 @@ export class BranchHub implements PeerHandlers {
         hubDeviceId: this.config.deviceId,
         rejoining: false,
         notice: null,
-        appliedSeq: this.state.appliedSeq + own.length,
+        appliedSeq: held + own.length,
       };
-      await this.ports.store.transaction(async (tx) => {
+      await this.write(next, async (tx) => {
         // What it took alone and never had back joins its new lineage, after what it holds.
         for (const [i, entry] of own.entries()) {
-          await tx.moveEntry(entry.id, this.state.appliedSeq + i + 1, next.epoch);
+          await tx.moveEntry(entry.id, held + i + 1, next.epoch);
         }
-        await tx.saveState(next);
         await tx.recordLocalEvent(
           this.localEvent('hub.promoted', membershipId, {
             fromEpoch,
@@ -819,7 +928,6 @@ export class BranchHub implements PeerHandlers {
           }),
         );
       });
-      this.state = next;
       this.rejoinFailures = 0;
       for (const view of this.views.values()) view.inSync = false;
       this.changed();
@@ -845,24 +953,24 @@ export class BranchHub implements PeerHandlers {
         this.state.epoch === status.epoch;
       if (following && !this.state.rejoining) return;
       const wasHub = this.state.role === 'hub';
-      const next: HubState = {
-        ...this.state,
-        role: 'standby',
-        epoch: status.epoch,
-        hubDeviceId: status.deviceId,
-        rejoining: true,
-      };
       // A demotion resets the heartbeat clock (rule 22).
       this.lastHeartbeatMs = this.nowMs();
-      await this.ports.store.transaction(async (tx) => {
-        await tx.saveState(next);
-        if (wasHub) {
-          await tx.recordLocalEvent(
-            this.localEvent('hub.demoted', undefined, { toEpoch: status.epoch }),
-          );
-        }
-      });
-      this.state = next;
+      await this.write(
+        {
+          ...this.state,
+          role: 'standby',
+          epoch: status.epoch,
+          hubDeviceId: status.deviceId,
+          rejoining: true,
+        },
+        async (tx) => {
+          if (wasHub) {
+            await tx.recordLocalEvent(
+              this.localEvent('hub.demoted', undefined, { toEpoch: status.epoch }),
+            );
+          }
+        },
+      );
       this.changed();
       await this.rejoinLocked(status.deviceId);
     });
@@ -883,9 +991,7 @@ export class BranchHub implements PeerHandlers {
   /** The PC was revoked, or lost its hub role online while not the live hub (rule 38). */
   async retire(): Promise<void> {
     await this.lock.run(async () => {
-      const next: HubState = { ...this.state, role: 'none', rejoining: false };
-      await this.ports.store.transaction((tx) => tx.saveState(next));
-      this.state = next;
+      await this.write({ ...this.state, role: 'none', rejoining: false });
       this.changed();
     });
   }
@@ -894,15 +1000,16 @@ export class BranchHub implements PeerHandlers {
 
   private resumeRejoin(hubDeviceId: string): void {
     if (this.rejoinInFlight || !this.config.peerDeviceIds.includes(hubDeviceId)) return;
+    if (this.state.role !== 'standby') return;
     this.rejoinInFlight = true;
+    this.lastRejoinTryMs = this.nowMs();
+    // Set at once, so a mirror arriving meanwhile is refused; saved under the lock below.
+    this.state = { ...this.state, rejoining: true };
     void this.lock
       .run(async () => {
-        if (!this.state.rejoining) {
-          const next = { ...this.state, rejoining: true };
-          await this.ports.store.transaction((tx) => tx.saveState(next));
-          this.state = next;
-          this.changed();
-        }
+        if (this.state.role !== 'standby') return;
+        await this.write({ ...this.state, rejoining: true });
+        this.changed();
         await this.rejoinLocked(hubDeviceId);
       })
       .catch(() => undefined)
@@ -923,6 +1030,7 @@ export class BranchHub implements PeerHandlers {
 
   /** Catches up from the hub and forwards this PC's own lineage. Runs under the writer lock. */
   private async rejoinLocked(hubDeviceId: string, acceptGap = false): Promise<void> {
+    this.lastRejoinTryMs = this.nowMs();
     try {
       await this.rejoin(hubDeviceId, acceptGap);
       this.rejoinFailures = 0;
@@ -930,99 +1038,139 @@ export class BranchHub implements PeerHandlers {
       this.rejoinFailures += 1;
       // Bounded retries (rule 27): after 3 the screen says the other PC is needed.
       if (this.rejoinFailures >= hubPolicy.rejoinCatchUpTries && this.state.notice === null) {
-        const next: HubState = { ...this.state, notice: 'needs_other_pc' };
-        await this.ports.store.transaction((tx) => tx.saveState(next));
-        this.state = next;
+        await this.write({ ...this.state, notice: 'needs_other_pc' });
         this.changed();
       }
       throw error;
     }
   }
 
-  private async rejoin(hubDeviceId: string, acceptGap: boolean): Promise<void> {
-    const link = this.ports.peers(hubDeviceId);
-    const answer: JournalAnswer = await link.journal(
-      { ...this.request(), after: 0 },
-      CATCH_UP_TIMEOUT_MS,
-    );
+  private async journalPage(
+    hubDeviceId: string,
+    after: number,
+  ): Promise<Extract<JournalAnswer, { result: 'ok' }>> {
+    const answer = await this.ports
+      .peers(hubDeviceId)
+      .journal({ ...this.request(), after, limit: PEER_BATCH }, CATCH_UP_TIMEOUT_MS);
     if (answer.result !== 'ok') throw new Error('The hub speaks another protocol');
-    if (answer.status.role !== 'hub' || answer.status.epoch < this.state.epoch) {
+    return answer;
+  }
+
+  private async rejoin(hubDeviceId: string, acceptGap: boolean): Promise<void> {
+    const head = await this.journalPage(hubDeviceId, 0);
+    const hub = head.status;
+    if (hub.role !== 'hub' || hub.epoch < this.state.epoch) {
+      // Both PCs demoted toward each other (the tie-break saw different client counts): the lower
+      // device id takes the hub back, and the other one rejoins it at its next try (rule 28).
+      if (
+        hub.role === 'standby' &&
+        hub.rejoining &&
+        hub.epoch === this.state.epoch &&
+        hub.deviceId === this.state.hubDeviceId &&
+        this.config.deviceId < hub.deviceId
+      ) {
+        await this.write({
+          ...this.state,
+          role: 'hub',
+          hubDeviceId: this.config.deviceId,
+          rejoining: false,
+          notice: null,
+        });
+        this.changed();
+        return;
+      }
       throw new Error('That PC is no longer the hub');
     }
-    const theirs = [...answer.entries].sort((a, b) => a.seq - b.seq);
-    const oldest = answer.oldestSeq ?? 1;
-    const theirIds = new Set(theirs.map((e) => e.id));
-    const theirBySeq = new Map(theirs.map((e) => [e.seq, e]));
+    const oldest = head.oldestSeq ?? 1;
     const mine = await this.ports.store.entriesAfter(0);
     const lineageEnd = mine.at(-1)?.seq ?? 0;
-    const tooFarBehind = theirs.length > 0 && lineageEnd < oldest - 1;
-
-    // The common prefix: entries below the hub's oldest kept one are taken as shared.
-    let prefixEnd = 0;
-    for (const entry of mine) {
-      if (entry.seq < oldest) {
-        prefixEnd = entry.seq;
-        continue;
-      }
-      if (theirBySeq.get(entry.seq)?.id !== entry.id) break;
-      prefixEnd = entry.seq;
-    }
-    const beyond = mine.filter((e) => e.seq > prefixEnd).map((e) => e.id);
     const at = this.ports.clock.now().toISOString();
 
-    if (tooFarBehind && !acceptGap) {
+    if (hub.appliedSeq > 0 && lineageEnd < oldest - 1 && !acceptGap) {
       // It cannot catch up offline; it still forwards what it took alone (rule 29).
-      await this.ports.store.transaction((tx) => tx.markOwnLineage(beyond));
-      await this.forwardOwnLineage(hubDeviceId, theirIds, at);
-      const next: HubState = { ...this.state, notice: 'too_far_behind' };
-      await this.ports.store.transaction((tx) => tx.saveState(next));
-      this.state = next;
+      await this.forwardOwnLineage(hubDeviceId, at);
+      await this.write({ ...this.state, notice: 'too_far_behind' });
       this.changed();
       return;
     }
 
-    // Everything after the prefix leaves the lineage; what the hub holds comes back with the
-    // hub's number, and the rest is forwarded. Done again in full if the rejoin is cut short.
-    const caughtUp: HubState = {
-      ...this.state,
-      appliedSeq: theirs.at(-1)?.seq ?? prefixEnd,
-      hubSeq: Math.max(this.state.hubSeq, theirs.at(-1)?.seq ?? 0),
-    };
-    await this.ports.store.transaction(async (tx) => {
-      await tx.markOwnLineage(beyond);
-      for (const entry of theirs) await this.applyFromHub(tx, entry);
-      await tx.saveState(caughtUp);
-    });
-    this.state = caughtUp;
-    const forwarded = await this.forwardOwnLineage(hubDeviceId, theirIds, at);
-    const done: HubState = {
-      ...this.state,
-      rejoining: false,
-      notice: null,
-      hubSeq: Math.max(this.state.hubSeq, this.state.appliedSeq),
-    };
-    await this.ports.store.transaction(async (tx) => {
-      await tx.saveState(done);
-      await tx.recordLocalEvent(
-        this.localEvent('hub.rejoined', undefined, { epoch: done.epoch, forwarded }),
+    // Everything after the common prefix leaves the lineage; what the hub holds comes back with
+    // the hub's number, page by page from its oldest kept entry so a different version of a
+    // shared entry is adopted too (rule 25), and the rest is forwarded. Saved as it goes: a rejoin
+    // cut short starts again from the hub's journal.
+    const prefixEnd = await this.commonPrefix(
+      hubDeviceId,
+      mine,
+      oldest,
+      Math.min(lineageEnd, hub.appliedSeq),
+    );
+    await this.write({ ...this.state, appliedSeq: prefixEnd }, (tx) =>
+      tx.markOwnLineage(mine.filter((e) => e.seq > prefixEnd).map((e) => e.id)),
+    );
+    let after = Math.max(oldest - 1, 0);
+    for (;;) {
+      const page = await this.journalPage(hubDeviceId, after);
+      const last = page.entries.at(-1);
+      if (!last) break;
+      await this.write(
+        {
+          ...this.state,
+          appliedSeq: Math.max(prefixEnd, last.seq),
+          hubSeq: Math.max(this.state.hubSeq, page.status.appliedSeq),
+        },
+        async (tx) => {
+          for (const entry of page.entries) await this.applyFromHub(tx, entry);
+        },
       );
-    });
-    this.state = done;
+      after = last.seq;
+      if (page.entries.length < PEER_BATCH) break;
+    }
+    const forwarded = await this.forwardOwnLineage(hubDeviceId, at);
+    await this.write(
+      {
+        ...this.state,
+        rejoining: false,
+        notice: null,
+        hubSeq: Math.max(this.state.hubSeq, this.state.appliedSeq),
+      },
+      (tx) =>
+        tx.recordLocalEvent(
+          this.localEvent('hub.rejoined', undefined, { epoch: this.state.epoch, forwarded }),
+        ),
+    );
     this.lastHeartbeatMs = this.nowMs();
     this.changed();
   }
 
-  /** Sends the hub every own-lineage entry it lacks and has not had yet; answers how many. */
-  private async forwardOwnLineage(
+  /**
+   * The last sequence this PC and the hub hold the same entry at, searched page by page from the
+   * latest one backwards; entries older than the hub's oldest kept one count as shared (rule 29).
+   */
+  private async commonPrefix(
     hubDeviceId: string,
-    theirIds: ReadonlySet<string>,
-    at: string,
+    mine: readonly JournalEntry[],
+    oldest: number,
+    top: number,
   ): Promise<number> {
-    const pending = (await this.ports.store.ownLineage()).filter(
-      (e) => e.forwardedAt === null && !theirIds.has(e.id),
-    );
-    for (let start = 0; start < pending.length; start += FORWARD_BATCH) {
-      const batch = pending.slice(start, start + FORWARD_BATCH);
+    const mineBySeq = new Map(mine.map((e) => [e.seq, e]));
+    let high = top;
+    while (high >= oldest && high > 0) {
+      const after = Math.max(oldest - 1, high - PEER_BATCH, 0);
+      const page = await this.journalPage(hubDeviceId, after);
+      for (const entry of [...page.entries].reverse()) {
+        if (entry.seq > high) continue;
+        if (mineBySeq.get(entry.seq)?.id === entry.id) return entry.seq;
+      }
+      high = after;
+    }
+    return Math.min(top, Math.max(oldest - 1, 0));
+  }
+
+  /** Sends the hub every own-lineage entry not forwarded yet; answers how many. */
+  private async forwardOwnLineage(hubDeviceId: string, at: string): Promise<number> {
+    const pending = (await this.ports.store.ownLineage()).filter((e) => e.forwardedAt === null);
+    for (let start = 0; start < pending.length; start += PEER_BATCH) {
+      const batch = pending.slice(start, start + PEER_BATCH);
       const answer: ForwardAnswer = await this.ports
         .peers(hubDeviceId)
         .forward({ ...this.request(), entries: batch.map(toWire) }, CATCH_UP_TIMEOUT_MS);
@@ -1125,35 +1273,35 @@ export class BranchHub implements PeerHandlers {
       return { result: 'ok', status: this.peerStatus(), activity: await this.pairing.activity() };
     }
     this.lastHeartbeatMs = this.nowMs();
-    if (
-      request.epoch !== this.state.epoch ||
-      request.from !== this.state.hubDeviceId ||
-      request.seq !== this.state.hubSeq
-    ) {
-      const next: HubState = {
-        ...this.state,
-        epoch: request.epoch,
-        hubDeviceId: request.from,
-        hubSeq: request.seq,
-        lastHeartbeatAt: this.ports.clock.now().toISOString(),
-      };
-      await this.ports.store.transaction((tx) => tx.saveState(next));
-      this.state = next;
-    }
     await this.pairing.mergeActivity(request.activity);
-    if (this.state.rejoining) {
-      // A rejoin cut short resumes at the next heartbeat (rule 24); too far behind waits for
-      // the internet (rule 29).
-      if (this.state.notice !== 'too_far_behind') this.resumeRejoin(request.from);
-    } else if (
-      (request.last &&
-        this.state.appliedSeq >= request.last.seq &&
-        !sameRef(request.last, await this.refAt(request.last.seq))) ||
-      (request.oldest !== null && this.state.appliedSeq < request.oldest - 1)
-    ) {
+    // The hub's state on this PC changes only under the writer lock, after any mirror in flight.
+    const rejoin = await this.lock.run(async () => {
+      if (this.state.role !== 'standby') return false;
+      const newHub = request.epoch !== this.state.epoch || request.from !== this.state.hubDeviceId;
+      const hubSeq = newHub ? request.seq : Math.max(this.state.hubSeq, request.seq);
+      if (newHub || hubSeq !== this.state.hubSeq) {
+        await this.write({
+          ...this.state,
+          epoch: request.epoch,
+          hubDeviceId: request.from,
+          hubSeq,
+          lastHeartbeatAt: this.ports.clock.now().toISOString(),
+        });
+      }
+      if (this.state.rejoining) {
+        // A rejoin cut short resumes at the next heartbeat (rule 24); too far behind waits for
+        // the internet (rule 29).
+        return this.state.notice !== 'too_far_behind';
+      }
       // Its copy differs from the hub's, or it lacks entries the hub no longer keeps.
-      this.resumeRejoin(request.from);
-    }
+      return (
+        (request.last !== null &&
+          this.state.appliedSeq >= request.last.seq &&
+          !sameRef(request.last, await this.refAt(request.last.seq))) ||
+        (request.oldest !== null && this.state.appliedSeq < request.oldest - 1)
+      );
+    });
+    if (rejoin) this.resumeRejoin(request.from);
     return { result: 'ok', status: this.peerStatus(), activity: await this.pairing.activity() };
   }
 
@@ -1171,12 +1319,10 @@ export class BranchHub implements PeerHandlers {
       if (this.state.role !== 'standby' || this.state.rejoining) return { result: 'rejoining' };
       this.lastHeartbeatMs = this.nowMs();
       if (request.epoch !== this.state.epoch || request.from !== this.state.hubDeviceId) {
-        const next = { ...this.state, epoch: request.epoch, hubDeviceId: request.from };
-        await this.ports.store.transaction((tx) => tx.saveState(next));
-        this.state = next;
+        await this.write({ ...this.state, epoch: request.epoch, hubDeviceId: request.from });
       }
       const diverged = (): MirrorAnswer => {
-        this.resumeRejoinAfter(request.from);
+        queueMicrotask(() => this.resumeRejoin(request.from));
         return { result: 'diverged', appliedSeq: this.state.appliedSeq };
       };
       const entries = [...request.entries].sort((a, b) => a.seq - b.seq);
@@ -1197,25 +1343,18 @@ export class BranchHub implements PeerHandlers {
         ) {
           return diverged();
         }
-        const next: HubState = {
-          ...this.state,
-          appliedSeq: entry.seq,
-          hubSeq: Math.max(this.state.hubSeq, entry.seq),
-        };
-        await this.ports.store.transaction(async (tx) => {
-          await this.applyFromHub(tx, entry);
-          await tx.saveState(next);
-        });
-        this.state = next;
+        await this.write(
+          {
+            ...this.state,
+            appliedSeq: entry.seq,
+            hubSeq: Math.max(this.state.hubSeq, entry.seq),
+          },
+          (tx) => this.applyFromHub(tx, entry),
+        );
       }
       this.changed();
       return { result: 'ok', appliedSeq: this.state.appliedSeq };
     });
-  }
-
-  /** The rejoin a divergence starts runs after the mirror that found it has answered. */
-  private resumeRejoinAfter(hubDeviceId: string): void {
-    queueMicrotask(() => this.resumeRejoin(hubDeviceId));
   }
 
   async peerJournal(request: JournalRequest): Promise<JournalAnswer> {
@@ -1224,7 +1363,7 @@ export class BranchHub implements PeerHandlers {
       result: 'ok',
       status: this.peerStatus(),
       oldestSeq: await this.ports.store.oldestSeq(),
-      entries: (await this.ports.store.entriesAfter(request.after)).map(toWire),
+      entries: (await this.ports.store.entriesAfter(request.after, request.limit)).map(toWire),
     };
   }
 
@@ -1234,10 +1373,11 @@ export class BranchHub implements PeerHandlers {
    */
   async peerForward(request: ForwardRequest): Promise<ForwardAnswer> {
     if (!this.compatible(request.protocol)) return this.mismatch();
+    // A PC that is demoting answers at once: two PCs forwarding to each other never wait.
+    if (!this.isServing()) return { result: 'not_hub', status: this.peerStatus() };
     return this.lock.run(async () => {
       if (!this.isServing()) return { result: 'not_hub', status: this.peerStatus() };
-      const results: { id: string; status: 'applied' | 'resolved' | 'duplicate' | 'refused' }[] =
-        [];
+      const results: { id: string; status: ForwardStatus }[] = [];
       for (const entry of request.entries) {
         try {
           results.push({ id: entry.id, status: await this.takeForwarded(entry, request.from) });
@@ -1250,22 +1390,16 @@ export class BranchHub implements PeerHandlers {
     });
   }
 
-  private async takeForwarded(
-    entry: WireEntry,
-    from: string,
-  ): Promise<'applied' | 'resolved' | 'duplicate' | 'refused'> {
+  private async takeForwarded(entry: WireEntry, from: string): Promise<ForwardStatus> {
     const existing = await this.ports.store.entry(entry.id);
     if (existing) {
       if (!existing.ownLineage) return 'duplicate';
       // This hub took it alone earlier and never had it back: it rejoins this lineage.
       const seq = this.state.appliedSeq + 1;
       await this.mirror({ ...toWire(existing), seq, epoch: this.state.epoch }, from);
-      const next = { ...this.state, appliedSeq: seq };
-      await this.ports.store.transaction(async (tx) => {
-        await tx.moveEntry(existing.id, seq, this.state.epoch);
-        await tx.saveState(next);
-      });
-      this.state = next;
+      await this.write({ ...this.state, appliedSeq: seq }, (tx) =>
+        tx.moveEntry(existing.id, seq, this.state.epoch),
+      );
       this.changed();
       return 'applied';
     }
@@ -1273,7 +1407,7 @@ export class BranchHub implements PeerHandlers {
       await this.commitNew(entry.body, entry.id, from);
       return 'applied';
     }
-    const { envelope } = entry.body;
+    const { envelope, numberUsed } = entry.body;
     const lookup = this.ports.registry.lookup(envelope.name, envelope.version);
     if (!lookup.ok) return 'refused';
     const { definition } = lookup;
@@ -1282,19 +1416,23 @@ export class BranchHub implements PeerHandlers {
     const decision = checkLocalAccess({
       access: definition.access,
       source: sourceOf(envelope),
-      command: {
-        actor: envelope.actor,
-        ...(envelope.approvedByMembershipId
-          ? { approvedByMembershipId: envelope.approvedByMembershipId }
-          : {}),
-      },
+      command: this.commandOf(envelope),
       member: (id) => this.ports.members.member(id),
     });
     if (!decision.ok) return 'refused';
     // A command that repeats an effect already applied (lines already sent to the kitchen).
-    if (definition.alreadyApplied?.(envelope)) return 'duplicate';
-    if (this.recheck(envelope, definition)) {
-      await this.commitNew({ kind: 'command', envelope, numberUsed: null }, entry.id, from);
+    try {
+      if (definition.alreadyApplied?.(envelope)) return 'duplicate';
+    } catch {
+      return 'refused';
+    }
+    const check = await this.recheck(envelope, definition, numberUsed);
+    if (check.ok) {
+      await this.commitNew(
+        { kind: 'command', envelope, numberUsed: check.numberUsed },
+        entry.id,
+        from,
+      );
       return 'applied';
     }
     // A check failed: this hub resolves the command itself (rule 26).
@@ -1303,12 +1441,21 @@ export class BranchHub implements PeerHandlers {
       envelope.id,
       payload.data,
       decision,
-      timing(envelope),
+      timingOf(envelope),
     );
     return resolved ? 'resolved' : 'refused';
   }
 
   // --- Helpers -----------------------------------------------------------------------------------
+
+  /** Saves the hub state with the other writes of one transaction, then keeps it in memory. */
+  private async write(next: HubState, work?: (tx: HubTransaction) => Promise<void>): Promise<void> {
+    await this.ports.store.transaction(async (tx) => {
+      if (work) await work(tx);
+      await tx.saveState(next);
+    });
+    this.state = next;
+  }
 
   private isServing(): boolean {
     return this.started && this.state.role === 'hub';

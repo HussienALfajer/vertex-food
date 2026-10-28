@@ -50,6 +50,11 @@ export type HubClientOptions = {
   now: () => Date;
   /** A refused command left the outbox: the page shows why. */
   onRefused?: (command: HubCommand, reason: HubRefusalReason) => void;
+  /**
+   * The member of the page's PIN session, on a shared phone. A command names its maker in
+   * `actor` and is sent only in that member's session; the others wait (rule 35).
+   */
+  member?: () => string | null;
 };
 
 export class HubClient {
@@ -128,6 +133,11 @@ export class HubClient {
     return this.flushing;
   }
 
+  private mayAct(command: HubCommand): boolean {
+    if (!this.options.member || command.actor?.kind !== 'member') return true;
+    return command.actor.membershipId === this.options.member();
+  }
+
   private async flushOnce(): Promise<void> {
     // A refused connection or a `not_hub` answer: ask every PC again at once, then try once more.
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -142,7 +152,7 @@ export class HubClient {
     // Versions another hub answered without a standby copy go first: the new hub applies them
     // instead of resolving them again (rule 31).
     const resend = items.filter((i) => i.state === 'unmirrored' && i.answeredBy !== hub.deviceId);
-    const pending = items.filter((i) => i.state === 'pending');
+    const pending = items.filter((i) => i.state === 'pending' && this.mayAct(i.command));
     for (const item of [...resend, ...pending]) {
       const command: HubCommand =
         item.state === 'unmirrored' ? { ...item.command, resent: item.envelope } : item.command;
@@ -164,7 +174,9 @@ export class HubClient {
       }
       if (answer.status === 'refused') {
         await this.options.store.delete(item.command.id);
-        this.options.onRefused?.(item.command, answer.reason);
+        // A kept version was acknowledged: the hub that answered it holds it and forwards it
+        // when it rejoins, so it is no refusal to show.
+        if (item.state === 'pending') this.options.onRefused?.(item.command, answer.reason);
         continue;
       }
       if (answer.mirrored) {

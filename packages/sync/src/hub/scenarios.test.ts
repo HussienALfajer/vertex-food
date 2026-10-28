@@ -447,6 +447,23 @@ describe('manual promotion', () => {
         acknowledgedMissing: 0,
       }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
+    // S02's lockout on the PC: the owner's PIN is disabled after 5 wrong tries.
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        branch.pc2.running.promoteManually({
+          membershipId: MEMBERS.owner,
+          pin: '111111',
+          acknowledgedMissing: preview.missing,
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_PIN' });
+    }
+    await expect(
+      branch.pc2.running.promoteManually({
+        membershipId: MEMBERS.owner,
+        pin: '975310',
+        acknowledgedMissing: preview.missing,
+      }),
+    ).rejects.toMatchObject({ code: 'PIN_DISABLED' });
     await branch.pc2.running.promoteManually({
       membershipId: MEMBERS.manager,
       pin: '246810',
@@ -478,6 +495,8 @@ describe('manual promotion', () => {
     branch.pc2.powerOff();
     await branch.run(4000);
     expect(branch.pc1.running.status().role).toBe('rejoining');
+    // It keeps trying while the hub is silent, and says the other PC is needed (rule 27).
+    expect(branch.pc1.running.status().notice).toBe('needs_other_pc');
     const held = branch.pc1.running.status().appliedSeq;
     await branch.pc1.running.promoteManually({
       membershipId: MEMBERS.manager,
@@ -727,5 +746,97 @@ describe('the live snapshot (rule 32)', () => {
     branch.pc2.powerOff();
     await cashier(branch.pc1, branch.networkCheck(2));
     expect((await branch.pc1.running.liveSnapshot()).hub.standby).toBe('not_in_sync');
+  });
+});
+
+describe('review findings of PR 2', () => {
+  it('applies a kept version whose PIN session the new hub never saw', async () => {
+    const phone = await branch.pairPhone();
+    branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
+    // The member signs in again during the cut: that session exists on the hub only.
+    const pairing = await branch.pc1.running.pairing.authenticate(phone.pairingToken);
+    if (!pairing) throw new Error('paired');
+    const session = await branch.pc1.running.pairing.startSession(pairing, {
+      membershipId: MEMBERS.manager,
+      pin: '246810',
+    });
+    phone.sessionToken = session.token;
+    const orders = [branch.openOrder('T1'), branch.openOrder('T2')];
+    for (const order of orders) await phone.client.send(order);
+    branch.pc1.powerOff();
+    branch.lan.heal(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.run(3500);
+    // 3 s without the live stream: the phone looks for the hub again (rule 30).
+    phone.client.checkLive();
+    await phone.client.flush();
+    expect(phone.refused).toEqual([]);
+    for (const order of orders) {
+      expect(branch.pc2.store.data.uploads.get(order.id)?.envelope.executedByDeviceId).toBe(
+        branch.pc1.deviceId,
+      );
+    }
+    expect(await phone.client.counts()).toMatchObject({ unmirrored: 2 });
+  });
+
+  it('catches a standby up that misses more than one batch of entries', async () => {
+    branch.pc2.powerOff();
+    for (let i = 1; i <= 620; i++) await cashier(branch.pc1, branch.networkCheck(i));
+    await branch.pc2.start();
+    await branch.run(1500);
+    expect(branch.pc1.running.status().standby).toBe('in_sync');
+    expectSameJournal(branch);
+    expect(branch.pc2.store.lineageIds()).toHaveLength(620);
+  });
+
+  it('rejoins over several pages of the hub’s journal', async () => {
+    branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.run(3500);
+    for (let i = 1; i <= 600; i++) await cashier(branch.pc2, branch.networkCheck(i));
+    const alone = branch.networkCheck(9999);
+    await cashier(branch.pc1, alone);
+    branch.lan.heal(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.run(2000);
+    expect(branch.pc1.running.status()).toMatchObject({ role: 'standby', rejoining: false });
+    expectSameJournal(branch);
+    expect(branch.pc2.store.lineageIds()).toContain(alone.id);
+  });
+
+  it('never gives one number twice when a lost commit comes back', async () => {
+    const phone = await branch.pairPhone();
+    const first = branch.openOrder('T1');
+    branch.pc1.store.crashOnNextCommit = true;
+    await expect(
+      branch.pc1.running.submit(first, {
+        kind: 'personal',
+        pairingId: phone.pairingId,
+        membershipId: MEMBERS.manager,
+      }),
+    ).rejects.toBeInstanceOf(PowerCut);
+    // The hub restarts without its standby and numbers another order.
+    branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.pc1.restart();
+    const second = branch.openOrder('T2');
+    await phone.client.send(second);
+    branch.lan.heal(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.run(1500);
+    const numbers = [first, second].map(
+      (o) =>
+        (branch.pc1.store.data.rows.get(o.id)?.resolved as { number?: number } | undefined)?.number,
+    );
+    expect(new Set(numbers).size).toBe(2);
+    expectSameJournal(branch);
+  });
+
+  it('refuses a command whose resolve fails and goes on with the next one', async () => {
+    const phone = await branch.pairPhone();
+    const order = branch.openOrder();
+    await phone.client.send(order);
+    const bad = branch.addLine(String(order.payload.orderId), 'no-such-item');
+    const next = branch.networkCheck(1);
+    await phone.client.send(bad);
+    await phone.client.send(next);
+    expect(phone.refused).toEqual([{ id: bad.id, reason: 'payload_invalid' }]);
+    expect(await branch.pc1.store.entry(bad.id)).toBeNull();
+    expect(await branch.pc1.store.entry(next.id)).not.toBeNull();
   });
 });

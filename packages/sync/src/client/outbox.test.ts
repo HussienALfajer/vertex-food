@@ -239,4 +239,29 @@ describe('the outbox (rule 31)', () => {
     const again = client(transport, store);
     expect(await again.c.counts()).toEqual({ sending: 1, unmirrored: 0 });
   });
+
+  it('sends a command of a shared phone only in its maker’s session', async () => {
+    const { transport, sent } = lan({
+      [A]: {
+        hello: hello(pc1, 'hub', 1),
+        answer: (c) => ({ status: 'ok', mirrored: true, envelope: envelopeFor(c, pc1) }),
+      },
+      [B]: null,
+    });
+    let member: string | null = pc1;
+    const store = new MemoryOutbox();
+    const c = new HubClient({ peers: [A, B], transport, store, now: clock, member: () => member });
+    const mine = {
+      ...command(),
+      actor: { kind: 'member', membershipId: pc1, sessionKind: 'hub_client' },
+    } as const;
+    member = pc2;
+    await c.send(mine);
+    expect(sent).toEqual([]);
+    expect(await c.counts()).toEqual({ sending: 1, unmirrored: 0 });
+    member = pc1;
+    await c.flush();
+    expect(sent.map((s) => s.command.id)).toEqual([mine.id]);
+    expect(await c.counts()).toEqual({ sending: 0, unmirrored: 0 });
+  });
 });

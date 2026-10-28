@@ -9,6 +9,9 @@ import { entryRefSchema, wireEntrySchema } from './journal.js';
 
 const protocolSchema = z.int().min(1).max(1000);
 
+/** At most this many entries travel in one mirror, journal page or forward. */
+export const PEER_BATCH = 500;
+
 /** What a PC tells a peer about itself. */
 export const peerStatusSchema = z.object({
   deviceId: idSchema,
@@ -71,7 +74,7 @@ export const mirrorRequestSchema = z.object({
   ...fromPeer,
   /** The hub's entry just before the first one sent (rule 21). */
   prev: entryRefSchema.nullable(),
-  entries: z.array(wireEntrySchema).min(1).max(500),
+  entries: z.array(wireEntrySchema).min(1).max(PEER_BATCH),
 });
 
 export const mirrorAnswerSchema = z.discriminatedUnion('result', [
@@ -85,7 +88,11 @@ export const mirrorAnswerSchema = z.discriminatedUnion('result', [
   mismatch,
 ]);
 
-export const journalRequestSchema = z.object({ ...fromPeer, after: z.int().min(0) });
+export const journalRequestSchema = z.object({
+  ...fromPeer,
+  after: z.int().min(0),
+  limit: z.int().min(1).max(PEER_BATCH),
+});
 
 export const journalAnswerSchema = z.discriminatedUnion('result', [
   z.object({
@@ -93,14 +100,15 @@ export const journalAnswerSchema = z.discriminatedUnion('result', [
     status: peerStatusSchema,
     /** The lowest sequence it still keeps (rule 29), null when its journal is empty. */
     oldestSeq: z.int().min(1).nullable(),
-    entries: z.array(wireEntrySchema),
+    /** One page, in order. */
+    entries: z.array(wireEntrySchema).max(PEER_BATCH),
   }),
   mismatch,
 ]);
 
 export const forwardRequestSchema = z.object({
   ...fromPeer,
-  entries: z.array(wireEntrySchema).min(1).max(500),
+  entries: z.array(wireEntrySchema).min(1).max(PEER_BATCH),
 });
 
 export const forwardAnswerSchema = z.discriminatedUnion('result', [

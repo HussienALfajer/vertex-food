@@ -67,6 +67,10 @@ export function checkLocalAccess(input: {
     // Only a PC, by mutual TLS, may send its own device commands (PR 1's review).
     if (command.actor && command.actor.kind !== 'member') return refuse('permission_missing');
     if (source.membershipId === null) return refuse('pin_session_ended');
+    // Made by another member of a shared phone: it waits for that member's session (rule 35).
+    if (command.actor && command.actor.membershipId !== source.membershipId) {
+      return refuse('pin_session_ended');
+    }
     actor = { kind: 'member', membershipId: source.membershipId, sessionKind: 'hub_client' };
     originKind = 'hub_client';
     originDeviceId = source.pairingId;

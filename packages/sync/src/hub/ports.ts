@@ -8,7 +8,7 @@ import type {
 } from '@vertex-food/contracts';
 import type { LocalEvent } from '../commands/audit.js';
 import type { VerifyMessage } from '../envelope.js';
-import type { JournalEntry } from './journal.js';
+import type { JournalEntry, NumberUse } from './journal.js';
 
 // The ports of the hub (spec S04, ADR 0022): what the hub logic needs from the PC it runs on. S04's
 // PR 5 implements them on the encrypted local database, the HTTPS LAN server and the device keys;
@@ -92,8 +92,8 @@ export interface HubReads {
   entry(id: string): Promise<JournalEntry | null>;
   /** The lineage's entry at a sequence number (not an own-lineage one). */
   entryAt(seq: number): Promise<JournalEntry | null>;
-  /** The lineage's entries after `seq`, in order. */
-  entriesAfter(seq: number): Promise<JournalEntry[]>;
+  /** The lineage's entries after `seq`, in order, at most `limit` of them. */
+  entriesAfter(seq: number, limit?: number): Promise<JournalEntry[]>;
   /** Own-lineage entries (rule 24), by their old sequence. */
   ownLineage(): Promise<JournalEntry[]>;
   /** The lineage's lowest sequence still kept (rule 29), or null when it is empty. */
@@ -103,6 +103,8 @@ export interface HubReads {
   localBlock(series: NumberSeries, businessDate: LocalDate): Promise<LocalNumberBlock | null>;
   pairings(): Promise<PairingRecord[]>;
   sessions(): Promise<SessionRecord[]>;
+  /** Another entry than `exceptId` holds this number (rules 18, 26). */
+  numberTaken(use: NumberUse, exceptId: string): Promise<boolean>;
   /** PINs disabled by this hub or its standby (rule 35). */
   pinDisabled(membershipId: string): Promise<boolean>;
   /**
@@ -149,8 +151,13 @@ export interface HubStore extends HubReads {
 export interface MemberDirectory {
   members(): readonly DeviceMember[];
   member(membershipId: string): DeviceMember | null;
-  /** Checks a PIN against its Argon2id verifier. */
+  /** Checks a PIN against its Argon2id verifier (hub client sessions count failures themselves). */
   verifyPin(verifier: string, pin: string): Promise<boolean>;
+  /**
+   * S02's PIN check on this PC, with its local lockout (5 wrong PINs) and its offline audit
+   * events: the manual promotion's PIN (rule 27).
+   */
+  checkPcPin(membershipId: string, pin: string): Promise<'ok' | 'invalid' | 'disabled'>;
 }
 
 /** What the hub reads from the branch's synced data. */

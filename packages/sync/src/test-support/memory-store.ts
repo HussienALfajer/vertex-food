@@ -1,6 +1,6 @@
 import type { LocalDate, NumberSeries, UploadedCommand } from '@vertex-food/contracts';
 import type { LocalEvent } from '../commands/audit.js';
-import type { JournalEntry } from '../hub/journal.js';
+import type { JournalEntry, NumberUse } from '../hub/journal.js';
 import type {
   HubState,
   HubStore,
@@ -50,8 +50,10 @@ class View implements HubTransaction {
   async entryAt(seq: number) {
     return this.lineage().find((e) => e.seq === seq) ?? null;
   }
-  async entriesAfter(seq: number) {
-    return this.lineage().filter((e) => e.seq > seq);
+  async entriesAfter(seq: number, limit?: number) {
+    return this.lineage()
+      .filter((e) => e.seq > seq)
+      .slice(0, limit);
   }
   async ownLineage() {
     return [...this.d.journal.values()].filter((e) => e.ownLineage).sort((a, b) => a.seq - b.seq);
@@ -74,6 +76,16 @@ class View implements HubTransaction {
   }
   async sessions() {
     return [...this.d.sessions.values()].map((s) => ({ ...s }));
+  }
+  async numberTaken(use: NumberUse, exceptId: string) {
+    return [...this.d.journal.values()].some(
+      (e) =>
+        e.id !== exceptId &&
+        e.body.kind === 'command' &&
+        e.body.numberUsed?.series === use.series &&
+        e.body.numberUsed.businessDate === use.businessDate &&
+        e.body.numberUsed.number === use.number,
+    );
   }
   async pinDisabled(membershipId: string) {
     return this.d.pinDisabled.has(membershipId);
@@ -220,7 +232,19 @@ export class MemoryHubStore extends View implements HubStore {
     return this.committed;
   }
 
-  async transaction<T>(work: (tx: HubTransaction) => Promise<T>): Promise<T> {
+  /** One writer at a time, as SQLite: a transaction waits for the one before it. */
+  private tail: Promise<unknown> = Promise.resolve();
+
+  transaction<T>(work: (tx: HubTransaction) => Promise<T>): Promise<T> {
+    const run = this.tail.then(
+      () => this.run(work),
+      () => this.run(work),
+    );
+    this.tail = run.catch(() => undefined);
+    return run;
+  }
+
+  private async run<T>(work: (tx: HubTransaction) => Promise<T>): Promise<T> {
     const copy = structuredClone(this.committed);
     const result = await work(new View(copy, this.owner));
     if (this.crashOnNextCommit) {

@@ -88,14 +88,14 @@ describe('a personal pairing', () => {
     });
   });
 
-  it('ignores a member another client names', () => {
+  it('refuses a command another member of a shared phone made', () => {
     expect(
       check(
         managed,
         { kind: 'personal', pairingId, membershipId: waiter },
         { actor: { kind: 'member', membershipId: manager, sessionKind: 'hub_client' } },
       ),
-    ).toEqual({ ok: false, reason: 'permission_missing' });
+    ).toEqual({ ok: false, reason: 'pin_session_ended' });
   });
 });
 
