@@ -56,4 +56,17 @@ export const errors = {
   OTP_DELIVERY_UNAVAILABLE: 'تعذّر إرسال رمز التحقق الآن. أعد المحاولة لاحقًا.',
   // S03 messaging
   WHATSAPP_SESSION_LIMIT: 'بلغت الحد الأقصى لأرقام واتساب المنصة.',
+  // S04 sync and the branch hub
+  PROTOCOL_UNSUPPORTED: 'هذه النسخة من التطبيق قديمة جدًا للمزامنة. حدّث التطبيق.',
+  UPDATE_REQUIRED: 'يجب تحديث التطبيق لمتابعة المزامنة. العمل المحلي مستمر.',
+  DEVICE_NOT_HUB_CAPABLE: 'هذا الحاسوب ليس الحاسوب المركزي ولا الاحتياطي في الفرع.',
+  DEVICE_NOT_REVOKED: 'هذا الحاسوب ما زال فعّالًا.',
+  HUB_ROLE_ACTIVE: 'هذا الحاسوب هو المركز الآن. اجعل الاحتياطي مركزًا قبل تغيير دوره.',
+  CERTIFICATE_ADDRESS_INVALID: 'عنوان الحاسوب في الشبكة غير صالح لشهادة الفرع.',
+  ATTENTION_ALREADY_RESOLVED: 'أُغلق هذا البند من قبل.',
+  QUARANTINE_ALREADY_DECIDED: 'اتُّخذ قرار في هذه الدفعة من قبل.',
+  PAIRING_CLOSED: 'الإقران مغلق. اطلب من المدير فتحه على الحاسوب المركزي.',
+  PAIRING_CODE_INVALID: 'رمز الإقران غير صحيح.',
+  PAIRING_LOCKED: 'محاولات خاطئة كثيرة. انتظر قليلًا ثم أعد المحاولة.',
+  NOT_HUB: 'هذا الحاسوب ليس المركز الآن. جارٍ البحث عن الحاسوب المركزي.',
 } satisfies Record<ErrorCode, string>;

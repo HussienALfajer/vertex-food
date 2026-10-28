@@ -525,6 +525,11 @@ export const restaurant = {
     },
     devices: { manage: 'إدارة الحواسيب' },
     backoffice: { remote: 'الإدارة من جهاز شخصي' },
+    hub: { manage: 'إدارة شبكة الفرع والحاسوب المركزي' },
+    sync: {
+      attention: { resolve: 'إغلاق بنود «يحتاج انتباهًا»' },
+      quarantine: { review: 'مراجعة الأوامر المحجوزة' },
+    },
   },
   staff: {
     title: 'فريق العمل',
@@ -585,6 +590,7 @@ export const restaurant = {
         branch: 'الفروع',
         staff: 'فريق العمل',
         devices: 'الحواسيب والأجهزة',
+        sync: 'المزامنة وشبكة الفرع',
       },
       source: { role: 'من الدور', added: 'مضافة', removed: 'مُزالة' },
       locked: {

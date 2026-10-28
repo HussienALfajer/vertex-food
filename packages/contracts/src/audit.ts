@@ -73,11 +73,60 @@ export const auditActions = [
   'whatsapp_session.paused',
   'whatsapp_session.resumed',
   'whatsapp_session.unlinked',
+  // S04 sync and the branch hub, in the tenant's audit
+  'branch.hub_roles_changed',
+  'branch_ca.created',
+  'device_certificate.issued',
+  'quarantine_batch.received',
+  'quarantine_batch.accepted',
+  'quarantine_batch.rejected',
+  'attention_item.resolved',
+  // Recorded on a PC, offline too, and uploaded by `audit.record_local_events` (`localEventActions`)
+  'hub.promoted',
+  'hub.demoted',
+  'hub.rejoined',
+  'hub.divergence_adopted',
+  'hub_pairing.opened',
+  'hub_pairing.paired',
+  'hub_pairing.revoked',
+  'hub_pairing.expired',
+  'hub_session.pin_locked',
+  'sync.network_check_run',
+  'staff_pin.failed_offline',
+  'staff_pin.locked_offline',
+  'staff_pin.reenabled_offline',
+  'staff_approval.granted',
 ] as const;
 
 export const auditActionSchema = z.enum(auditActions).meta({ id: 'AuditAction' });
 
 export type AuditAction = z.infer<typeof auditActionSchema>;
+
+/**
+ * What a PC records in its `local_events` and uploads with `audit.record_local_events` (spec S04
+ * "Audit"): its hub events and S02's offline events, written with their device times and
+ * `recorded_offline: true`.
+ */
+export const localEventActions = [
+  'hub.promoted',
+  'hub.demoted',
+  'hub.rejoined',
+  'hub.divergence_adopted',
+  'hub_pairing.opened',
+  'hub_pairing.paired',
+  'hub_pairing.revoked',
+  'hub_pairing.expired',
+  'hub_session.pin_locked',
+  'sync.network_check_run',
+  'staff_pin.failed_offline',
+  'staff_pin.locked_offline',
+  'staff_pin.reenabled_offline',
+  'staff_approval.granted',
+] as const satisfies readonly AuditAction[];
+
+export const localEventActionSchema = z.enum(localEventActions).meta({ id: 'LocalEventAction' });
+
+export type LocalEventAction = z.infer<typeof localEventActionSchema>;
 
 /**
  * Who did it: restaurant staff, a customer, a driver, Vertex staff in the console, or the system

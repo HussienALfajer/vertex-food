@@ -65,6 +65,20 @@ export const errorStatus = {
   OTP_DELIVERY_UNAVAILABLE: 503,
   // S03 messaging
   WHATSAPP_SESSION_LIMIT: 409,
+  // S04 sync and the branch hub
+  PROTOCOL_UNSUPPORTED: 426,
+  UPDATE_REQUIRED: 426,
+  DEVICE_NOT_HUB_CAPABLE: 403,
+  DEVICE_NOT_REVOKED: 409,
+  HUB_ROLE_ACTIVE: 409,
+  CERTIFICATE_ADDRESS_INVALID: 400,
+  ATTENTION_ALREADY_RESOLVED: 409,
+  QUARANTINE_ALREADY_DECIDED: 409,
+  /** The hub's LAN API (rules 33–37). */
+  PAIRING_CLOSED: 403,
+  PAIRING_CODE_INVALID: 401,
+  PAIRING_LOCKED: 429,
+  NOT_HUB: 409,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof errorStatus;

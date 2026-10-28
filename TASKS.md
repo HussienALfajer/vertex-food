@@ -2,61 +2,87 @@
 
 The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
 
-# S03 — WhatsApp gateway and OTP (`docs/specs/S03-whatsapp-gateway-and-otp.md`, ADR 0034)
+# S04 — Sync foundation and restaurant hub (`docs/specs/S04-sync-foundation-and-restaurant-hub.md`, ADR 0022, 0035)
 
-PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each PR starts from `main` after the PRs it depends on have merged.
+PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each PR starts from `main` after the PRs it depends on have merged. One PR per session; effort by area (`CLAUDE.md`).
 
-| PR | Depends on | Runs in parallel with | Shared files to coordinate |
-|---|---|---|---|
-| 1 data | — | — | — |
-| 2 gateway | 1 | 3 | none: `apps/whatsapp-gateway` only; `docs/ROADMAP.md` and this file get a line each |
-| 3 API | 1 | 2 | none: `apps/api` and the regenerated client types only |
-| 4 console | 3 | 5 | none: `apps/console` only |
-| 5 restaurant | 3 | 4 | none: `apps/restaurant` only |
+| PR | Depends on | Runs in parallel with | Effort | Files it alone edits |
+|---|---|---|---|---|
+| 1 data | — | — | high | — |
+| 2 hub protocol | 1 | 3, then 4 | xhigh | `packages/sync/src/hub/`, `src/client/`; adds no dependency |
+| 3 API and worker | 1 | 2 | xhigh | `apps/api`, `apps/worker`, the regenerated client types |
+| 4 restaurant local database | 3 | 2 | high | `apps/restaurant/electron/`, `apps/restaurant/package.json` |
+| 5 restaurant hub server | 2, 4 | — | xhigh | — |
+| 6 restaurant sync screens | 5 | 7 | medium | `apps/restaurant/src/`, `apps/restaurant/e2e/`, i18n `sync.ts` |
+| 7 hub client pages | 5 | 6 | high | `apps/restaurant/hub-clients/` (its pages and E2E), i18n `hub-clients.ts` |
 
-Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that needs a change there stops and says so instead of editing them in parallel.
+Rules that keep the parallel PRs apart:
+- Shared packages (`contracts`, `db`, `packages/sync`'s foundation, the error texts) change in PR 1 only; a later PR that needs a change there stops and says so instead of editing them in parallel.
+- PR 1 creates and registers the i18n files `sync.ts` and `hub-clients.ts`, so PR 6 and PR 7 never edit `packages/i18n/src/ar/index.ts`.
+- PR 5 sets up the hub client build (Vite config, `apps/restaurant` scripts, its Playwright project, served by the hub) and adds every dependency PR 6 and PR 7 need (the QR generator), so neither touches `package.json` or `pnpm-lock.yaml`.
+- `docs/ROADMAP.md` and this file: each PR edits only its own line and section, which git merges without conflict.
+- Checks: the `pnpm verify` lock is machine-wide (`.claude/hooks/test-guard.mjs`), so the checks of parallel sessions run one after another.
 
-## PR 1 `feat/s03-messaging-data` — crypto, contracts, database, queue writer
+## PR 1 `feat/s04-sync-data` — contracts, database, sync foundation, streams
 
-- [x] `packages/crypto`: `KeyedHash`, `SecretBox` (context per use), `safeEqual` moved from `apps/api/src/modules/platform/identity/crypto.ts` with their tests; api imports it; AGENTS.md stack line, architecture and folder `CLAUDE.md`
-- [x] contracts `messaging.ts`: `whatsappPolicy`, kinds, `messageTemplates`, session states and transitions, `disconnectReasonSchema`, `whatsappWarmUpDay`, `whatsappDailyCap`, `sendBudget`, `chooseWhatsAppNumber`, `whatsappRetryDelaySeconds`, `matchWhatsAppKeyword`, `canAdvanceWhatsAppMessage`, `isWhatsAppSessionHealthy`, console shapes, `otpDeliverySchema`; `console.messaging.read` and `.manage` in `access.ts`; error code `WHATSAPP_SESSION_LIMIT`; audit actions; layer entries; unit tests
-- [x] i18n `messaging` namespace (message texts), the error text and the two permission labels; OpenAPI, console and restaurant API types regenerated for the new enums
-- [x] db (`/db-migration`): `schema/messaging.ts` (six tables), registry, grants and `refuse_change()` custom migration, `otp_challenges.delivery_status` values; conventions test with the `DELETE` exceptions; `pnpm db:migrate` locally
-- [x] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
-- [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md`, spec notes); the messaging keys reach `.env.example` with the first config that reads them (PR 2 or PR 3)
-- [x] Checks (`pnpm verify` green), reviewer (one finding fixed: a re-linked number counts only its current link's sends; fix-only re-review clean), PR with auto-merge and Auto-fix, rules summary in the report
+- [x] contracts `sync.ts` and `hub.ts` (the LAN API): `commandEnvelopeSchema` (actor kinds, origin kinds, `sessionKind`), outcomes, `commandReasonSchema` (refused and rejected codes), upload, results, heartbeat, number-block, certificate, quarantine, attention, hub-roles and sync-status shapes; hub LAN API shapes (`hello`, `pair`, members, sessions, command answers `ok`/`duplicate`/`refused`/`not_hub`, live snapshot); protocol versions (current and previous) and minimum app version comparison; block layout (`numberBlockRange`, provisional label); clock rules (offset from the round trip, effective time clamped, `clock_suspect` cases, member-inactive 10-minute rule); connectivity state machine with ADR 0035's thresholds; pairing window rules (2 minutes, 5 wrong codes, delays 1, 2, 4… s, 30-day expiry); unit tests
+- [x] contracts: `hub.manage`, `sync.attention.resolve`, `sync.quarantine.review` (group `sync`, presets) in `access.ts`; the twelve error codes; audit actions; `branch.connectivity_changed.v1` in the event catalog; layer and JSON Schema lists
+- [x] i18n: `sync` namespace (chip, roles, reasons of `commandReasonSchema`, attention kinds) and an empty `hub-clients` namespace, both registered in `ar/index.ts`; error texts, permission labels; OpenAPI and client types regenerated for the new enums
+- [ ] db (`/db-migration`): `schema/sync.ts` (`command_log`, `command_replays`, `number_blocks`, `device_sync_states`, `branch_connectivity`, `branch_connectivity_changes`, `branch_certificate_authorities`, `device_certificates`, `quarantine_batches`, `quarantine_commands`, `quarantine_decisions`, `attention_items`, `attention_resolutions`), `devices.hub_role` with its partial unique index, `membership_access_snapshots` with the backfill; RLS, append-only triggers, grants (column grants where the spec limits a role); the `powersync` publication and `food_sync` column grants (`SYNC_ACCESS`); conventions test; `pnpm db:migrate` locally
+- [ ] db `src/access-snapshots.ts`: `appendAccessSnapshot(tx, …)`, called by every S02 access write path in `apps/api` (add, edit, adjust, deactivate, reactivate, branch scope) in its transaction; tests
+- [ ] `packages/sync` created: canonical JSON and payload hash against fixed vectors, Ed25519 envelope signing and verification, the registry and `defineCommand` (name, version, schema, access, station, `resolve`, `describe`, `alreadyApplied`), the definitions of `sync.network_check` and `audit.record_local_events`; boundary and unit tests; folder `CLAUDE.md`
+- [ ] Sync service: `packages/sync/powersync/` with the pinned PowerSync Open Edition image, the stream definitions (published columns, filtered by `tenant_id` and `branch_id`), their convention test (both filters on every stream; columns within the `food_sync` grants), local `docker compose` setup and notes
+- [ ] Wiring, docs (ROADMAP with the parallel plan, `AGENTS.md` stack line, architecture, folder `CLAUDE.md` files, glossary)
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## PR 2 `feat/s03-gateway` — the gateway (after PR 1)
+## PR 2 `feat/s04-hub-protocol` — hub protocol in `packages/sync` (after PR 1, parallel with PR 3 and PR 4)
 
-- [x] Config: `DATABASE_APP_URL`, messaging keys (and in `.env.example`), `WHATSAPP_TRANSPORT` (production refuses `fake`)
-- [x] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
-- [x] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at` (kept for the same phone, restarted for another, with the old phone's known recipients deleted: the counts of `whatsappNumberCandidates` start at `linked_at`), duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
-- [x] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
-- [x] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
-- [x] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
-- [x] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
-- [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [ ] Ports: journal and hub-state storage with one-transaction commits, clock, peer and client transports
+- [ ] Hub: writer lock, validate, local access check, resolve, journal, mirror, commit, answers `ok`/`duplicate`/`refused` (rules 5, 6); numbering from local blocks with provisional labels (rules 18, 19)
+- [ ] Mirror with the previous entry's id and hash, 0.8 s wait, `mirrored: false`; heartbeats every 0.5 s; restart takes back copied entries (rules 21–23)
+- [ ] Promotion (automatic and manual by PIN with the missing count), demotion, resumable rejoin with forwarding and re-sequencing, divergence adopted, re-checks of forwarded and re-sent entries with signatures, `alreadyApplied`, equal-epoch tie-break, journal retention and "too far behind" (rules 20, 22, 24–29)
+- [ ] Pairing window, single-use codes, delays, station and personal pairings, PIN sessions with S02's lockout, 30-day expiry (rules 33–36)
+- [ ] Client: hub discovery by highest epoch, outbox state machine (re-send same id, keep `mirrored: false` versions, "sending", `refused` removes), live snapshot (rules 30–32)
+- [ ] The spike's scenarios in memory: setup, pairing offline, offline LAN commands, crash between mirror and commit, power cut, both splits, rejoin cut short, LAN blip with re-sent versions, forged re-send, divergence, ten cuts, manual promotion during a pending rejoin, tie-break, standby too far behind, client PC following a failover, both PCs down with the outbox kept, revoked hub, protocol mismatch between peers
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
+## PR 3 `feat/s04-sync-api` — API and worker (after PR 1, parallel with PR 2)
 
-- [x] Config: messaging keys (and in `.env.example`), `OTP_SENDER=gateway`
-- [x] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change, new-device codes only: first sign-in and reset stay quiet as decoys); QR seal context and the API's side of re-link and unlink agreed with PR 2 (spec, Session states and API and commands)
-- [x] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
-- [x] Console routes: list, detail with events, health (a number's counts start at its `linked_at`, as in `whatsappNumberCandidates`), add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
-- [x] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
-- [x] Docs, checks (`pnpm verify` green), reviewer (no blocking findings; unexpected OTP send errors now logged, the spec's `+999` rule narrowed to platform numbers and recipients), PR with auto-merge and Auto-fix, endpoints summary in the report
+- [ ] Config: `SYNC_CA_ENCRYPTION_KEY`, the PowerSync token key and endpoint, minimum app version (and in `.env.example`)
+- [ ] `platform/sync` module: `POST /api/sync/commands` executor (lock per id, replays and mismatches, the check order of rule 8, signature, device and revocation time, access snapshot at the effective time, savepoint and `server_error`, attention items, clock rules 14–16, `426`); executors of `sync.network_check` and `audit.record_local_events`
+- [ ] Number blocks (allocation idempotent per device and day, hub lowest and standby next, `numberBlocks.check`, uniqueness helper), certificates (branch CA at the first registration, CSR, private IPv4 only), token (EdDSA, 5 min, `UPDATE_REQUIRED`), heartbeat and connectivity, hub roles (first two PCs, `HUB_ROLE_ACTIVE`), sync status, attention list and resolve, quarantine upload (signed nonce, one batch, 10 000 cap), review, accept and reject with re-auth
+- [ ] Worker: `sync/connectivity-sweep` every 15 s; outbox dispatcher (from Vertex Shifa) and the `device.revoked.v1` consumer clearing `hub_role`; jobs role grants
+- [ ] Tests: `test/sync*.test.ts` (each route's success, 401, 403, other tenant, other branch's device, client PC on hub-only routes, every rejection reason, concurrent uploads of one id, SYNC-01 rollback, member deactivated on both sides of 10 minutes, clock-suspect, quarantine, attention), worker tests, architecture tests; OpenAPI and client types regenerated
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
-## PR 4 `feat/s03-console-whatsapp` — console screens (after PR 3, parallel with PR 5)
+## PR 4 `feat/s04-restaurant-local-db` — restaurant main process: local database and sync client (after PR 3, parallel with PR 2)
 
-- [x] `/whatsapp` list with cards, states and actions by permission; add-and-link dialog (QR polling, countdown, timeout, duplicate); `/whatsapp/$sessionId` detail; unlink and pause confirms with re-auth; health banner on every page; sidebar item; i18n
-- [x] E2E with mocked API, RTL light and dark at 360 px, tablet, desktop
-- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [ ] Encrypted local database (`@powersync/node`, SQLite3MultipleCiphers, `synchronous=FULL`, key under `safeStorage`), synced and local-only tables, read-only mode on a failed `integrity_check`
+- [ ] Member list moved from the sealed file into `local_members` (S02 rule 29)
+- [ ] PowerSync connection with device tokens, upload connector (batches of 100, `426`), heartbeat every 15 s with clock offset and `highestSeenTime`, number blocks, certificates on registration and address change
+- [ ] Revocation: quarantine upload retried until it succeeds, then the wipe; update gate (feed URL configurable, 6-hour check, install at start with an empty queue and journal)
+- [ ] Electron main tests (reopen, `integrity_check`, member list migration, wipe, update gate)
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## PR 5 `feat/s03-restaurant-otp-status` — restaurant OTP delivery status (after PR 3, parallel with PR 4)
+## PR 5 `feat/s04-restaurant-hub` — restaurant hub server (after PR 2 and PR 4)
 
-- [x] OTP step of a password sign-in: status line polled every 2 s until final or 60 s, resend enabled at once on failure; i18n
-- [x] E2E for each delivery status, RTL light and dark
-- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [ ] `packages/sync` ports on the local database; the HTTPS LAN server on 7443 (`/hub/*`, `/peer/*` with mutual TLS refusing another CA or a revoked PC), the CA download on 7080 while pairing is open; hub role machine and client-PC mode; serving the hub client build
+- [ ] Bridge for the renderer: sync status, branch network, pairing, revoke, promote by PIN, network checks, local results
+- [ ] Hub client skeleton for PR 7: `hub-clients/` Vite build and `apps/restaurant` scripts, its Playwright project, one placeholder page served by the hub; the dependencies of PR 6 and PR 7 (the QR generator)
+- [ ] Sync scenarios against a real PostgreSQL and PowerSync, in Node and Electron main; CI setup (`wal_level=logical`, PowerSync service)
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps 1–8 in the report
+
+## PR 6 `feat/s04-restaurant-sync-screens` — restaurant screens (after PR 5, parallel with PR 7)
+
+- [ ] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; i18n
+- [ ] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+
+## PR 7 `feat/s04-hub-clients` — hub client pages (after PR 5, parallel with PR 6)
+
+- [ ] `apps/restaurant/hub-clients/`: install the certificate, pair (QR fragment or code), sign in (member picker, PIN pad, 64 px keys), network check (`/check`, stress run, outbox count) with the IndexedDB outbox and failover, live connection, branding header with «Powered by Vertex Food»; i18n
+- [ ] E2E against a mock hub, RTL light and dark at 360 px, tablet, desktop, including "sending" and "reconnecting"
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 
@@ -65,4 +91,3 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - Electron window not launched in CI; `pnpm --filter @vertex-food/restaurant dev:electron` on the owner's PC
 - Store icons wired into `app.config.ts` with the first store build (Q3); the files are in `brand/logo/png/`
 - Madani Arabic: provisioned only when its licence is bought (outside the repository)
-

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { idSchema } from './primitives.js';
+import { connectivityStateSchema } from './sync.js';
 import { scheduledTenantStatusSchema, tenantStatusSchema } from './tenancy.js';
 
 /**
@@ -37,6 +38,13 @@ export const eventCatalog = {
   'staff.deactivated.v1': z.object({ tenantId: idSchema, membershipId: idSchema }),
   'device.registered.v1': z.object({ tenantId: idSchema, branchId: idSchema, deviceId: idSchema }),
   'device.revoked.v1': z.object({ tenantId: idSchema, branchId: idSchema, deviceId: idSchema }),
+  /** S04: the branch's connectivity changed (S14 pauses online ordering). */
+  'branch.connectivity_changed.v1': z.object({
+    tenantId: idSchema,
+    branchId: idSchema,
+    from: connectivityStateSchema,
+    to: connectivityStateSchema,
+  }),
 } as const;
 
 export type EventType = keyof typeof eventCatalog;
