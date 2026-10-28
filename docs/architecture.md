@@ -55,6 +55,7 @@ packages/
   tokens/             design tokens (palette, semantic roles light and dark, scales, logo paths, restaurant identity slots), shared by web and native
   ui/                 web design system: Tailwind v4 theme, fonts, Base UI components, theme toggle, PoweredBy (restaurant, console, web)
   ui-native/          native design system: theme provider, toggle, components, mark (customer, driver)
+  crypto/             keyed hashes and sealed secrets shared by the API, the worker and the gateway (ADR 0034) (later: S03)
   i18n/ config/
 brand/                identity (brand/identity.md), the Vertex Food logo, favicon and app icons
 deploy/               server configuration and release scripts (later: the deploy skeleton, Q1)
@@ -72,7 +73,7 @@ docs/                 product, decisions, specs, roadmap, workflow
 | platform | commercial | features (the feature catalog), packages, agreement_templates, agreements, agreement_terms (append-only) | ADR 0013, 0025 |
 | platform | entitlements | entitlement_overrides, resolved cache | ADR 0013 |
 | platform | config | branding_versions, custom_field_definitions | ADR 0010 |
-| platform | messaging | message_templates, messages, whatsapp_sessions, send_counters, push_tokens, opt_outs | ADR 0012 |
+| platform | messaging | whatsapp_sessions, whatsapp_session_credentials, whatsapp_session_events (append-only), whatsapp_messages (the send queue), whatsapp_known_recipients, whatsapp_opt_outs; templates are code in `packages/contracts` and `packages/i18n`; push_tokens (S16, S19) | ADR 0012, 0034, S03 |
 | platform | files, audit, events, domains, sync, areas | files; audit_entries, platform_audit_entries; outbox_events; domains; command_log, number_ranges; governorates, cities (areas below a city: S16, S23) | ADR 0015, 0016, 0008, 0021 |
 | food | menu | categories, items, variants, modifier_groups, modifiers, item_availability, prices (USD base per channel), rounding_rules, exchange_rates, item_costs (owner only) | ADR 0007, 0014, 0031 |
 | food | orders | orders, order_lines, order_adjustments (kind, source, funding), order_events (append-only), table_requests, lost_demand_events | ADR 0007, 0029 |
@@ -92,6 +93,8 @@ Table names are indicative; each spec fixes them.
 ## Key flows
 
 **Offline order (ADR 0008, 0022):** a cashier or waiter adds lines → `OpenOrder` / `AddLines` / `SendToKitchen` commands go to the active hub, which numbers and prices them, journals them, copies them to the standby, then commits them to its local database → kitchen tickets print or show at once → on reconnect, both PCs upload and the API re-runs each command once → outcomes stream back → the ledger posts payments. If the hub stops, the standby takes over with a higher epoch and the clients follow it.
+
+**OTP and WhatsApp messages (ADR 0012, 0034):** the API (an OTP), the gateway (alerts, replies) or a worker job (a notification, from S14) checks that a healthy platform number could send, then inserts a `whatsapp_messages` row with the recipient and parameters sealed, and `NOTIFY` → the gateway claims it by priority with `SKIP LOCKED` for a number within its limits, renders the template and sends through Baileys → receipts move the row (and an OTP challenge) forward → the sweep clears sealed values within an hour.
 
 **Marketplace order (ADR 0007, 0011):** the customer app sends a cart → the API recomputes totals from the menu, checks zone, minimum and opening → `order.placed.v1` → the branch hub (or the intake-mode screen, ADR 0028) alerts the cashier → accept with a time suggested from the kitchen display's load → push or WhatsApp to the customer → kitchen → delivery job.
 
