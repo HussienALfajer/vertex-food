@@ -111,7 +111,9 @@ Local: 32 logical CPUs, Windows 11, PostgreSQL 17, nothing else running tests. V
 | E2E driver (28) | 11.5 s | 7.1–7.7 s |
 | E2E, the five apps | 67.6 s | 46–49 s |
 | E2E while other repositories ran tests (first baseline) | 280 s, the wizard tour timing out | — |
-| `pnpm verify`, the whole branch | — | 72 s with every task run; 15 s with nothing changed since (42 tasks replayed, the two changed specs run again) |
+| `pnpm verify`, the whole branch | — | 72 s with every task run; 15 s with nothing changed since (42 tasks replayed, the two changed specs run again: before 2026-10-28 verify ran only changed specs) |
 | Flaky tests found | — | 2: the offline test (19 in 20 without traces), the driver layout check (1 in 16); both fixed at their cause |
+
+`pnpm verify` on 2026-10-28 (the branch that made it run whole suites, with `packages/ui` and the restaurant's E2E helpers changed): 2 minutes 29 seconds with 39 of 42 tasks run (nothing cached for the new branch); the affected suites took 24 s (restaurant, 150 tests), 15 s (console, 70) and 5 s (web, 14), and customer and driver were rightly not run.
 
 CI before the change (run of 2026-10-20): E2E was one job of 4.1 minutes, its longest, 3.3 of them in `pnpm test:e2e` with the restaurant suite at 1.9 minutes on two workers; the Expo builds took about 2.5 minutes of it.

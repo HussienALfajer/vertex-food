@@ -10,7 +10,7 @@ Write the spec for **$ARGUMENTS**.
 
 ## 1. Read (only this)
 - The spec's line in `docs/ROADMAP.md` (its features), then each feature's section of `docs/product/v1-scope.md`: find the heading with a search and read that section only.
-- `docs/open-questions.md`, and the ADRs the features touch (`docs/decisions/README.md` lists them). Every spec reads 0025 (build for extension). Anything with tenant data reads 0004; identity and access 0005 and 0032; customers 0006 and 0026; orders 0007, 0028 and 0029; offline work and the hub 0008, 0022 and 0030; printing 0023; delivery 0009 and 0024; agreements 0013; money 0014 and 0031; promotions and loyalty 0026; trust policies 0027.
+- `docs/open-questions.md`, and the ADRs the features touch (`docs/decisions/README.md` lists them). Every spec reads 0025 (build for extension) and 0016 (security, privacy and audit). Anything with tenant data reads 0004; identity and access 0005 and 0032; customers 0006 and 0026; orders 0007, 0028 and 0029; offline work and the hub 0008, 0022 and 0030; printing 0023; delivery 0009 and 0024; addresses and zones 0021; customization and custom fields 0010; marketplace listing 0011 and 0028; messaging and notifications 0012; QR menus and domains 0015; brand and screens 0018; agreements 0013; money 0014 and 0031; promotions and loyalty 0026; trust policies 0027; any other the features touch.
 - Specs it depends on in `docs/specs/`, the relevant schema and contracts when they exist, and `docs/glossary.md`.
 - The matching Vertex Shifa spec when one exists (for example S01 tenancy, S02 identity), through the `explorer` subagent: reuse its rules where they fit, never its clinical content.
 - The template: `docs/specs/_template.md`.

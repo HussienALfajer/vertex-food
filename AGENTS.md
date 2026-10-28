@@ -75,13 +75,13 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## How to work
 
 - Continue without asking when the next step needs no input from the owner. Put brief status notes in the same message as the next action.
-- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or irreversible action: deleting data, dropping tables, restoring a database snapshot, force-push, a migration that is not backward compatible, sending real WhatsApp messages, publishing an app, changing GitHub or account settings (branch protection, secrets).
+- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or irreversible action: deleting data, dropping tables, restoring a database snapshot, force-push, a migration that is not backward compatible, sending real WhatsApp messages, printing on a real printer the owner did not set up for tests, publishing an app, changing GitHub or account settings (branch protection, secrets). `/feature-slice` also stops once at its start for the owner to approve the PR split of a spec (a scope decision, ADR 0033).
 - **Standing approvals (ADR 0033):** never ask before these; do them when the task calls for them and report what changed:
   - committing, pushing the branch, opening its PR and turning on its auto-merge (merge commit) and Auto-fix, for every PR, changes to `v1-scope.md` and ADRs included (owner, 2026-10-28);
   - `pnpm db:migrate` on the local development database for a migration the `/db-migration` review found backward compatible (owner, 2026-10-28);
   - deploying `main` to production and changing production through the server or an admin panel (owner, 2026-10-18).
-- The owner's acceptance test comes after the merge and never holds a PR (ADR 0033): the report gives its steps; what the owner finds is fixed in a new branch and PR.
-- A task is done only when `pnpm verify` passes on its final state, CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
+- The owner's acceptance test comes after the merge and never holds a PR (ADR 0033): the report gives its steps when the PR opens; what the owner finds is fixed on the branch while the PR is open, or in a new branch and PR once it merged.
+- A task is done only when `pnpm verify` passes on its final state (documentation-only changes: none, step 4 below), CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
 - Fix root causes. Never silence a failing test, type error or lint rule.
 - For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes.
 - Mark anything you could not confirm and say where you looked.
@@ -90,8 +90,8 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## Context economy
 
 - Search before reading, then read only the relevant range. For `v1-scope.md`, read the feature's section.
-- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `api-schema.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`.
-- Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a Playwright run of a whole suite outside `pnpm verify`, and `timeout` around tests. CI runs everything.
+- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `api-schema.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`; nor local data in `.data/`.
+- Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`; the `Run:` lines of the folder `CLAUDE.md` files name a whole package's command, for the owner and CI); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a Playwright run of a whole suite outside `pnpm verify`, and `timeout` around tests. CI runs everything.
 - In replies, point to `path:line` instead of pasting files or diffs.
 
 ## Git

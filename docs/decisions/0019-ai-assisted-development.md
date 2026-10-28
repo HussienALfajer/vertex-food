@@ -9,11 +9,11 @@ The whole system is built by the owner working with Claude Code (Opus 5.5). The 
 - **Knowledge lives in files, not chat:** scope, ADRs, specs, roadmap, open questions, glossary and `TASKS.md`. A new session starts from files and git.
 - **Instruction layers:** `AGENTS.md` (shared with other agents) and `CLAUDE.md` (imports it, Claude specifics), together under 200 lines; one `CLAUDE.md` per app and package; procedures live in skills.
 - **Skills:** `spec`, `feature-slice`, `db-migration`, adapted from Vertex Shifa.
-- **Subagents:** `checker` (Haiku 5.5, runs checks, returns failures only), `reviewer` (Opus 5.5, fresh context, blocking issues only: isolation, money and ledger, offline and hub, order lifecycle, fleet visibility, customer data), `explorer` (Sonnet 5.5, read-only research). Code is written only by the main Opus 5.5 session.
+- **Subagents:** `checker` (Haiku 5.5, runs `pnpm verify`, returns its summary, failures first), `reviewer` (Opus 5.5, fresh context, blocking issues only: isolation, money and ledger, offline and hub, order lifecycle, fleet visibility, customer data), `explorer` (Sonnet 5.5, read-only research). Code is written only by the main Opus 5.5 session.
 - **Enforcement over prose:** rules a machine can check are tests, lint rules, hooks or CI. Hooks in this repository:
   - Biome on every edit;
-  - a guard that refuses commits on `main` and broad staging (`git add -A`, `git add .`);
-  - a test guard that allows one test run at a time and no `timeout` around one (added 2026-10-26, `docs/testing.md`);
+  - a git guard that refuses commits on `main`, pushes to `main` and broad staging (`git add -A`, `git add .`);
+  - a test guard that allows one test run at a time, no `timeout` around one, and whole E2E suites only through `pnpm verify` (added 2026-10-26, `docs/testing.md`);
   - a session-start note with the branch, uncommitted files and the open items of `TASKS.md`.
 - **Commit at every passing gate:** inside a feature, each layer is committed once its check gate passes, so no PR sits uncommitted.
 - **Done means evidence:** checks run with their output; RTL screenshots for screens. Opus 5.5 may end a turn with a progress report while work remains: a turn is complete only when `TASKS.md` has no open items for the PR.

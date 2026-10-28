@@ -90,7 +90,7 @@ Sonnet and Haiku never write code. Avoid `max` unless a gain is measured.
 ## What changed from Vertex Shifa
 
 - A commit at every passing gate inside `/feature-slice`.
-- Hooks: refuse commits on `main` and broad staging; a session-start note with the branch, uncommitted files and open `TASKS.md` items.
+- Hooks: refuse commits on `main`, pushes to `main` and broad staging; a test guard (one run at a time, no `timeout`, whole E2E suites only through `pnpm verify`); a session-start note with the branch, uncommitted files and open `TASKS.md` items.
 - `agentGuidance: false` in `turbo.json`, so Turborepo does not inject its block into `AGENTS.md`.
 - Spike output folders denied to reads and ignored by git.
 - Parallel front-end sessions in worktrees after the backend PR merges.

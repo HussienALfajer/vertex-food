@@ -24,6 +24,7 @@
     ],
     "deny": [
       "Read(./spikes/**/out/**)",
+      "Read(**/.data/**)",
       "Read(./pnpm-lock.yaml)",
       "Read(**/migrations/meta/**)",
       "Edit(**/migrations/meta/**)",

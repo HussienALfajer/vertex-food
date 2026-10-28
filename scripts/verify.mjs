@@ -71,7 +71,7 @@ if (options.files.length > 0) {
 }
 finish();
 
-/** Lint, the whole task graph, migration drift, and the changed E2E specs. */
+/** Lint, the whole task graph, migration drift, and the E2E suites of the affected apps. */
 async function verifyBranch() {
   if (!options.allowDev) {
     const busy = [];
@@ -149,8 +149,8 @@ function affected(app) {
   const dirs = dependencyDirs(`apps/${app}`);
   return changed.some(
     (file) =>
-      AFFECTS_EVERY_APP.test(file) ||
-      (!NOT_IN_A_BUILD.test(file) && dirs.some((dir) => file.startsWith(`${dir}/`))),
+      !NOT_IN_A_BUILD.test(file) &&
+      (AFFECTS_EVERY_APP.test(file) || dirs.some((dir) => file.startsWith(`${dir}/`))),
   );
 }
 
