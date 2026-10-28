@@ -203,13 +203,13 @@ describe('money draft', () => {
     const draft = {
       ...moneyDraft(branch, []),
       acceptedCurrencies: ['TRY' as const],
-      charges: [{ ...newCharge(), nameAr: 'خ', rate: '60', orderTypes: [] }],
+      charges: [{ ...newCharge(), nameAr: 'خ', rate: '60', salesChannels: [] }],
     };
     expect(moneyErrors(draft)).toEqual({
       acceptedCurrencies: 'defaultNotAccepted',
       'charges.0.nameAr': 'chargeNameAr',
       'charges.0.rate': 'chargeRate',
-      'charges.0.orderTypes': 'chargeOrderTypes',
+      'charges.0.salesChannels': 'chargeOrderTypes',
     });
   });
 
@@ -222,7 +222,7 @@ describe('money draft', () => {
         nameLatin: null,
         rateBp: 1000,
         mode: 'added',
-        orderTypes: ['dine_in'],
+        salesChannels: ['dine_in'],
         position: 1,
       },
     ];
@@ -248,7 +248,7 @@ describe('money draft', () => {
         nameLatin: null,
         rateBp: 250,
         mode: 'added',
-        orderTypes: ['dine_in', 'takeaway', 'delivery', 'pickup'],
+        salesChannels: ['dine_in', 'takeaway', 'delivery', 'pickup'],
       },
     ]);
   });

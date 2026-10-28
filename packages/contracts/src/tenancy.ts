@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { DomainError } from './errors.js';
 import { currencyCodeSchema } from './money.js';
-import { orderTypeSchema } from './orders.js';
 import { mobilePhoneNumberSchema, parsePhoneNumber, phoneNumberSchema } from './phone.js';
 import {
   coordinatesSchema,
@@ -499,7 +498,18 @@ export const updateHourExceptionSchema = z
 
 export type UpdateHourException = z.infer<typeof updateHourExceptionSchema>;
 
-// Charge lines (rule 15).
+// Sales channels and charge lines (rule 15).
+
+/**
+ * How a branch sells (ADR 0025: a platform name): on its premises, to take away, delivered, or
+ * collected after ordering ahead. The food domain's order types are these channels (glossary:
+ * صالة، سفري، توصيل، استلام); the values are stored and never renamed.
+ */
+export const salesChannelSchema = z
+  .enum(['dine_in', 'takeaway', 'delivery', 'pickup'])
+  .meta({ id: 'SalesChannel' });
+
+export type SalesChannel = z.infer<typeof salesChannelSchema>;
 
 export const MAX_CHARGE_LINES = 3;
 
@@ -523,11 +533,11 @@ export const branchChargeInputSchema = z
     /** Basis points: 1 = 0.01 %, 5000 = 50 %. */
     rateBp: z.int().min(1).max(5000),
     mode: chargeModeSchema,
-    orderTypes: z
-      .array(orderTypeSchema)
+    salesChannels: z
+      .array(salesChannelSchema)
       .min(1)
       .max(4)
-      .refine((types) => new Set(types).size === types.length, 'An order type appears twice'),
+      .refine((channels) => new Set(channels).size === channels.length, 'A channel appears twice'),
   })
   .meta({ id: 'BranchChargeInput' });
 
@@ -541,7 +551,7 @@ export const branchChargeSchema = z
     nameLatin: z.string().nullable(),
     rateBp: z.int(),
     mode: chargeModeSchema,
-    orderTypes: z.array(orderTypeSchema),
+    salesChannels: z.array(salesChannelSchema),
     /** Display and computation order, from 1. */
     position: z.int().min(1),
   })

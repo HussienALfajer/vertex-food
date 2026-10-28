@@ -483,7 +483,7 @@ describe('charge lines', () => {
     nameAr: 'خدمة',
     rateBp: 1000,
     mode: 'added',
-    orderTypes: ['dine_in'],
+    salesChannels: ['dine_in'],
   };
 
   it('accepts 1 to 5000 basis points and a non-empty set of order types', () => {
@@ -491,9 +491,9 @@ describe('charge lines', () => {
     expect(branchChargeInputSchema.safeParse({ ...line, rateBp: 0 }).success).toBe(false);
     expect(branchChargeInputSchema.safeParse({ ...line, rateBp: 5001 }).success).toBe(false);
     expect(branchChargeInputSchema.safeParse({ ...line, rateBp: 10.5 }).success).toBe(false);
-    expect(branchChargeInputSchema.safeParse({ ...line, orderTypes: [] }).success).toBe(false);
+    expect(branchChargeInputSchema.safeParse({ ...line, salesChannels: [] }).success).toBe(false);
     expect(
-      branchChargeInputSchema.safeParse({ ...line, orderTypes: ['dine_in', 'dine_in'] }).success,
+      branchChargeInputSchema.safeParse({ ...line, salesChannels: ['dine_in', 'dine_in'] }).success,
     ).toBe(false);
     expect(branchChargeInputSchema.safeParse({ ...line, mode: 'other' }).success).toBe(false);
   });

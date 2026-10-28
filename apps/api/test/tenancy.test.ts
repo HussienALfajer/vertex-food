@@ -786,7 +786,7 @@ describe('charge lines', () => {
     nameAr: 'خدمة',
     rateBp,
     mode: 'added' as const,
-    orderTypes: ['dine_in' as const],
+    salesChannels: ['dine_in' as const],
   });
 
   it('are edited in place, extra lines archived, positions from the list', async () => {

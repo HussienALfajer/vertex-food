@@ -896,7 +896,7 @@ export async function mockApi(
           nameLatin: line.nameLatin ?? null,
           rateBp: line.rateBp,
           mode: line.mode,
-          orderTypes: line.orderTypes,
+          salesChannels: line.salesChannels,
           position: index + 1,
         }));
         state.charges.set(id, lines);

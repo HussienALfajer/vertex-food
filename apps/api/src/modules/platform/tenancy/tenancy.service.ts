@@ -600,7 +600,7 @@ export class TenancyService {
           nameLatin: line.nameLatin ?? null,
           rateBp: line.rateBp,
           mode: line.mode,
-          orderTypes: line.orderTypes,
+          salesChannels: line.salesChannels,
           position: index + 1,
         };
         const current = existing[index];

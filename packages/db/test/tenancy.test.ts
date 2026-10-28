@@ -107,7 +107,7 @@ describe('tenant tables', () => {
           nameAr: 'خدمة',
           rateBp: 1000,
           mode: 'added',
-          orderTypes: ['dine_in'],
+          salesChannels: ['dine_in'],
           position: 1,
         });
         await tx.insert(files).values(file(tenantId));
@@ -175,7 +175,7 @@ describe('tenant tables', () => {
             nameAr: 'ضريبة',
             rateBp: 500,
             mode: 'inclusive',
-            orderTypes: ['takeaway'],
+            salesChannels: ['takeaway'],
             position: 1,
           }),
         ),
@@ -379,7 +379,7 @@ describe('branches', () => {
       nameAr: 'خدمة',
       rateBp: 1000,
       mode: 'added',
-      orderTypes: ['dine_in'],
+      salesChannels: ['dine_in'],
       position,
     });
     await withTenant(app, a.tenantId, (tx) =>
