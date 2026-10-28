@@ -14,7 +14,7 @@ import {
   Skeleton,
 } from '@vertex-food/ui';
 import { CircleCheckIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TextField } from '../../components/text-field';
 import { apiErrorCode } from '../../lib/api';
@@ -139,6 +139,9 @@ function LabelStep({
   );
 }
 
+/** How long a QR the gateway stored is scannable (rule 4: about 20 s). */
+const qrLifetimeMs = 20_000;
+
 /** Ticks every second while `on`, for the countdown. */
 function useNow(on: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -170,8 +173,14 @@ function QrStep({
   const state = gone ? undefined : qr.data?.state;
   const ended = state !== undefined && state !== 'linking';
   const detail = useQuery({ ...whatsappSessionQuery(session.id), enabled: ended });
+  // When the QR read that ended the link arrived, pinned once (later reads on focus move
+  // `dataUpdatedAt`); cleared when a retry starts a new link.
+  const qrUpdatedAt = useRef(qr.dataUpdatedAt);
+  qrUpdatedAt.current = qr.dataUpdatedAt;
+  const [endedAt, setEndedAt] = useState<number>();
   // Once the link ends, its outcome is read from a fresh copy of the number and its events.
   useEffect(() => {
+    setEndedAt(ended ? qrUpdatedAt.current : undefined);
     if (!ended) return;
     // Exact: the QR's key starts with the number's, and must not be read again.
     void queryClient.invalidateQueries({
@@ -190,14 +199,16 @@ function QrStep({
 
   // The events are read only from a copy fetched after the link ended, never an older cached one.
   const fresh =
-    detail.data !== undefined && !detail.isFetching && detail.dataUpdatedAt >= qr.dataUpdatedAt;
+    detail.data !== undefined && endedAt !== undefined && detail.dataUpdatedAt >= endedAt;
   const outcome: LinkOutcome | 'gone' | undefined = gone
     ? 'gone'
     : state === undefined || (ended && !fresh)
       ? undefined
       : linkOutcome(state, detail.data?.events);
+  // A code lives about 20 s (rule 4). Its age is measured on this browser's clock from when it
+  // arrived, never against the server's `expiresAt`, so a computer's wrong clock cannot hide it.
   const qrText =
-    qr.data?.qr && qr.data.expiresAt && Date.parse(qr.data.expiresAt) > now ? qr.data.qr : null;
+    qr.data?.qr && !qr.isError && now - qr.dataUpdatedAt < qrLifetimeMs ? qr.data.qr : null;
 
   const title =
     outcome === 'gone'

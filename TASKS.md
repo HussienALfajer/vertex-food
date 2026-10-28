@@ -50,7 +50,7 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 
 - [x] `/whatsapp` list with cards, states and actions by permission; add-and-link dialog (QR polling, countdown, timeout, duplicate); `/whatsapp/$sessionId` detail; unlink and pause confirms with re-auth; health banner on every page; sidebar item; i18n
 - [ ] E2E with mocked API, RTL light and dark at 360 px, tablet, desktop
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## PR 5 `feat/s03-restaurant-otp-status` — restaurant OTP delivery status (after PR 3, parallel with PR 4)
 
