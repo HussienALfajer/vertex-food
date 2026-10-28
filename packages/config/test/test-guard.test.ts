@@ -66,7 +66,7 @@ describe('test guard', () => {
     'pnpm turbo run test:e2e',
     'pnpm --filter @vertex-food/console exec playwright test',
     'CI=1 pnpm exec playwright test',
-  ])('keeps the whole suite in CI: %s', (command) => {
+  ])('sends a whole suite through pnpm verify: %s', (command) => {
     expect(guard(command)).toMatchObject({
       refused: true,
       reason: expect.stringContaining('pnpm verify'),

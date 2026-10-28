@@ -27,8 +27,8 @@ concurrency:
 # Third-party actions are pinned to full commit SHAs (the tag in the comment); Dependabot proposes
 # updates (.github/dependabot.yml). The gate job names are the checks main will require: renaming
 # one means updating the branch protection too. Steps arrive with their first subject (.github/CLAUDE.md).
-# E2E runs the built web front ends in Playwright's Chromium on three shards and uploads their RTL
-# screenshots.
+# E2E runs the built web front ends in Playwright's Chromium on three shards, inside Playwright's
+# image, and uploads their RTL screenshots.
 jobs:
   # Pull requests that change only Markdown skip the checks; the gate job below still reports, so
   # branch protection and auto-merge work.
@@ -167,6 +167,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Playwright's own image (pinned by digest, the tag in the comment) holds Chromium and its system
+    # packages: installing them on each shard took up to 11 minutes whenever the Ubuntu mirrors were
+    # slow. Its version is the apps' @playwright/test, which a step below checks.
+    container:
+      image: mcr.microsoft.com/playwright@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea # v1.64.1-noble
     strategy:
       fail-fast: false
       matrix:
@@ -191,8 +196,13 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ github.job }}-${{ matrix.shard }}-${{ github.sha }}
           restore-keys: turbo-${{ github.job }}-${{ matrix.shard }}-
-      - name: Playwright browser
-        run: pnpm --filter @vertex-food/web exec playwright install --with-deps chromium
+      - name: Playwright matches the container image
+        run: |
+          version=$(pnpm --silent --filter @vertex-food/web exec playwright --version)
+          if [ "$version" != "Version 1.64.1" ]; then
+            echo "::error::@playwright/test is at $version but the container image is v1.64.1: move the image (tag and digest) and this check together"
+            exit 1
+          fi
       # Builds what each front end needs (turbo.json: test:e2e depends on build), then runs this
       # shard of the restaurant renderer, the console, the web app and the customer and driver web
       # exports, light and dark.

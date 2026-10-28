@@ -3,11 +3,13 @@
 //
 //   pnpm verify                 lint, then typecheck, test and build of every package (Turborepo
 //                               replays what did not change), migration drift when its sources
-//                               changed, and the E2E specs the branch changed, in each app
+//                               changed, and the whole E2E suite of each app the branch affects
+//                               (its files, a workspace package it depends on, brand/ or the
+//                               root configuration)
 //   pnpm verify <files...>      only these test files: Vitest in their package, Playwright for
 //                               apps/<app>/e2e/*.spec.ts (with --grep <pattern> to pick tests)
-//   --e2e-all                   every E2E spec of the five apps instead of the changed ones (CI
-//                               runs them on shards; here it takes minutes)
+//   --e2e-all                   the E2E suites of all five apps, affected or not (CI runs them
+//                               on shards)
 //   --base <ref>                compare with <ref> instead of the merge base with origin/main
 //   --allow-dev                 run although a dev server is up
 //
@@ -37,6 +39,12 @@ const LOCK_MAX_AGE_MS = 30 * 60_000;
 const E2E_APPS = ['restaurant', 'console', 'web', 'customer', 'driver'];
 const DEV_PORTS = { restaurant: 5273, console: 5274, web: 5275, customer: 5276, driver: 5277 };
 const E2E_SPEC = /^apps\/([\w-]+)\/e2e\/.+\.spec\.ts$/;
+// Changes outside the packages that every build reads: the logo and fonts, the dependency set, the
+// task graph, the Node version.
+const AFFECTS_EVERY_APP =
+  /^(?:brand\/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.node-version$)/;
+// Files inside a package that no build or page reads: its notes and its unit tests.
+const NOT_IN_A_BUILD = /\.md$|\.test\.tsx?$|^(?:apps|packages)\/[\w-]+\/test\//;
 // What the summary keeps from a log: Biome diagnostics; failed tests, assertions, type errors.
 const LINT_LINES = /^\S+:\d+:\d+ |^Found \d+ (error|warning)/;
 const TASK_LINES =
@@ -123,20 +131,41 @@ async function verifyBranch() {
     await migrationDrift();
   }
 
-  for (const app of E2E_APPS) {
-    const specs = changed.filter(
-      (file) => E2E_SPEC.exec(file)?.[1] === app && existsSync(join(root, file)),
-    );
-    if (!options.e2eAll && specs.length === 0) continue;
+  // A change can break a spec it does not touch (a shared component, a renamed text), so an
+  // affected app runs its whole suite: well under a minute for all five (docs/testing.md).
+  const apps = options.e2eAll ? E2E_APPS : E2E_APPS.filter(affected);
+  for (const app of apps) {
     if (broken.some((task) => task.id === `@vertex-food/${app}#build`)) {
       report.push(`e2e ${app}: skipped, its build failed`);
       continue;
     }
-    await e2e(app, options.e2eAll ? [] : specs);
+    await e2e(app, []);
   }
-  if (!options.e2eAll && !changed.some((file) => E2E_SPEC.test(file))) {
-    report.push('e2e: no changed spec (CI runs every suite)');
+  if (apps.length === 0) report.push('e2e: no app affected (CI runs every suite)');
+}
+
+/** Whether the branch changed an app, a workspace package it depends on, or what every build reads. */
+function affected(app) {
+  const dirs = dependencyDirs(`apps/${app}`);
+  return changed.some(
+    (file) =>
+      AFFECTS_EVERY_APP.test(file) ||
+      (!NOT_IN_A_BUILD.test(file) && dirs.some((dir) => file.startsWith(`${dir}/`))),
+  );
+}
+
+/** The folder of a workspace package and of every workspace package it depends on. */
+function dependencyDirs(dir, seen = new Set()) {
+  if (seen.has(dir)) return [...seen];
+  seen.add(dir);
+  const manifest = JSON.parse(readFileSync(join(root, dir, 'package.json'), 'utf8'));
+  for (const kind of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    for (const name of Object.keys(manifest[kind] ?? {})) {
+      const pkg = packages.find((candidate) => candidate.name === name);
+      if (pkg) dependencyDirs(pkg.dir, seen);
+    }
   }
+  return [...seen];
 }
 
 /** Only the given test files (paths from the repository root), after building their dependencies. */

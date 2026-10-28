@@ -1,5 +1,6 @@
 // PreToolUse hook (Bash, PowerShell): one test run at a time on this machine, no test run cut
-// short by `timeout`, and the whole E2E suite stays in CI. A refusal exits with code 2; the message
+// short by `timeout`, and a whole E2E suite runs through `pnpm verify` (the apps the branch affects)
+// or CI, never as a bare Playwright command. A refusal exits with code 2; the message
 // goes back to Claude with what to do instead (docs/testing.md). Commands that run no tests pass
 // straight through. Tested by `packages/config/test/test-guard.test.ts`.
 import { spawnSync } from 'node:child_process';
@@ -49,9 +50,9 @@ if (testRuns.length === 0) process.exit(0);
 
 if (testRuns.some(isWholeE2E)) {
   refuse(
-    'The whole E2E suite of an app runs in CI, on shards. Here, run the specs you changed: ' +
-      '`pnpm verify` picks them, or `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]`. ' +
-      'To run every spec here anyway: `pnpm verify --e2e-all`.',
+    'A whole E2E suite runs through `pnpm verify`, which runs the suites of the apps the branch ' +
+      'affects (all five: `pnpm verify --e2e-all`), and in CI on shards. For some specs while ' +
+      'building: `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]`.',
   );
 }
 
