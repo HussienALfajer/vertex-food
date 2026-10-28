@@ -16,4 +16,4 @@ Several global cloud services are blocked or restricted for Syrian users, and Cl
 
 ## Consequences
 - Moving providers is an operational task, not a rewrite.
-- The server shape is described in `deploy/` with its own `CLAUDE.md` when Phase 0 adds it.
+- The server shape is described in `deploy/`, with its own `CLAUDE.md`, once the deploy skeleton adds it (`docs/ROADMAP.md`, after Q1).

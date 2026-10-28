@@ -40,10 +40,10 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Install | `pnpm install` |
 | Lint (Biome) | `pnpm lint` · fix: `pnpm lint:fix` |
 | Typecheck | `pnpm typecheck` |
-| Check a change, each check once: lint; typecheck, test and build (Turborepo replays unchanged packages); migration drift; the changed E2E specs of each app. Summary on the console, logs in `.verify/` (`docs/testing.md`) · only some test files (paths from the root; `--grep <title>` for part of a spec) | `pnpm verify` · `pnpm verify <file>...` |
+| Check a change, each check once: lint; typecheck, test and build (Turborepo replays unchanged packages); migration drift; the whole E2E suite of each app the branch affects. Summary on the console, logs in `.verify/` (`docs/testing.md`) · only some test files (paths from the root; `--grep <title>` for part of a spec) | `pnpm verify` · `pnpm verify <file>...` |
 | Test (every package; each run migrates a throwaway database) | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
 | Build | `pnpm build` |
-| E2E with RTL screenshots (restaurant, console, web, customer, driver; builds first): the changed specs run in `pnpm verify`; every suite runs in CI on three shards (here only on purpose: `pnpm verify --e2e-all`) | `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
+| E2E with RTL screenshots (restaurant, console, web, customer, driver; builds first): `pnpm verify` runs the suites of the apps the branch affects; CI runs every suite on three shards (all five here: `pnpm verify --e2e-all`) | `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
 | Run an app in development | `pnpm --filter @vertex-food/<app> dev` (`restaurant` in Electron: `dev:electron`); ports in each app's `CLAUDE.md` |
 | Local database (roles and `vertex_food`, from `.env`) | `pnpm db:setup-local` (`packages/db/CLAUDE.md`) |
 | Generate a migration from the schema | `pnpm db:generate` · custom SQL: `pnpm --filter @vertex-food/db exec drizzle-kit generate --custom --name=<name>` |
@@ -75,8 +75,13 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## How to work
 
 - Continue without asking when the next step needs no input from the owner. Put brief status notes in the same message as the next action.
-- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or outward-facing action (deleting data, dropping tables, restoring a database snapshot, force-push, sending real WhatsApp messages, publishing an app). Deploying `main` to production and changing production through the server or an admin panel need no approval (owner, 2026-10-18): do them when the task calls for them and report what changed.
-- A task is done only when `pnpm verify` passes on its final state, CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
+- Stop and ask only when a decision belongs to the owner (scope, business rules, prices, anything in `open-questions.md`), when a spec is ambiguous in a way that changes the result, or before a destructive or irreversible action: deleting data, dropping tables, restoring a database snapshot, force-push, a migration that is not backward compatible, sending real WhatsApp messages, printing on a real printer the owner did not set up for tests, publishing an app, changing GitHub or account settings (branch protection, secrets). `/feature-slice` also stops once at its start for the owner to approve the PR split of a spec (a scope decision, ADR 0033).
+- **Standing approvals (ADR 0033):** never ask before these; do them when the task calls for them and report what changed:
+  - committing, pushing the branch, opening its PR and turning on its auto-merge (merge commit) and Auto-fix, for every PR, changes to `v1-scope.md` and ADRs included (owner, 2026-10-28);
+  - `pnpm db:migrate` on the local development database for a migration the `/db-migration` review found backward compatible (owner, 2026-10-28);
+  - deploying `main` to production and changing production through the server or an admin panel (owner, 2026-10-18).
+- The owner's acceptance test comes after the merge and never holds a PR (ADR 0033): the report gives its steps when the PR opens; what the owner finds is fixed on the branch while the PR is open, or in a new branch and PR once it merged.
+- A task is done only when `pnpm verify` passes on its final state (documentation-only changes: none, step 4 below), CI is green and `TASKS.md` has no open items for it; for UI changes, a Playwright screenshot in RTL. Show the evidence (the verify summary) instead of asserting success.
 - Fix root causes. Never silence a failing test, type error or lint rule.
 - For multi-step work keep a checklist in `TASKS.md`: tick items and add work you discover. Commit each layer when its gate passes.
 - Mark anything you could not confirm and say where you looked.
@@ -85,8 +90,8 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## Context economy
 
 - Search before reading, then read only the relevant range. For `v1-scope.md`, read the feature's section.
-- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`.
-- Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a whole E2E suite and `timeout` around tests. CI runs everything.
+- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `api-schema.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`; nor local data in `.data/`.
+- Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`; the `Run:` lines of the folder `CLAUDE.md` files name a whole package's command, for the owner and CI); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a Playwright run of a whole suite outside `pnpm verify`, and `timeout` around tests. CI runs everything.
 - In replies, point to `path:line` instead of pasting files or diffs.
 
 ## Git
@@ -103,17 +108,17 @@ When a task's work is done, finish it in the same turn. Stop and report at the f
 1. **Branch:** not `main`. `TASKS.md` has no open items for this PR.
 2. **Docs:** update `docs/ROADMAP.md` and every doc the change made stale (`docs/architecture.md`, a folder `CLAUDE.md`, `docs/open-questions.md`, the commands table above).
 3. **Secrets and data:** `git status` and `git diff --stat` show no `.env`, key, session file, real phone number or real data.
-4. **Checks:** `pnpm verify` passes on the final tree (lint, typecheck, test, build, migration drift when its sources changed, the changed E2E specs), run yourself or through the `checker`. A green run on the same tree counts; after a fix run it again, and Turborepo replays what the fix did not touch. Documentation-only changes run no checks (CI skips them too). CI runs everything, every E2E suite on three shards.
-5. **Review:** for feature, sync, money, security and dispatch work, the `reviewer` subagent has run and its blocking findings are fixed.
+4. **Checks:** `pnpm verify` passes on the final tree (lint, typecheck, test, build, migration drift when its sources changed, the E2E suites of the apps the branch affects), run yourself or through the `checker`. A green run on the same tree counts; after a fix run it again, and Turborepo replays what the fix did not touch. Documentation-only changes run no checks (CI skips them too). CI runs everything, every E2E suite on three shards.
+5. **Review:** for feature, sync, money, security and dispatch work, the `reviewer` subagent has run once on the branch and its blocking findings are fixed; each round of fixes gets a fix-only re-review, two at most (`/feature-slice`, step 3).
 6. **Commit:** intended files only; Conventional Commit subject, a body with what and why, ending with the session's attribution line.
-7. **Pull request:** `git push -u origin <branch>`, `gh pr create --base main` with `## Summary` and `## Test plan`, ending with the session's attribution line; then `gh pr merge <number> --auto --merge`. If CI fails, read `gh run view <run-id> --log-failed`, fix the cause on the branch and push: auto-merge waits for green. Exception: a PR that changes `v1-scope.md` or adds or changes an ADR waits for the owner's approval before auto-merge.
+7. **Pull request,** without asking (standing approval, "How to work"): `git push -u origin <branch>`, `gh pr create --base main` with `## Summary` and `## Test plan`, ending with the session's attribution line; then turn on auto-merge with a merge commit (`gh pr merge <number> --auto --merge`, or the agent's own tool for it, `CLAUDE.md`) and Auto-fix where the agent has it. If CI fails, read `gh run view <run-id> --log-failed`, fix the cause on the branch and push: auto-merge waits for green.
 8. **Report** in the format below.
 
 ## Reporting
 
 End every substantial task with these sections, in this order:
 
-1. **Needs from you** — decisions or approvals blocking progress, or "nothing". When the task opened or merged a PR, end with: `cd D:\vertex-food; git switch main; git pull --ff-only; git branch -d <branch>`
+1. **Needs from you** — owner decisions blocking progress, the acceptance steps of the PR (numbered steps for screens, a summary of endpoints and rules otherwise), or "nothing". Never a request to open, push or merge: those are standing approvals. When the task opened or merged a PR, end with: `cd D:\vertex-food; git switch main; git pull --ff-only; git branch -d <branch>`
 2. **Changed** — what was built or modified.
 3. **Verified** — checks run and their results.
 4. **Found** — issues, risks or follow-ups noticed.

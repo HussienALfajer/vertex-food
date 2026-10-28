@@ -7,7 +7,7 @@ Every person has one account, identified by a Syrian or Turkish mobile number, t
 
 ## In scope / out of scope
 - In:
-  - Accounts (phone, name, password), staff memberships (roles, branch scope, permission adjustments, states), the permission catalog and the role presets in `packages/contracts`, the session guard that replaces the fail-closed `UNAUTHENTICATED` of S01 for staff and console routes, and the BE-01 decision (rule 50).
+  - Accounts (phone, name, password), staff memberships (roles, branch scope, permission adjustments, states), the permission catalog and the role presets in `packages/contracts`, the session guard that replaces the fail-closed `UNAUTHENTICATED` of S01 for staff and console routes, and the BE-01 decision (rule 46).
   - Staff added directly by an owner or a manager, without an invitation message; the PIN chosen by the member on a registered PC.
   - OTP challenges (generation, keyed hash, expiry, attempts, cooldown, hourly limit) behind an `OtpSender` port with a fake implementation until S03; proof of work on sign-in and OTP requests (ADR 0016).
   - Device registration with a device key, device tokens, the branch member list each registered PC holds (with PIN verifiers) and refreshes, PIN sessions online and offline, the offline window, PIN lockout, idle lock and member switching, manager approval by PIN (the mechanism; each later spec names its actions), password re-authentication for sensitive actions, revocation and the wipe of what S02 stores on the PC.
@@ -74,17 +74,17 @@ Defaults and limits that later specs apply when they add their permission keys (
 
 | Group (spec) | Owner | Manager | Cashier | Waiter | Kitchen | Driver | Limit |
 |---|---|---|---|---|---|---|---|
-| Take and edit POS orders, tables (S09, S11) | ✓ | ✓ | ✓ | ✓ | | | any role but kitchen, driver |
+| Take and edit POS orders, tables (S09, S12) | ✓ | ✓ | ✓ | ✓ | | | any role but kitchen, driver |
 | Void, refund, discount above the branch limit, price override (S09, S10) | ✓ | ✓ | by manager approval | by manager approval | | | owner, manager |
 | Own cash session, take payments (S10) | ✓ | ✓ | ✓ | | | | owner, manager, cashier |
 | Cash corrections, other cashiers' sessions, end of day (S10) | ✓ | ✓ | | | | | owner, manager |
-| Kitchen actions on the POS (S12) | ✓ | ✓ | | | ✓ | | any role |
+| Kitchen actions on the POS (S11) | ✓ | ✓ | | | ✓ | | any role |
 | Menu, availability (S07) | ✓ | ✓ | availability only | | availability only | | any role |
 | Prices, rounding, exchange rates (S07) | ✓ | ✓ | | | | | owner, manager |
 | Item cost, menu engineering (S07, S29) | ✓ | | | | | | owner only |
 | Assign restaurant drivers, delivery jobs (S18, S19) | ✓ | ✓ | ✓ | | | own jobs | any role |
 | Reports and analytics (S13, S29) | ✓ | own branches | own shift | | | | owner, manager, cashier |
-| Agreement, statements, settlements with Vertex (S05, S24) | ✓ | | | | | | owner only |
+| Agreement, statements, settlements with Vertex (S05, S21) | ✓ | | | | | | owner only |
 | Restaurant offers and coupons (S26) | ✓ | ✓ | | | | | owner, manager |
 | Audit and export (S06), quarantine review (S04), support access consent (S22) | ✓ | | | | | | owner only |
 
@@ -100,7 +100,7 @@ Limits are enforced on every write of roles and adjustments (`PERMISSION_NOT_GRA
 | `console.users.manage` | ✓ | | | | | admin only |
 | `console.accounts.recover` | ✓ | | | | ✓ | admin, support |
 
-Defaults later specs apply: agreements and entitlements (S05, S22): admin, sales (draft), finance; Vertex fleet and dispatch (S19–S21): admin, dispatch; money, ledger and settlements (S24): admin, finance; platform campaigns (S26): admin, sales; trust policies (S28): admin; support access (S22): admin, support.
+Defaults later specs apply: agreements and entitlements (S05, S22): admin, sales (draft), finance; Vertex fleet and dispatch (S19–S21): admin, dispatch; money, ledger and settlements (S21, S25): admin, finance; platform campaigns (S26): admin, sales; trust policies (S28): admin; support access (S22): admin, support.
 
 ## Data
 All tables follow `packages/db/CLAUDE.md`: UUIDv7 `id`, `created_at`, a `tableRegistry` entry, every foreign key indexed. Business tables also have `updated_at` and `archived_at` and are never deleted. Modules follow `docs/architecture.md`: `identity` and `access` (platform layer). Secrets compared later are stored as keyed hashes (HMAC-SHA-256 with `IDENTITY_HASH_KEY`); secrets read back (TOTP secrets) are encrypted (AES-256-GCM with `IDENTITY_ENCRYPTION_KEY`); passwords and PINs are Argon2id from `node:crypto` (ADR 0032). Keys come from the environment; `.env.example` holds fake values.
@@ -279,7 +279,7 @@ Gains the entries of Audit; `request_route` and `subject_tenant_id` as in Vertex
 
 ### Accounts, passwords and OTP
 10. Passwords: 10–128 characters, no composition rules, refused if in the bundled list of common passwords or containing the phone's last 7 digits (`PASSWORD_TOO_WEAK`). Only members who sign in online need one: owners and managers (personal devices, sensitive actions) and drivers (driver app, S19). Cashiers, waiters and kitchen staff work by PIN only and are never asked for a password.
-11. Sign-in by phone and password. Five failures in a row lock password sign-in for that account for 15 minutes (`RATE_LIMITED`, with the retry time); an unknown phone, a wrong password and an account without a password all answer `INVALID_CREDENTIALS`, with similar timing (a decoy Argon2id check).
+11. Sign-in by phone and password. Five failures in a row lock password sign-in for that account for 15 minutes (`RATE_LIMITED`, with the retry time); an unknown phone, a wrong password and an account without a password all answer `INVALID_CREDENTIALS`, with similar timing (a decoy Argon2id check). *As built (S02 PR 1): `RATE_LIMITED` carries no retry time, and a per-address limit answers the same, so the sign-in screen states the policy's 15 minutes; adding the time is a follow-up in `TASKS.md`.*
 12. An OTP is required at first sign-in (setting the first password), to set a password after an authorized reset, and when a person signs in with their password on a device that is neither a registered PC of their tenant nor one of their `personal_devices`. OTPs: six digits, 5 minutes, 5 attempts, 60 seconds between sends, 3 an hour per phone, only a keyed hash stored, one-way (a code sent back in the chat never verifies anything; ADR 0012). Sign-in and OTP requests need a valid proof-of-work solution and are rate-limited per IP address (30 per 10 minutes) in addition to the per-account limits.
 13. First sign-in: the person enters their phone; an OTP is sent only when the account has no password and an active membership whose effective permissions include `backoffice.remote` or `devices.manage`, or the driver role (the response is the same otherwise). They confirm their name and set a password. This also verifies the phone (`phone_verified_at`).
 14. An owner may authorize a password reset for any member of their tenant with a password; a manager for members they manage (rule 7). The account may set a new password through an OTP within 72 hours; the old password keeps working until replaced. Setting it ends the account's staff sessions in every tenant and revokes its `personal_devices` (`password_reset`); PINs stay. An account that also belongs to another tenant is reset only by Vertex support (rule 15); the restaurant's request answers the same and changes nothing (owner, 2026-10-27, was Q27).

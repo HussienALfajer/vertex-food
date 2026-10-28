@@ -33,9 +33,17 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | موافقة المدير | manager approval | A member holding a permission approves another's action with their PIN on the same device |
 | إعادة التحقق | re-authentication | Entering the password (staff) or a TOTP code (console) again before a sensitive action |
 | جهاز شخصي | personal device | An owner's or manager's own browser or app, signed in for the back office, online only |
-| المحطة | station | A paired hub client without personal sign-in, such as the kitchen display |
+| المحطة | station | A paired hub client without personal sign-in, such as the kitchen display (not a kitchen station, below) |
 | الحجر | quarantine | Commands from a revoked device held until the owner accepts or rejects them |
 | مستخدم المنصة | platform user | A Vertex staff account in the console, with a role and mandatory TOTP |
+| الحساب | account | One person on the platform: phone, name, password; holds staff memberships in tenants (ADR 0005, 0032) |
+| رمز التحقق | OTP | A one-time code sent to a phone (fake sender until S03), with expiry, attempts, cooldown and an hourly limit; for console users, the TOTP code of their authenticator app |
+| إثبات العمل | proof of work | A small computation the client solves before sign-in and OTP requests, against abuse (ADR 0016) |
+| التذكرة | ticket | A short-lived, single-use token proving a passed sign-in step (OTP verified, password set); never a kitchen ticket |
+| رمز الإعداد | setup code | The one-time code a console admin hands a new or reset platform user for their first sign-in |
+| رموز الاسترداد | recovery codes | Ten single-use codes a platform user keeps for when their authenticator app is lost |
+| القفل التلقائي | idle lock | The lock screen a PC shows after a branch's idle minutes (1 to 60, default 5) |
+| حذف بيانات الجهاز | wipe | A revoked PC deleting its key and member list at its next connection |
 | المنيو | menu | A branch's categories and items |
 | الصنف | menu item | Something sold, with sizes and modifiers |
 | عنصر البيع | catalog item | The platform's generic name for something a tenant sells; in the food domain, a menu item (ADR 0025) |
@@ -48,7 +56,7 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | الإضافات | modifier group / modifier | A group of options added to an item (required or optional, min and max) |
 | نفد | sold out | An item unavailable for now |
 | الطلب | order | One customer's order, whatever the channel |
-| قناة الطلب | channel | `pos`, `waiter`, `phone`, `qr`, `restaurant_web`, `marketplace` |
+| قناة الطلب | channel | `pos`, `waiter`, `phone`, `qr`, `restaurant_web`, `marketplace` (the planned values; the contracts get them with S09) |
 | نوع الطلب | order type | `dine_in` (صالة), `takeaway` (سفري), `delivery` (توصيل), `pickup` (استلام) |
 | وضع استقبال الطلبات | order-intake mode | A mode of the restaurant app, online only, for a restaurant that keeps its own cashier system (ADR 0028) |
 | الوقت الموعود | promised time | The ready or delivery time given to the customer at acceptance |
@@ -61,9 +69,9 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | بند الطلب | order line | An item in an order with its modifiers, notes and price snapshot |
 | حدث الطلب | order event | An append-only record of a change to an order |
 | الطاولة | table | A dine-in table of a branch |
-| قسم المطبخ | kitchen station | A part of the kitchen that prepares some items |
-| شاشة المطبخ | kitchen display (KDS) | The screen that shows a station's tickets |
-| تذكرة المطبخ | kitchen ticket | What a station receives for an order |
+| قسم المطبخ | kitchen station | A part of the kitchen that prepares some items (not a hub station, above) |
+| شاشة المطبخ | kitchen display (KDS) | The screen that shows a kitchen station's tickets |
+| تذكرة المطبخ | kitchen ticket | What a kitchen station receives for an order |
 | الفاتورة / الإيصال | receipt | The printed or shown bill for the customer |
 | الطابعة | printer | A thermal ESC/POS printer of a branch: network or USB, with a paper width and an optional cash drawer |
 | طابور الطباعة | print queue | The jobs waiting for one printer, kept until printed |
