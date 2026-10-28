@@ -90,7 +90,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 ## Context economy
 
 - Search before reading, then read only the relevant range. For `v1-scope.md`, read the feature's section.
-- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`.
+- Never read generated or lock files: `pnpm-lock.yaml`, `**/migrations/meta/`, `routeTree.gen.ts`, `api-schema.gen.ts`, `.next/`, `dist/`, `.turbo/`, `.expo/`, `spikes/**/out/`.
 - Checks (`docs/testing.md`): while building, run only the tests you work on (`pnpm verify <file>`); before the PR, `pnpm verify` once, and again only after a change. Each check runs once: read its failures in the summary and in `.verify/`, never run a suite again to see its output, and rerun only the files that failed. One test run at a time, and no edits while it runs: the `test-guard` hook refuses a second run, a Playwright run of a whole suite outside `pnpm verify`, and `timeout` around tests. CI runs everything.
 - In replies, point to `path:line` instead of pasting files or diffs.
 

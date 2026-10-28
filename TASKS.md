@@ -11,8 +11,8 @@ From the analysis of 2026-10-28 (S02 sessions and CI runs 26–30), approved by 
 - [x] CI: the E2E shards run in the official Playwright container instead of installing Chromium and its system packages on every run
 - [x] Review: one full review, then at most two fix-only re-reviews of the fix commits; reviewer, spec and db-migration ADR lists up to 0032
 - [x] Flaky E2E fixed at their cause: `apps/restaurant/e2e/setup.spec.ts` (wizard, hours) and `apps/restaurant/e2e/settings.spec.ts` (offline)
-- [ ] Docs: README, ROADMAP, S02 spec references and rule 11 deviation, `deploy/` wording (ADR 0017, Q1, `packages/db/CLAUDE.md`), restaurant `hub-clients/`, glossary, architecture, ADR 0005 amendment note, 44 px in folder rules, api `configureApp` order, native-only checks, Q14/Q21, cache eviction in `docs/testing.md`
-- [ ] Settings: drop the allow rules `bypassPermissions` makes redundant; remove the orphaned `.claude/worktrees/S02-console-screens`
+- [x] Docs: README, ROADMAP, S02 spec references and rule 11 deviation, `deploy/` wording (ADR 0017, Q1, `packages/db/CLAUDE.md`), restaurant `hub-clients/`, glossary, architecture, ADR 0005 amendment note, 44 px in folder rules, api `configureApp` order, native-only checks, Q14/Q21, cache eviction in `docs/testing.md`
+- [x] Settings: drop the allow rules `bypassPermissions` makes redundant; deny reads and edits of `api-schema.gen.ts` like the other generated files
 - [ ] Consistency audit of every instruction file (fresh context), `pnpm verify`, PR with auto-merge and Auto-fix
 
 ## Follow-ups (not this spec)

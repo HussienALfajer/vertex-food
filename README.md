@@ -8,7 +8,7 @@ First market: Azaz, northern Aleppo. Arabic-first.
 
 ## Status
 
-Phase 0 (foundation) is done: the product scope, the architecture decisions, the three spikes, the monorepo with its eight app skeletons, the design system and CI. Phase 1 has started: S01 (tenancy and restaurant setup) is done, S02 (identity, access and devices) comes next. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Phase 0 (foundation) is done: the product scope, the architecture decisions, the three spikes, the monorepo with its eight app skeletons, the design system and CI. Phase 1 is under way: S01 (tenancy and restaurant setup) and S02 (identity, access and devices) are done; S03 (WhatsApp gateway and OTP) comes next. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Documents
 
@@ -18,8 +18,11 @@ Phase 0 (foundation) is done: the product scope, the architecture decisions, the
 | [`docs/product/v1-scope.md`](docs/product/v1-scope.md) | What V1 includes and excludes |
 | [`docs/architecture.md`](docs/architecture.md) | Layers, repository layout, module map, key flows |
 | [`docs/decisions/`](docs/decisions/README.md) | Architecture and business decisions (ADRs) |
+| [`docs/specs/`](docs/specs/) | The detailed spec of each feature group, written before its code |
+| [`docs/open-questions.md`](docs/open-questions.md) | Decisions still open, with the spec each one blocks |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases and feature status |
 | [`docs/workflow.md`](docs/workflow.md) | How the system is built with Claude Code |
+| [`docs/testing.md`](docs/testing.md) | How the checks run, locally and in CI |
 | [`docs/glossary.md`](docs/glossary.md) | Arabic and English domain terms |
 
 ## License

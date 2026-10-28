@@ -18,6 +18,6 @@ The public web (ADR 0015, layout ADR 0020): a Next.js App Router app, Arabic-fir
 - Tenant-branded pages change identity and settings only, never CSS, HTML or logic (ADR 0010): the restaurant's accent through `tenantStyle(identity)` on the page's root and `bg-tenant-accent`, its logo and cover as images. They always show `PoweredBy` (ADR 0018). Prices and totals shown here are recomputed by the API at checkout (ADR 0007).
 - No fonts or scripts from third-party hosts (`next/font/google` fetches at build time); no Cloudflare (ADR 0015, 0017).
 - No `X-Powered-By`; security headers (CSP and the rest) are set by the host at the first deploy.
-- UI changes add or update the E2E RTL screenshots (light and dark) and are looked at before the PR. Every page is checked at the `viewports` in `e2e/shell.spec.ts` (phone, tablet both ways, desktop) for sideways scrolling.
+- UI changes add or update the E2E RTL screenshots (light and dark) and are looked at before the PR. Every page is checked at the `viewports` in `e2e/shell.spec.ts` (phone, tablet both ways, desktop) for sideways scrolling and, below 1024 px, 44 px touch targets.
 
-Run: `pnpm --filter @vertex-food/web test` · E2E: `pnpm verify apps/web/e2e/<file>.spec.ts` (builds first; every suite runs in CI, `docs/testing.md`) · dev: `pnpm --filter @vertex-food/web dev`.
+Run: `pnpm --filter @vertex-food/web test` · E2E: `pnpm verify apps/web/e2e/<file>.spec.ts` (builds first; `pnpm verify` runs the whole suite when the branch affects this app, and CI runs every suite, `docs/testing.md`) · dev: `pnpm --filter @vertex-food/web dev`.
