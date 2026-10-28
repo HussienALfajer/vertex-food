@@ -1,4 +1,4 @@
-import { closeSync, openSync, readFileSync, statSync, writeSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, statSync, writeFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import Database from 'better-sqlite3-multiple-ciphers';
 import { describe, expect, it } from 'vitest';
@@ -82,6 +82,17 @@ describe('the encrypted local database (spec S04 "On the PC")', () => {
     expect(opened.db).toBeNull();
     // A read never throws; the schema's views are still there.
     await expect(opened.reads.getAll('SELECT id FROM local_members')).resolves.toEqual([]);
+    await opened.close();
+  });
+
+  it('opens read-only, never failing, when the database cannot open at all', async () => {
+    // A folder that cannot be made (a file in its place) stands in for a full disk.
+    const parent = tempFolder();
+    const blocked = join(parent, 'data');
+    writeFileSync(blocked, 'not a folder');
+    const opened = await openLocalDatabase(blocked, generateDatabaseKey());
+    expect(opened.state).toBe('corrupt');
+    expect(await count(opened)).toBe(0);
     await opened.close();
   });
 

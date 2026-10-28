@@ -20,7 +20,7 @@ function setup(
   const fetch = vi.fn(async (url: string | URL | Request) =>
     String(url) === feedUrl ? Response.json(feed) : new Response(installer),
   );
-  const install = vi.fn();
+  const install = vi.fn(async (_file: string) => true);
   const make = (appVersion = '1.2.0', url: string | null = feedUrl) =>
     new UpdateGate({
       feedUrl: url,
@@ -94,13 +94,29 @@ describe('the update gate (spec S04 rule 46)', () => {
     expect(install).toHaveBeenCalledWith(join(directory, 'update-1.3.0.exe'));
   });
 
-  it('installs with work pending once the server refused this version protocol', async () => {
+  it('opens the old version when the installer did not start, and never retries it there', async () => {
     const { make, install } = setup();
-    const gate = make();
-    await gate.check();
-    gate.noteProtocolRefused();
-    expect(await gate.installAtStart({ uploads: 3, unsettled: 2 })).toBe('installed');
-    expect(install).toHaveBeenCalled();
+    await make().check();
+    install.mockResolvedValueOnce(false);
+    expect(await make().installAtStart({ uploads: 0, unsettled: 0 })).toBe('failed');
+    expect(await make().installAtStart({ uploads: 0, unsettled: 0 })).toBe('failed');
+    expect(install).toHaveBeenCalledTimes(1);
+  });
+
+  it('never tries again an install that started and left this version in place', async () => {
+    const { make, install } = setup();
+    await make().check();
+    expect(await make().installAtStart({ uploads: 0, unsettled: 0 })).toBe('installed');
+    // Elevation refused: the same version starts again.
+    expect(await make().installAtStart({ uploads: 0, unsettled: 0 })).toBe('failed');
+    expect(install).toHaveBeenCalledTimes(1);
+  });
+
+  it('never installs with work pending, whatever the server answered', async () => {
+    const { make, install } = setup();
+    await make().check();
+    expect(await make().installAtStart({ uploads: 1, unsettled: 2 })).toBe('waiting');
+    expect(install).not.toHaveBeenCalled();
   });
 
   it('never installs a file changed on the disk, and clears what an applied update left', async () => {

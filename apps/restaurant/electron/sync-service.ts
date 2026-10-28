@@ -14,7 +14,7 @@ import {
   type UploadedCommand,
   uploadedCommandSchema,
 } from '@vertex-food/contracts';
-import { DeviceApiError, type SyncApi } from './device-client.js';
+import { API_BODY_BYTES, DeviceApiError, type SyncApi } from './device-client.js';
 import type { Registration } from './device-store.js';
 import type { OpenedDatabase } from './local-db.js';
 import {
@@ -34,7 +34,10 @@ export type SyncState = {
   lastHeartbeatAt: string | null;
   /** Below the minimum app version (rule 45): uploads go on, downloads stop. */
   updateRequired: boolean;
-  /** The server refused this app's sync protocol: nothing uploads until the update. */
+  /**
+   * The server refused this app's sync protocol: nothing uploads until a heartbeat lists it again
+   * or the app is updated (with an empty queue only, rule 46).
+   */
   protocolRefused: boolean;
 };
 
@@ -54,12 +57,13 @@ export type SyncServiceDeps = {
   lanAddresses: () => string[];
   certificates: CertificateStore;
   live?: () => Promise<LiveState>;
-  /** The server refused the protocol: the update gate may install with work pending. */
-  onProtocolRefused?: () => void;
   onChange: () => void;
 };
 
 export const HEARTBEAT_MS = connectivityPolicy.heartbeatSeconds * 1000;
+
+/** `{ "envelope": …, "mirrored": false }` and its comma around each envelope's JSON. */
+const UPLOAD_ITEM_OVERHEAD = 40;
 
 function codeOf(error: unknown): string | null {
   return error instanceof DeviceApiError ? error.code : null;
@@ -195,9 +199,10 @@ export class SyncService {
   }
 
   /**
-   * Rules 7–10: the next 100 queued commands, each `{ envelope, mirrored }`. Every answer is final
-   * (`accepted`, `adjusted`, `rejected`, `quarantined`): it is kept in `command_results` and the
-   * batch leaves the queue. A missing answer keeps the whole batch for the next try; the server
+   * Rules 7–10: the next queued commands, each `{ envelope, mirrored }`: up to 100, and only as
+   * many as fit the API's body limit, so a large command never holds the queue. Every answer is
+   * final (`accepted`, `adjusted`, `rejected`, `quarantined`): it is kept in `command_results` and
+   * the batch leaves the queue. A missing answer keeps the whole batch for the next try; the server
    * answers a known id with its stored outcome. Returns whether more is queued.
    */
   private async uploadBatch(): Promise<boolean> {
@@ -206,7 +211,18 @@ export class SyncService {
       if (this.state.protocolRefused) throw new DeviceApiError('PROTOCOL_UNSUPPORTED');
       return false;
     }
-    const batch = await db.getCrudBatch(MAX_COMMANDS_PER_UPLOAD);
+    const first = await db.getCrudBatch(MAX_COMMANDS_PER_UPLOAD);
+    if (!first) return false;
+    const sizes = first.crud.map(
+      (op) => Buffer.byteLength(String(op.opData?.envelope ?? '')) + UPLOAD_ITEM_OVERHEAD,
+    );
+    let count = 0;
+    let total = 0;
+    while (count < sizes.length && (count === 0 || total + (sizes[count] ?? 0) <= API_BODY_BYTES)) {
+      total += sizes[count] ?? 0;
+      count += 1;
+    }
+    const batch = count < first.crud.length ? await db.getCrudBatch(count) : first;
     if (!batch) return false;
     const commands: UploadedCommand[] = [];
     const unreadable: ResultRow[] = [];
@@ -216,8 +232,9 @@ export class SyncService {
         envelope: parseJson(op.opData?.envelope),
         mirrored: op.opData?.mirrored === 1,
       });
-      if (parsed.success) commands.push(parsed.data);
-      else unreadable.push({ id: op.id, envelope: null });
+      // One command larger than the API takes on its own could never upload either.
+      if (parsed.success && total <= API_BODY_BYTES) commands.push(parsed.data);
+      else unreadable.push({ id: op.id, envelope: parsed.success ? parsed.data.envelope : null });
     }
     let results: CommandResult[] = [];
     if (commands.length > 0) {
@@ -226,7 +243,7 @@ export class SyncService {
           this.deps.client.uploadCommands(token, { protocol: SYNC_PROTOCOL, commands }),
         ));
       } catch (error) {
-        if (codeOf(error) === 'PROTOCOL_UNSUPPORTED') this.refuseProtocol();
+        if (codeOf(error) === 'PROTOCOL_UNSUPPORTED') this.update({ protocolRefused: true });
         throw error;
       }
       const answered = new Set(results.map((result) => result.id));
@@ -239,14 +256,10 @@ export class SyncService {
     return batch.haveMore;
   }
 
-  private refuseProtocol(): void {
-    this.update({ protocolRefused: true });
-    this.deps.onProtocolRefused?.();
-  }
-
   /**
-   * Each command's outcome in `command_results` (rule 11). A queued row that does not parse could
-   * never be accepted: it is recorded as rejected `payload_invalid` here, never dropped unseen.
+   * Each command's outcome in `command_results` (rule 11). A queued row that does not parse, or one
+   * command larger than the API's body limit, could never be accepted: it is recorded as rejected
+   * `payload_invalid` here, for needs attention, never dropped unseen.
    */
   private async recordResults(
     db: PowerSyncDatabase,
@@ -360,8 +373,8 @@ export class SyncService {
     });
     this.deps.recordServerTime(serverTime, offset);
     const updateRequired = isBelowMinimumAppVersion(this.deps.appVersion, answer.minimumAppVersion);
-    if (!answer.protocols.includes(SYNC_PROTOCOL)) this.refuseProtocol();
     this.update({
+      protocolRefused: !answer.protocols.includes(SYNC_PROTOCOL),
       connectivity: answer.connectivity,
       lastHeartbeatAt: this.deps.now().toISOString(),
       updateRequired,
@@ -414,15 +427,15 @@ export class SyncService {
   /** Rule 39: a certificate at registration, when the PC's addresses change, and before it ends. */
   private async ensureCertificate(): Promise<void> {
     const addresses = this.deps.lanAddresses();
-    if (!needsCertificate(this.deps.certificates.read(), addresses, this.deps.now())) return;
-    const { csr, privateKey } = await certificateRequest(
-      this.deps.registration.deviceId,
-      addresses,
-    );
+    const { deviceId } = this.deps.registration;
+    const current = this.deps.certificates.read();
+    if (!needsCertificate(current, deviceId, addresses, this.deps.now())) return;
+    const { csr, privateKey } = await certificateRequest(deviceId, addresses);
     const issued = await this.deps.deviceCall((token) =>
       this.deps.client.certificate(token, { csr, lanAddresses: addresses }),
     );
     this.deps.certificates.write({
+      deviceId,
       privateKey,
       certificate: issued.certificate,
       caCertificate: issued.caCertificate,

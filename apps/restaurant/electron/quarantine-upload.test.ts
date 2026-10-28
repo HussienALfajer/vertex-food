@@ -202,7 +202,7 @@ describe('the wipe after the quarantine upload (rule 40, S02 rule 19)', () => {
       os: 'win32 10.0',
       appVersion: '0.0.0',
       onChange: () => undefined,
-      openData: async (databaseKey) => {
+      openData: async (_deviceId, databaseKey) => {
         const local = await LocalStore.open(folder, databaseKey);
         opened.push(local);
         return local;

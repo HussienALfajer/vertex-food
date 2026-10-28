@@ -22,6 +22,8 @@ const SIGNING = { name: 'ECDSA', hash: 'SHA-256' } as const;
 export const CERTIFICATE_RENEW_MS = 30 * 24 * 3600_000;
 
 export const pcCertificateSchema = z.object({
+  /** The registration it was issued to: a PC registered again asks for its own. */
+  deviceId: z.string().min(1),
   /** PKCS #8 PEM. */
   privateKey: z.string().min(1),
   certificate: z.string().min(1),
@@ -51,14 +53,18 @@ export function privateLanAddresses(
   return [...new Set(addresses)].sort().slice(0, 8);
 }
 
-/** A certificate is asked for when there is none, the addresses changed, or it nears its end. */
+/**
+ * A certificate is asked for when there is none for this registration, the addresses changed, or
+ * it nears its end.
+ */
 export function needsCertificate(
   current: PcCertificate | null,
+  deviceId: string,
   addresses: readonly string[],
   now: Date,
 ): boolean {
   if (addresses.length === 0) return false;
-  if (!current) return true;
+  if (current?.deviceId !== deviceId) return true;
   const same =
     current.lanAddresses.length === addresses.length &&
     [...current.lanAddresses].sort().every((address, index) => address === addresses[index]);

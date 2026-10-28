@@ -248,22 +248,29 @@ export async function openLocalDatabase(
   hexKey: string,
 ): Promise<OpenedDatabase> {
   if (!hexKeyPattern.test(hexKey)) throw new Error('A 256-bit hex key is required');
-  mkdirSync(directory, { recursive: true });
   const path = join(directory, LOCAL_DB_FILE);
-  if (existsSync(path) && !passesIntegrityCheck(path, hexKey)) {
+  let db: PowerSyncDatabase | null = null;
+  try {
+    mkdirSync(directory, { recursive: true });
+    if (existsSync(path) && !passesIntegrityCheck(path, hexKey)) return readOnly(path, hexKey);
+    db = new PowerSyncDatabase({
+      schema: localSchema,
+      database: {
+        dbFilename: LOCAL_DB_FILE,
+        dbLocation: directory,
+        openWorker: (_url, options) =>
+          new Worker(workerUrl(), { ...options, workerData: { hexKey } }),
+      },
+    });
+    await db.init();
+    const opened = db;
+    return { state: 'ok', db: opened, reads: opened, close: () => opened.close() };
+  } catch {
+    // A full disk, a worker or driver that does not load: the app still opens, read-only, with
+    // the corrupt-database notice, never without a window.
+    await db?.close().catch(() => undefined);
     return readOnly(path, hexKey);
   }
-  const db = new PowerSyncDatabase({
-    schema: localSchema,
-    database: {
-      dbFilename: LOCAL_DB_FILE,
-      dbLocation: directory,
-      openWorker: (_url, options) =>
-        new Worker(workerUrl(), { ...options, workerData: { hexKey } }),
-    },
-  });
-  await db.init();
-  return { state: 'ok', db, reads: db, close: () => db.close() };
 }
 
 /**

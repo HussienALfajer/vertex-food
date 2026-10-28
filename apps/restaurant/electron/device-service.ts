@@ -70,8 +70,11 @@ export type DeviceServiceDeps = {
   appVersion: string;
   /** The status may have changed: the renderer reads it again. */
   onChange: () => void;
-  /** The local database with the installation's key (spec S04 "On the PC"). */
-  openData: (databaseKey: string) => Promise<LocalData>;
+  /**
+   * The local database of a registration, with its key (spec S04 "On the PC"): one per device id,
+   * so a PC registered again never meets the file of a key it lost.
+   */
+  openData: (deviceId: string, databaseKey: string) => Promise<LocalData>;
   generateDatabaseKey: () => string;
   /**
    * Spec S04 rule 40: a revoked PC's pending commands go to the quarantine before its database is
@@ -141,7 +144,9 @@ export class DeviceService {
       this.record = stored;
       const key =
         stored?.state === 'wiping' && !stored.quarantined && stored.registration.databaseKey;
-      if (key) this.data = await this.deps.openData(key).catch(() => null);
+      if (key) {
+        this.data = await this.deps.openData(stored.registration.deviceId, key).catch(() => null);
+      }
       return;
     }
     this.clockOffsetMs = stored.clockOffsetMs ?? null;
@@ -159,7 +164,7 @@ export class DeviceService {
     const databaseKey = input.registration.databaseKey ?? this.deps.generateDatabaseKey();
     const stored = { ...input, registration: { ...input.registration, databaseKey } };
     if (!input.registration.databaseKey) this.deps.store.write(stored);
-    const data = await this.deps.openData(databaseKey);
+    const data = await this.deps.openData(stored.registration.deviceId, databaseKey);
     this.data = data;
     const sealed = stored.memberList.members;
     const loaded = sealed ? null : await data.loadMembers();
@@ -688,12 +693,16 @@ export class DeviceService {
   private async finishWipe(record: Wiping): Promise<void> {
     let current = record;
     if (!current.quarantined) {
-      const key = current.registration.databaseKey;
+      const { deviceId, databaseKey } = current.registration;
       try {
-        const data = this.data ?? (key ? await this.deps.openData(key) : null);
+        const data =
+          this.data ?? (databaseKey ? await this.deps.openData(deviceId, databaseKey) : null);
         this.data = data;
         if (data) {
           await this.deps.quarantine(current.registration, data);
+          // A delete cut short (a file held open) leaves a closed database: the next try opens
+          // it again, uploads what is left, and deletes it.
+          this.data = null;
           await data.destroy();
         }
       } catch {

@@ -47,6 +47,12 @@ const TIMEOUT_MS = 10_000;
 const UPLOAD_TIMEOUT_MS = 60_000;
 
 /**
+ * What one upload's commands may weigh in JSON: the API takes bodies up to 1 MB, and the rest of
+ * the body (protocol, ids, nonce, signature) fits in what is left.
+ */
+export const API_BODY_BYTES = 900_000;
+
+/**
  * The routes of the API a registered PC calls from the main process (spec S02 "API and
  * commands"): registration, device tokens, the member list with its verifiers, PIN sessions and
  * the wipe confirmation. Device tokens and refresh tokens stay in the main process.

@@ -42,8 +42,11 @@ const readySchema = z.object({
 type Ready = z.infer<typeof readySchema>;
 
 const READY_FILE = 'ready.json';
-/** Written when the server refused this app's sync protocol: its queue can never drain. */
-const PROTOCOL_REFUSED_FILE = 'protocol-refused';
+/**
+ * The version whose installer this app started: found again by the same app version at its next
+ * start, the install failed (refused elevation, an antivirus), and the old version starts.
+ */
+const ATTEMPT_FILE = 'attempted.json';
 const TIMEOUT_MS = 30 * 60_000;
 
 export type UpdateGateDeps = {
@@ -53,12 +56,14 @@ export type UpdateGateDeps = {
   /** Where downloads wait for the next start. */
   directory: string;
   fetch?: Fetch;
-  /** Starts the installer; the app quits after it. */
-  install: (file: string) => void;
+  /** Starts the installer, answering whether it started; the app quits only then. */
+  install: (file: string) => Promise<boolean>;
   onChange: () => void;
 };
 
-export type InstallDecision = 'installed' | 'waiting' | 'none';
+export type InstallDecision = 'installed' | 'waiting' | 'failed' | 'none';
+
+const attemptSchema = z.object({ version: appVersionSchema, from: appVersionSchema });
 
 async function sha256Of(file: string): Promise<string> {
   const hash = createHash('sha256');
@@ -143,16 +148,11 @@ export class UpdateGate {
     this.deps.onChange();
   }
 
-  /** The server refused this app's protocol: the next start installs even with work pending. */
-  noteProtocolRefused(): void {
-    writeFileSync(join(this.deps.directory, PROTOCOL_REFUSED_FILE), '');
-  }
-
   /**
-   * At start, before the windows open: installs a downloaded update when nothing is waiting to
-   * upload and every journal entry has its outcome (rule 46), or when the server refused this
-   * version's protocol, so the queue could never drain otherwise; the database stays, and the new
-   * version uploads it. Otherwise the old version starts and the next start tries again.
+   * At start, before the windows open: installs a downloaded update only when nothing is waiting
+   * to upload and every journal entry has its outcome (rule 46); otherwise the old version starts
+   * and the next start tries again. An install this app version already started and that left it
+   * in place is not tried again: the PC keeps working on the old version.
    */
   async installAtStart(pending: PendingCounts): Promise<InstallDecision> {
     const ready = this.ready();
@@ -160,15 +160,30 @@ export class UpdateGate {
       this.clear();
       return 'none';
     }
-    const refused = existsSync(join(this.deps.directory, PROTOCOL_REFUSED_FILE));
-    if (!refused && (pending.uploads > 0 || pending.unsettled > 0)) return 'waiting';
+    if (this.attempted()?.version === ready.version) return 'failed';
+    if (pending.uploads > 0 || pending.unsettled > 0) return 'waiting';
     const path = join(this.deps.directory, ready.file);
     if (!existsSync(path) || (await sha256Of(path)) !== ready.sha256) {
       this.clear();
       return 'none';
     }
-    this.deps.install(path);
-    return 'installed';
+    writeFileSync(
+      join(this.deps.directory, ATTEMPT_FILE),
+      JSON.stringify({ version: ready.version, from: this.deps.appVersion }),
+    );
+    return (await this.deps.install(path)) ? 'installed' : 'failed';
+  }
+
+  /** The install this app version started before, if any. */
+  private attempted(): z.infer<typeof attemptSchema> | null {
+    try {
+      const attempt = attemptSchema.parse(
+        JSON.parse(readFileSync(join(this.deps.directory, ATTEMPT_FILE), 'utf8')),
+      );
+      return attempt.from === this.deps.appVersion ? attempt : null;
+    } catch {
+      return null;
+    }
   }
 
   /** Nothing newer than this app is waiting: what an earlier update left goes. */

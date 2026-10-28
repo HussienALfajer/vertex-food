@@ -71,7 +71,7 @@ async function s02Pc() {
       os: 'win32 10.0',
       appVersion: '0.0.0',
       onChange: () => undefined,
-      openData: async (databaseKey) => {
+      openData: async (_deviceId, databaseKey) => {
         const local = await LocalStore.open(directory, databaseKey);
         opened.push(local);
         return local;

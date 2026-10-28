@@ -95,7 +95,6 @@ async function setup() {
     quarantine: vi.fn(async () => ({ batchId: uuid7() })),
   } satisfies SyncApi;
   const recordServerTime = vi.fn();
-  const onProtocolRefused = vi.fn();
   const certificates = new CertificateStore(join(folder, 'certificate.bin'), fakeSealer);
   const service = new SyncService({
     registration,
@@ -112,13 +111,14 @@ async function setup() {
     appVersion: '1.2.0',
     lanAddresses: () => addresses.value,
     certificates,
-    onProtocolRefused,
     onChange: () => undefined,
   });
-  const queue = async (count: number, mirrored = true) => {
-    const made = Array.from({ length: count }, (_, index) =>
-      envelope(registration.deviceId, index + 1),
-    );
+  /** Queues commands; `pad` characters in each payload make them heavy. */
+  const queue = async (count: number, mirrored = true, pad = 0) => {
+    const made = Array.from({ length: count }, (_, index) => {
+      const sent = envelope(registration.deviceId, index + 1);
+      return pad ? { ...sent, payload: { ...sent.payload, run: 'x'.repeat(pad) } } : sent;
+    });
     await db.writeTransaction(async (tx) => {
       for (const sent of made) {
         await tx.execute('INSERT INTO commands (id, envelope, mirrored) VALUES (?, ?, ?)', [
@@ -138,7 +138,6 @@ async function setup() {
     service,
     queue,
     recordServerTime,
-    onProtocolRefused,
     certificates,
     addresses,
   };
@@ -180,17 +179,47 @@ describe('the upload connector (spec S04 rules 7–11)', () => {
     expect((await pendingCounts(local.opened.reads)).uploads).toBe(0);
   });
 
-  it('keeps the queue on 426 PROTOCOL_UNSUPPORTED and tells the update gate', async () => {
-    const { service, client, queue, local, onProtocolRefused } = await setup();
+  it('keeps each upload under the API body limit, so heavy commands never hold the queue', async () => {
+    const { service, client, queue, local } = await setup();
+    // 100 commands of about 20 KB: 2 MB, over the API's 1 MB.
+    await queue(100, true, 20_000);
+    await service.drain();
+    const sent = client.uploadCommands.mock.calls.map(([, body]) => body.commands.length);
+    expect(sent.length).toBeGreaterThan(2);
+    expect(sent.reduce((a, b) => a + b, 0)).toBe(100);
+    for (const [, body] of client.uploadCommands.mock.calls) {
+      expect(Buffer.byteLength(JSON.stringify(body))).toBeLessThan(1_000_000);
+    }
+    expect((await pendingCounts(local.opened.reads)).uploads).toBe(0);
+  });
+
+  it('records one command too large for any upload as rejected, and goes on', async () => {
+    const { service, client, queue, local, db } = await setup();
+    const [heavy] = await queue(1, true, 1_000_000);
+    await queue(2);
+    await service.drain();
+    expect(client.uploadCommands.mock.calls.flatMap(([, body]) => body.commands)).toHaveLength(2);
+    expect(
+      await db.getOptional('SELECT outcome, reason FROM command_results WHERE id = ?', [heavy?.id]),
+    ).toEqual({ outcome: 'rejected', reason: 'payload_invalid' });
+    expect((await pendingCounts(local.opened.reads)).uploads).toBe(0);
+  });
+
+  it('keeps the queue on 426 PROTOCOL_UNSUPPORTED until a heartbeat lists the protocol', async () => {
+    const { service, client, queue, local } = await setup();
     await queue(2);
     client.uploadCommands.mockRejectedValueOnce(new DeviceApiError('PROTOCOL_UNSUPPORTED'));
     await expect(service.drain()).rejects.toThrow('PROTOCOL_UNSUPPORTED');
     expect(service.status().protocolRefused).toBe(true);
-    expect(onProtocolRefused).toHaveBeenCalled();
-    // Nothing is sent again until the update.
+    // Nothing is sent again while refused.
     await expect(service.drain()).rejects.toThrow('PROTOCOL_UNSUPPORTED');
     expect(client.uploadCommands).toHaveBeenCalledTimes(1);
     expect((await pendingCounts(local.opened.reads)).uploads).toBe(2);
+    // The server lists it again (a rollback ended): the refusal never outlives it.
+    await service.tick();
+    expect(service.status().protocolRefused).toBe(false);
+    await service.drain();
+    expect((await pendingCounts(local.opened.reads)).uploads).toBe(0);
   });
 });
 
@@ -303,5 +332,11 @@ describe('the heartbeat (rules 14, 17, 39, 43)', () => {
     await service.tick();
     expect(client.certificate).toHaveBeenCalledTimes(2);
     expect(certificates.read()).toMatchObject({ lanAddresses: ['10.0.0.7'] });
+    // A PC registered again (a new device id) never keeps the old registration's certificate.
+    const current = certificates.read();
+    if (current) certificates.write({ ...current, deviceId: uuid7() });
+    await service.tick();
+    expect(client.certificate).toHaveBeenCalledTimes(3);
+    expect(certificates.read()).toMatchObject({ deviceId: registration.deviceId });
   });
 });

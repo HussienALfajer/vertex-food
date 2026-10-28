@@ -87,9 +87,23 @@ function updateFeedUrl(): string | null {
   return value?.startsWith('https://') ? value : null;
 }
 
-/** Starts the downloaded installer apart from the app, which then quits. */
-function runInstaller(file: string): void {
-  spawn(file, [], { detached: true, stdio: 'ignore' }).unref();
+/**
+ * Starts the downloaded installer apart from the app, which then quits; false when it could not
+ * start (a blocked or missing file), and the old version opens.
+ */
+function runInstaller(file: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(file, [], { detached: true, stdio: 'ignore' });
+      child.once('spawn', () => {
+        child.unref();
+        resolve(true);
+      });
+      child.once('error', () => resolve(false));
+    } catch {
+      resolve(false);
+    }
+  });
 }
 
 /**
@@ -130,7 +144,6 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
       appVersion: app.getVersion(),
       lanAddresses: () => privateLanAddresses(),
       certificates,
-      onProtocolRefused: () => updates.noteProtocolRefused(),
       onChange: notifyWindows,
     });
     sync.start();
@@ -146,7 +159,8 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
     os: `${platform()} ${release()}`,
     appVersion: app.getVersion(),
     onChange: notifyWindows,
-    openData: (databaseKey) => LocalStore.open(join(userData(), 'data'), databaseKey),
+    openData: (deviceId, databaseKey) =>
+      LocalStore.open(join(userData(), 'data', deviceId), databaseKey),
     generateDatabaseKey,
     // Rule 40: the sync stops, the pending work goes to the quarantine, then the certificate goes
     // with the database the device service deletes next.
@@ -227,7 +241,9 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(async () => {
     lockDownSession();
     serveRenderer();
-    if ((await startDeviceService()) === 'updating') {
+    // A failure here still opens the window: the renderer shows its error state.
+    const started = await startDeviceService().catch(() => 'failed' as const);
+    if (started === 'updating') {
       app.quit();
       return;
     }

@@ -3,21 +3,18 @@ import {
   quarantineUploadMessage,
   SYNC_PROTOCOL,
 } from '@vertex-food/contracts';
-import { DeviceApiError, type SyncApi } from './device-client.js';
+import { API_BODY_BYTES, DeviceApiError, type SyncApi } from './device-client.js';
 import type { Registration } from './device-store.js';
 import type { LocalReads } from './local-db.js';
 import { pendingEnvelopes } from './pending-work.js';
 
 /**
- * The API takes JSON bodies up to 1 MB: a revoked PC sends its batch in parts under it, the rest
- * of the body (ids, nonce, signature) included.
+ * Splits the envelopes into parts whose JSON stays under `maxBytes` (the API's body limit), in
+ * their order.
  */
-export const QUARANTINE_PART_BYTES = 900_000;
-
-/** Splits the envelopes into parts whose JSON stays under `maxBytes`, in their order. */
 export function quarantineParts(
   envelopes: readonly CommandEnvelope[],
-  maxBytes = QUARANTINE_PART_BYTES,
+  maxBytes = API_BODY_BYTES,
 ): CommandEnvelope[][] {
   const parts: CommandEnvelope[][] = [];
   let part: CommandEnvelope[] = [];

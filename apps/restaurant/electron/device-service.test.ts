@@ -700,6 +700,18 @@ describe('DeviceService wipe (rule 19)', () => {
     expect(store.read()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
   });
 
+  it('opens the database again when its delete was cut short, and finishes the wipe', async () => {
+    const { service, server, store, data, quarantine } = await registered();
+    server.revoked = true;
+    data.destroy.mockRejectedValueOnce(new Error('EBUSY'));
+    await service.refresh();
+    expect(store.read()).toMatchObject({ state: 'wiping', quarantined: false });
+    await service.refresh();
+    expect(quarantine).toHaveBeenCalledTimes(2);
+    expect(data.destroy).toHaveBeenCalledTimes(2);
+    expect(store.read()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
+  });
+
   it('a sync route refused with DEVICE_REVOKED starts the wipe', async () => {
     const { service, server, quarantine } = await registered();
     server.revoked = true;
