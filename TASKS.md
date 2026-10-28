@@ -4,7 +4,17 @@ The live checklist of the current spec or task, committed and pushed with each l
 
 # S03 — WhatsApp gateway and OTP (`docs/specs/S03-whatsapp-gateway-and-otp.md`, ADR 0034)
 
-PR order: 1 → (2 and 3 in parallel sessions, different apps) → (4 and 5 in parallel sessions).
+PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each PR starts from `main` after the PRs it depends on have merged.
+
+| PR | Depends on | Runs in parallel with | Shared files to coordinate |
+|---|---|---|---|
+| 1 data | — | — | — |
+| 2 gateway | 1 | 3 | none: `apps/whatsapp-gateway` only; `docs/ROADMAP.md` and this file get a line each |
+| 3 API | 1 | 2 | none: `apps/api` and the regenerated client types only |
+| 4 console | 3 | 5 | none: `apps/console` only |
+| 5 restaurant | 3 | 4 | none: `apps/restaurant` only |
+
+Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that needs a change there stops and says so instead of editing them in parallel.
 
 ## PR 1 `feat/s03-messaging-data` — crypto, contracts, database, queue writer
 
@@ -13,12 +23,12 @@ PR order: 1 → (2 and 3 in parallel sessions, different apps) → (4 and 5 in p
 - [x] i18n `messaging` namespace (message texts), the error text and the two permission labels; OpenAPI, console and restaurant API types regenerated for the new enums
 - [x] db (`/db-migration`): `schema/messaging.ts` (six tables), registry, grants and `refuse_change()` custom migration, `otp_challenges.delivery_status` values; conventions test with the `DELETE` exceptions; `pnpm db:migrate` locally
 - [x] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
-- [ ] Wiring, docs (ROADMAP, architecture, folder `CLAUDE.md`), `.env.example` keys
+- [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md`, spec notes); the messaging keys reach `.env.example` with the first config that reads them (PR 2 or PR 3)
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, endpoints/rules summary in the report
 
 ## PR 2 `feat/s03-gateway` — the gateway (after PR 1)
 
-- [ ] Config: `DATABASE_APP_URL`, messaging keys, `WHATSAPP_TRANSPORT` (production refuses `fake`)
+- [ ] Config: `DATABASE_APP_URL`, messaging keys (and in `.env.example`), `WHATSAPP_TRANSPORT` (production refuses `fake`)
 - [ ] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
 - [ ] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at`, duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
 - [ ] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
@@ -29,7 +39,7 @@ PR order: 1 → (2 and 3 in parallel sessions, different apps) → (4 and 5 in p
 
 ## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
 
-- [ ] Config: messaging keys, `OTP_SENDER=gateway`
+- [ ] Config: messaging keys (and in `.env.example`), `OTP_SENDER=gateway`
 - [ ] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change)
 - [ ] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
 - [ ] Console routes: list, detail with events, health, add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events

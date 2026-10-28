@@ -12,11 +12,12 @@
  * - `append-only`: `created_at` only; a trigger refuses `UPDATE`, `DELETE` and `TRUNCATE`, and the
  *   app role has no such privileges (audit, payments, refunds, order and job events, ledger
  *   entries, agreement terms, the sync command log).
- * - `queue`: `created_at` and `updated_at`; rows change as they are processed (outbox, message
- *   status).
+ * - `queue`: `created_at` and `updated_at`; rows change as they are processed (outbox, the
+ *   WhatsApp send queue). The app role deletes only from the queues listed in `APP_DELETES` of the
+ *   convention test (spec S03: sent messages after 30 days, a replaced link's store).
  * - `replaceable`: `created_at` only; rows with no identity of their own, replaced as a set by
- *   deleting and inserting in one audited transaction (a branch's weekly hours). The only kind the
- *   app role may delete from.
+ *   deleting and inserting in one audited transaction (a branch's weekly hours). The app role may
+ *   delete from every one.
  *
  * The convention test fails when a table is missing here or does not follow its scope and kind.
  */
