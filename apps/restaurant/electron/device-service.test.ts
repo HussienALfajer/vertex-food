@@ -5,7 +5,16 @@ import { deviceChannels } from './bridge.js';
 import { type DeviceApi, DeviceApiError } from './device-client.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
-import { fakeSealer, member, memberList, tempStore, uuid7, verifyPin } from './device-test-kit.js';
+import {
+  fakeSealer,
+  member,
+  memberList,
+  memoryData,
+  tempStore,
+  uuid7,
+  verifyPin,
+} from './device-test-kit.js';
+import { generateDatabaseKey } from './local-db.js';
 
 const start = new Date('2026-10-20T08:00:00.000Z');
 
@@ -146,8 +155,11 @@ async function setup() {
   const fake = await fakeApi();
   const { store, path } = tempStore();
   const changed = vi.fn();
+  // One database across restarts, as on the disk.
+  const data = memoryData();
+  const quarantine = vi.fn(async () => undefined);
   const make = () =>
-    new DeviceService({
+    DeviceService.open({
       store,
       client: fake.api,
       verifyPin,
@@ -158,15 +170,18 @@ async function setup() {
       os: 'win32 10.0',
       appVersion: '0.0.0',
       onChange: changed,
+      openData: async () => data,
+      generateDatabaseKey,
+      quarantine,
     });
-  const service = make();
+  const service = await make();
   const input = {
     ticket: 'ticket',
     tenantId: fake.server.list.tenant.id,
     branchId: fake.server.list.branch.id,
     name: 'الكاشير 1',
   };
-  return { ...fake, store, path, service, make, changed, input };
+  return { ...fake, store, path, service, make, changed, input, data, quarantine };
 }
 
 async function registered() {
@@ -178,6 +193,16 @@ async function registered() {
 const later = (minutes: number) => new Date(start.getTime() + minutes * 60_000);
 
 describe('DeviceService registration (rule 16)', () => {
+  it('keeps the members in the local database and only the list header sealed (spec S04)', async () => {
+    const { store, data, server } = await registered();
+    const record = store.read();
+    expect(record?.state === 'registered' && record.memberList.members).toBeUndefined();
+    expect(record?.state === 'registered' && record.registration.databaseKey).toMatch(
+      /^[0-9a-f]{64}$/,
+    );
+    expect((await data.loadMembers())?.members).toEqual(server.list.members);
+  });
+
   it('stores the record, opens the registering member session, shows no verifier', async () => {
     const { service, owner, store, make, changed } = await registered();
     const status = service.status();
@@ -190,7 +215,7 @@ describe('DeviceService registration (rule 16)', () => {
     expect(store.read()?.state).toBe('registered');
     expect(changed).toHaveBeenCalled();
     // A restart reads the registration back, without the session.
-    expect(make().status()).toMatchObject({ state: 'registered', session: null });
+    expect((await make()).status()).toMatchObject({ state: 'registered', session: null });
   });
 
   it('holds one registration per installation (rule 17)', async () => {
@@ -527,7 +552,7 @@ describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () 
     // The clock is set back to day 1: still closed, with the clock warning, after a restart too.
     server.pcClockOffsetMs = 24 * 3600_000;
     expect(service.status()).toMatchObject({ window: { open: false, clockBehind: true } });
-    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
+    expect((await make()).status()).toMatchObject({ window: { open: false, clockBehind: true } });
   });
 
   it('still answers a status when keeping the time fails, and keeps it at the next look', async () => {
@@ -540,7 +565,7 @@ describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () 
     server.pcClockOffsetMs = 8 * 24 * 3600_000 + 60_000;
     service.status();
     server.pcClockOffsetMs = 0;
-    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
+    expect((await make()).status()).toMatchObject({ window: { open: false, clockBehind: true } });
   });
 
   it('an offline member-list refresh keeps the time it saw too', async () => {
@@ -549,7 +574,7 @@ describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () 
     server.pcClockOffsetMs = 8 * 24 * 3600_000;
     await service.refresh();
     server.pcClockOffsetMs = 0;
-    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
+    expect((await make()).status()).toMatchObject({ window: { open: false, clockBehind: true } });
   });
 
   it('a clock that ran ahead and was corrected leaves the window open once synced', async () => {
@@ -575,7 +600,7 @@ describe('DeviceService safeguards', () => {
   it('never registers when the record could not be sealed', async () => {
     const fake = await fakeApi();
     const { store } = tempStore({ ...fakeSealer, isEncryptionAvailable: () => false });
-    const service = new DeviceService({
+    const service = await DeviceService.open({
       store,
       client: fake.api,
       verifyPin,
@@ -586,6 +611,9 @@ describe('DeviceService safeguards', () => {
       os: 'win32 10.0',
       appVersion: '0.0.0',
       onChange: () => undefined,
+      openData: async () => memoryData(),
+      generateDatabaseKey,
+      quarantine: async () => undefined,
     });
     const result = await service.register({
       ticket: 'ticket',
@@ -638,6 +666,62 @@ describe('DeviceService wipe (rule 19)', () => {
     expect(service.status()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
     await service.refresh();
     expect(store.read()?.state).toBe('wiped');
+  });
+
+  it('uploads to the quarantine, then deletes the database, then confirms (spec S04 rule 40)', async () => {
+    const { service, server, store, api, data, quarantine } = await registered();
+    server.revoked = true;
+    await service.refresh();
+    const [uploaded] = quarantine.mock.invocationCallOrder;
+    const [destroyed] = data.destroy.mock.invocationCallOrder;
+    const [confirmed] = vi.mocked(api.wiped).mock.invocationCallOrder;
+    expect(uploaded).toBeLessThan(destroyed ?? 0);
+    expect(destroyed).toBeLessThan(confirmed ?? 0);
+    expect(store.read()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
+  });
+
+  it('keeps the database until the quarantine upload succeeds, across a restart', async () => {
+    const { service, server, store, api, data, quarantine, make } = await registered();
+    server.revoked = true;
+    quarantine.mockRejectedValueOnce(new DeviceApiError('NETWORK_ERROR'));
+    await service.refresh();
+    expect(store.read()).toMatchObject({ state: 'wiping', quarantined: false });
+    expect(data.destroy).not.toHaveBeenCalled();
+    expect(api.wiped).not.toHaveBeenCalled();
+    // The member list and the session are gone at once.
+    expect(service.status()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
+    quarantine.mockRejectedValueOnce(new DeviceApiError('NETWORK_ERROR'));
+    const restarted = await make();
+    await restarted.refresh();
+    expect(data.destroy).not.toHaveBeenCalled();
+    await restarted.refresh();
+    expect(quarantine).toHaveBeenCalledTimes(3);
+    expect(data.destroy).toHaveBeenCalledTimes(1);
+    expect(store.read()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
+  });
+
+  it('opens the database again when its delete was cut short, and finishes the wipe', async () => {
+    const { service, server, store, data, quarantine } = await registered();
+    server.revoked = true;
+    data.destroy.mockRejectedValueOnce(new Error('EBUSY'));
+    await service.refresh();
+    expect(store.read()).toMatchObject({ state: 'wiping', quarantined: false });
+    await service.refresh();
+    expect(quarantine).toHaveBeenCalledTimes(2);
+    expect(data.destroy).toHaveBeenCalledTimes(2);
+    expect(store.read()).toEqual({ state: 'wiped', tenantName: 'مطعم تجريبي' });
+  });
+
+  it('a sync route refused with DEVICE_REVOKED starts the wipe', async () => {
+    const { service, server, quarantine } = await registered();
+    server.revoked = true;
+    const call = vi.fn(async () => {
+      throw new DeviceApiError('DEVICE_REVOKED');
+    });
+    await expect(service.deviceCall(call)).rejects.toThrow('DEVICE_REVOKED');
+    await service.refresh();
+    expect(quarantine).toHaveBeenCalled();
+    expect(service.status().state).toBe('wiped');
   });
 
   it('a revoked PC refused at sign-in wipes too', async () => {

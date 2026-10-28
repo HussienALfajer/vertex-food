@@ -1,12 +1,23 @@
 import {
+  type CertificateRequest,
   deviceTokenSchema,
   errorResponseSchema,
+  type Heartbeat,
+  heartbeatAnswerSchema,
+  issuedCertificateSchema,
   memberListResultSchema,
+  type NumberSeries,
   nonceSchema,
+  numberBlocksSchema,
+  type QuarantineUpload,
+  quarantineUploadResultSchema,
   registeredDeviceSchema,
   type SignIn,
   sessionTokensSchema,
   signInResultSchema,
+  syncTokenSchema,
+  type UploadCommands,
+  uploadCommandsResultSchema,
 } from '@vertex-food/contracts';
 import type { z } from 'zod';
 
@@ -32,6 +43,14 @@ export type Fetch = typeof fetch;
 const DEVICE_TOKEN_HEADER = 'x-device-token';
 const TICKET_HEADER = 'x-sign-in-ticket';
 const TIMEOUT_MS = 10_000;
+/** An upload of 100 commands (up to 1 MB) on a slow line. */
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+/**
+ * What one upload's commands may weigh in JSON: the API takes bodies up to 1 MB, and the rest of
+ * the body (protocol, ids, nonce, signature) fits in what is left.
+ */
+export const API_BODY_BYTES = 900_000;
 
 /**
  * The routes of the API a registered PC calls from the main process (spec S02 "API and
@@ -48,7 +67,7 @@ export class DeviceClient {
     method: string,
     path: string,
     schema: T | null,
-    options: { headers?: Record<string, string>; body?: unknown } = {},
+    options: { headers?: Record<string, string>; body?: unknown; timeoutMs?: number } = {},
   ): Promise<z.output<T>> {
     if (!this.baseUrl) throw new DeviceApiError('NETWORK_ERROR');
     let response: Response;
@@ -60,7 +79,7 @@ export class DeviceClient {
           ...options.headers,
         },
         body: options.body === undefined ? null : JSON.stringify(options.body),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(options.timeoutMs ?? TIMEOUT_MS),
       });
     } catch {
       throw new DeviceApiError('NETWORK_ERROR');
@@ -160,6 +179,51 @@ export class DeviceClient {
       body: { reason },
     });
   }
+
+  // The sync routes of spec S04 (rules 7, 17, 39, 40, 43, 45).
+
+  syncToken(deviceToken: string) {
+    return this.request('GET', '/api/sync/token', syncTokenSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+    });
+  }
+
+  uploadCommands(deviceToken: string, body: UploadCommands) {
+    return this.request('POST', '/api/sync/commands', uploadCommandsResultSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+      body,
+      timeoutMs: UPLOAD_TIMEOUT_MS,
+    });
+  }
+
+  heartbeat(deviceToken: string, body: Heartbeat) {
+    return this.request('POST', '/api/sync/heartbeat', heartbeatAnswerSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+      body,
+    });
+  }
+
+  numberBlocks(deviceToken: string, series: NumberSeries) {
+    return this.request('POST', '/api/sync/number-blocks', numberBlocksSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+      body: { series },
+    });
+  }
+
+  certificate(deviceToken: string, body: CertificateRequest) {
+    return this.request('POST', '/api/sync/certificates', issuedCertificateSchema, {
+      headers: { [DEVICE_TOKEN_HEADER]: deviceToken },
+      body,
+    });
+  }
+
+  /** A revoked PC has no device token: the upload is signed over a challenge nonce (rule 40). */
+  quarantine(body: QuarantineUpload) {
+    return this.request('POST', '/api/sync/quarantine', quarantineUploadResultSchema, {
+      body,
+      timeoutMs: UPLOAD_TIMEOUT_MS,
+    });
+  }
 }
 
 /** What `DeviceService` calls; tests give a fake. */
@@ -175,4 +239,16 @@ export type DeviceApi = Pick<
   | 'openSession'
   | 'refreshSession'
   | 'endSession'
+>;
+
+/** What the sync client calls (spec S04); tests give a fake. */
+export type SyncApi = Pick<
+  DeviceClient,
+  | 'challenge'
+  | 'syncToken'
+  | 'uploadCommands'
+  | 'heartbeat'
+  | 'numberBlocks'
+  | 'certificate'
+  | 'quarantine'
 >;
