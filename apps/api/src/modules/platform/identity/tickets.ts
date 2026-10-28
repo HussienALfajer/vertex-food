@@ -2,7 +2,7 @@ import { DomainError, type SignInIntent, ticketTtlSeconds } from '@vertex-food/c
 import { accounts, type Database, type Transaction } from '@vertex-food/db';
 import { eq } from 'drizzle-orm';
 import type { Ticket } from '../../../core/access/actor.js';
-import type { KeyedHash } from './crypto.js';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { randomToken } from './secrets.js';
 import { isTokenUsed, useToken } from './single-use.js';
 import type { TicketPurpose, TokenSigner } from './tokens.js';

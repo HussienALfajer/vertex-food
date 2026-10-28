@@ -3,7 +3,7 @@ import { DomainError, type ErrorCode, type OtpPurpose, otpPolicy } from '@vertex
 import { accounts, type Database, otpChallenges } from '@vertex-food/db';
 import { and, desc, eq, gt } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import type { KeyedHash } from './crypto.js';
+import type { KeyedHash } from '@vertex-food/crypto';
 import type { OtpSender } from './otp-sender.js';
 
 const HOUR_MS = 3_600_000;

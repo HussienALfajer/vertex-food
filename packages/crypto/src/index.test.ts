@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { KeyedHash, SecretBox, safeEqual } from './crypto.js';
+import { KeyedHash, SecretBox, safeEqual } from './index.js';
 
 describe('KeyedHash', () => {
   const hash = new KeyedHash(randomBytes(32));

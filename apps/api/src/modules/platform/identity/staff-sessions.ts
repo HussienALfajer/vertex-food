@@ -6,7 +6,7 @@ import {
 import { devices, staffSessions, type Transaction } from '@vertex-food/db';
 import { and, eq, inArray, isNull, type SQL } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
-import { type KeyedHash, safeEqual } from './crypto.js';
+import { type KeyedHash, safeEqual } from '@vertex-food/crypto';
 import { randomToken } from './secrets.js';
 import type { TokenSigner } from './tokens.js';
 

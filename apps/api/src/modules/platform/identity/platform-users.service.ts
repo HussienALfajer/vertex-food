@@ -25,7 +25,7 @@ import {
   permissionsOfUser,
   platformUserById,
 } from './console-auth.service.js';
-import type { KeyedHash } from './crypto.js';
+import type { KeyedHash } from '@vertex-food/crypto';
 import { KEYED_HASH } from './devices.service.js';
 
 export function toPlatformUser(row: PlatformUserRow): PlatformUser {

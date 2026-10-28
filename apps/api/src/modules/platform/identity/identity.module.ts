@@ -17,9 +17,9 @@ import {
   ConsoleMeController,
   PlatformUsersController,
 } from './console-identity.controller.js';
-import { KeyedHash, SECRET_BOX, SecretBox } from './crypto.js';
+import { KeyedHash, SecretBox } from '@vertex-food/crypto';
 import { TenantDevicesStore } from './device-access.js';
-import { DEVICE_NONCES, DevicesService, KEYED_HASH } from './devices.service.js';
+import { DEVICE_NONCES, DevicesService, KEYED_HASH, SECRET_BOX } from './devices.service.js';
 import {
   AuthController,
   DevicesController,

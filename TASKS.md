@@ -2,51 +2,51 @@
 
 The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
 
-## refactor/sales-channels — TEST-01 of the audit of 2026-10-28
+# S03 — WhatsApp gateway and OTP (`docs/specs/S03-whatsapp-gateway-and-otp.md`, ADR 0034)
 
-Owner, 2026-10-28: "do the best". Branch charges stay platform (architecture), on generic sales channels.
+PR order: 1 → (2 and 3 in parallel sessions, different apps) → (4 and 5 in parallel sessions).
 
-- [x] `salesChannelSchema` in `contracts/tenancy.ts`, `orders.ts` removed; `salesChannels` in contracts, db (column `order_types` kept), API, restaurant app; OpenAPI and clients regenerated; no migration
-- [x] Architecture test: every file of `packages/contracts/src` and `packages/db/src/schema` has a layer; no platform → food import; proof on a broken example
-- [x] ADR 0025 amendment, glossary, S01 spec, contracts `CLAUDE.md`, audit record
-- [x] `pnpm verify`, PR with auto-merge and Auto-fix
+## PR 1 `feat/s03-messaging-data` — crypto, contracts, database, queue writer
 
-## fix/S02-audit — the external audit of 2026-10-28 (Phase 0, S01, S02)
+- [x] `packages/crypto`: `KeyedHash`, `SecretBox` (context per use), `safeEqual` moved from `apps/api/src/modules/platform/identity/crypto.ts` with their tests; api imports it; AGENTS.md stack line, architecture and folder `CLAUDE.md`
+- [ ] contracts `messaging.ts`: `whatsappPolicy`, kinds, `messageTemplates`, session states and transitions, `disconnectReasonSchema`, `whatsappWarmUpDay`, `whatsappDailyCap`, `sendBudget`, `chooseWhatsAppNumber`, `whatsappRetryDelaySeconds`, `matchWhatsAppKeyword`, `canAdvanceWhatsAppMessage`, `isWhatsAppSessionHealthy`, console shapes, `otpDeliverySchema`; `console.messaging.read` and `.manage` in `access.ts`; error code `WHATSAPP_SESSION_LIMIT`; audit actions; layer entries; unit tests
+- [ ] i18n `messaging` namespace (message texts) and the error text
+- [ ] db (`/db-migration`): `schema/messaging.ts` (six tables), registry, grants and `refuse_change()` custom migration, `otp_challenges.delivery_status` values; conventions test with the `DELETE` exceptions; `pnpm db:migrate` locally
+- [ ] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
+- [ ] Wiring, docs (ROADMAP, architecture, folder `CLAUDE.md`), `.env.example` keys
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, endpoints/rules summary in the report
 
-Report verified finding by finding against `main` at 28f0fdc; recorded in `docs/audits/2026-10-28-S02-audit.md`.
+## PR 2 `feat/s03-gateway` — the gateway (after PR 1)
 
-- [x] SEC-01: "Switch cashier" locks at once, not behind a queued refresh; a refresh that ends after the lock opens nothing (`device-service.ts`)
-- [x] OFF-01: every look at the clock (status, offline refresh) keeps the highest time seen (`device-service.ts`)
-- [x] SEC-02: tickets issued before a password change are refused (`tickets.ts`)
-- [x] BE-01: a console reset keeps an active admin and rechecks the operator (`platform-users.service.ts`)
-- [x] BE-02: archiving a branch refuses while active members have it as their only branch (`BRANCH_HAS_MEMBERS`)
-- [x] BE-03: staff writes read the time after the tenant lock (`staff.service.ts`)
-- [x] BE-04: a recognized personal device renews its cookie
-- [x] FE-01: "Forgot your password?" on the sign-in screen, through `password_reset` (restaurant), with E2E
-- [x] FE-02: a PC forgets `/me` between sessions; an offline session uses the member list only
-- [x] FE-03: the restaurant dev server forwards `/api` to the local API
-- [x] TOOL-01: the git guard runs for PowerShell too
-- [x] Audit record, docs, `pnpm verify`, reviewer, PR with auto-merge and Auto-fix
+- [ ] Config: `DATABASE_APP_URL`, messaging keys, `WHATSAPP_TRANSPORT` (production refuses `fake`)
+- [ ] `src/transport/`: `WhatsAppTransport`, fake transport, Baileys transport pinned to an exact v7 (`WEB_BROWSER`), mapping tests with synthetic payloads; boundary test (only `src/transport/` imports Baileys)
+- [ ] `sessions/`: lease take, renew, release, takeover; `CredentialStore` sealed; QR sealed and link deadline; `open` with phone, `linked_at`, duplicate number; disconnect reasons (515, 401, 403, 440, lost with backoff); session events
+- [ ] `sending/`: claim by priority with `SKIP LOCKED`, `NOTIFY` and 2 s wake, render from sealed params, gaps and caps from `sent_at`, failover, backoff and deadlines, auto-pause after three failures, receipts forward only, OTP challenge status, retry lookup within an hour
+- [ ] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
+- [ ] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
+- [ ] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## docs/cloud-handoff — continue a spec from local or cloud
+## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
 
-- [x] Repository audit of 2026-10-28: every branch merged into `main`, local `main` equals `origin/main`; merged `chore/workflow-speed` deleted on origin, empty `.claude/worktrees/` removed
-- [x] Push after every layer commit with `TASKS.md` in it (`AGENTS.md`, `/feature-slice`); resume on the spec's unmerged branch
-- [x] Session-start note fetches `origin`, shows unpushed commits and unmerged branches
-- [x] `docs/workflow.md` "Local and cloud handoff"; `pnpm verify`, PR with auto-merge and Auto-fix
+- [ ] Config: messaging keys, `OTP_SENDER=gateway`
+- [ ] `platform/messaging` module: gateway `OtpSender` (availability check, queued sealed message), failed delivery expiring the challenge without cooldown (S02 rule 12 change)
+- [ ] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
+- [ ] Console routes: list, detail with events, health, add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
+- [ ] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
-## chore/workflow-speed — faster checks, no approval questions, consistent instructions
+## PR 4 `feat/s03-console-whatsapp` — console screens (after PR 3, parallel with PR 5)
 
-From the analysis of 2026-10-28 (S02 sessions and CI runs 26–30), approved by the owner on 2026-10-28.
+- [ ] `/whatsapp` list with cards, states and actions by permission; add-and-link dialog (QR polling, countdown, timeout, duplicate); `/whatsapp/$sessionId` detail; unlink and pause confirms with re-auth; health banner on every page; sidebar item; i18n
+- [ ] E2E with mocked API, RTL light and dark at 360 px, tablet, desktop
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
-- [x] Standing authorization, the same in every source: commit, push, open the PR, auto-merge (merge commits) and Auto-fix without asking; owner acceptance after the merge; no v1-scope/ADR exception; `pnpm db:migrate` on the local database without asking for backward-compatible migrations (`CLAUDE.md`, `AGENTS.md`, ADR 0019, skills, agents, `docs/workflow.md`, folder `CLAUDE.md` files)
-- [x] `pnpm verify` runs the whole E2E suite of every app the branch affects (its files, its workspace dependencies, `brand/`, root config), not only the changed specs; test guard, checker, skills and docs follow
-- [x] CI: the E2E shards run in the official Playwright container instead of installing Chromium and its system packages on every run
-- [x] Review: one full review, then at most two fix-only re-reviews of the fix commits; reviewer, spec and db-migration ADR lists up to 0032
-- [x] Flaky E2E fixed at their cause: `apps/restaurant/e2e/setup.spec.ts` (wizard, hours) and `apps/restaurant/e2e/settings.spec.ts` (offline)
-- [x] Docs: README, ROADMAP, S02 spec references and rule 11 deviation, `deploy/` wording (ADR 0017, Q1, `packages/db/CLAUDE.md`), restaurant `hub-clients/`, glossary, architecture, ADR 0005 amendment note, 44 px in folder rules, api `configureApp` order, native-only checks, Q14/Q21, cache eviction in `docs/testing.md`
-- [x] Settings: drop the allow rules `bypassPermissions` makes redundant; deny reads and edits of `api-schema.gen.ts` like the other generated files
-- [x] Consistency audit of every instruction file (fresh context), `pnpm verify`, PR with auto-merge and Auto-fix
+## PR 5 `feat/s03-restaurant-otp-status` — restaurant OTP delivery status (after PR 3, parallel with PR 4)
+
+- [ ] OTP step of a password sign-in: status line polled every 2 s until final or 60 s, resend enabled at once on failure; i18n
+- [ ] E2E for each delivery status, RTL light and dark
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 
