@@ -54,9 +54,9 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 
 ## PR 5 `feat/s03-restaurant-otp-status` — restaurant OTP delivery status (after PR 3, parallel with PR 4)
 
-- [ ] OTP step of a password sign-in: status line polled every 2 s until final or 60 s, resend enabled at once on failure; i18n
-- [ ] E2E for each delivery status, RTL light and dark
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] OTP step of a password sign-in: status line polled every 2 s until final or 60 s, resend enabled at once on failure; i18n
+- [x] E2E for each delivery status, RTL light and dark
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 
