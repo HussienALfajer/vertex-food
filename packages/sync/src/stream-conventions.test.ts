@@ -1,16 +1,52 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 
 // The sync streams' conventions (spec S04, ADR 0035): the sync service reads whole rows of the
 // published tables bypassing RLS, so isolation of what reaches a PC rests on these queries. Each
 // one names its columns, reads a published table, and filters by the token's tenant and branch.
+// The config is parsed as YAML and every key is known here, so no query escapes the checks.
 
-const config = readFileSync(new URL('../powersync/sync-config.yaml', import.meta.url), 'utf8');
-const queries = config
-  .split('\n')
-  .map((line) => /^\s*- (SELECT .*)$/.exec(line)?.[1])
-  .filter((query): query is string => query !== undefined);
+const config: unknown = parseYaml(
+  readFileSync(new URL('../powersync/sync-config.yaml', import.meta.url), 'utf8'),
+);
 
+const TOP_LEVEL_KEYS = ['config', 'streams'];
+const STREAM_KEYS = ['auto_subscribe', 'query', 'queries'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Every query of every stream, or an error naming what the test does not recognise. */
+function streamQueries(): string[] {
+  if (!isRecord(config)) throw new Error('the sync config is not a mapping');
+  const unknownTop = Object.keys(config).filter((key) => !TOP_LEVEL_KEYS.includes(key));
+  if (unknownTop.length > 0) throw new Error(`unknown keys: ${unknownTop.join(', ')}`);
+  const streams = config.streams;
+  if (!isRecord(streams)) throw new Error('streams is not a mapping');
+  const queries: string[] = [];
+  for (const [name, stream] of Object.entries(streams)) {
+    if (!isRecord(stream)) throw new Error(`stream ${name} is not a mapping`);
+    const unknown = Object.keys(stream).filter((key) => !STREAM_KEYS.includes(key));
+    if (unknown.length > 0)
+      throw new Error(`stream ${name} has unknown keys: ${unknown.join(', ')}`);
+    const own = [
+      ...(stream.query === undefined ? [] : [stream.query]),
+      ...(stream.queries === undefined ? [] : (stream.queries as unknown[])),
+    ];
+    if (!Array.isArray(stream.queries ?? []) || own.length === 0) {
+      throw new Error(`stream ${name} has no list of queries`);
+    }
+    for (const query of own) {
+      if (typeof query !== 'string') throw new Error(`stream ${name} has a query that is not text`);
+      queries.push(query.replace(/\s+/g, ' ').trim());
+    }
+  }
+  return queries;
+}
+
+const queries = streamQueries();
 const TENANT = "auth.parameter('tenant_id')";
 const BRANCH = "auth.parameter('branch_id')";
 
@@ -43,7 +79,7 @@ function parse(query: string) {
 }
 
 describe('sync streams', () => {
-  it('are found in the config', () => {
+  it('are found in the config, with only keys the checks know', () => {
     expect(queries.length).toBeGreaterThanOrEqual(8);
   });
 
@@ -55,14 +91,15 @@ describe('sync streams', () => {
 
   it.each(queries)('%s filters by the token’s tenant and branch', (query) => {
     const { table, where } = parse(query);
-    const conditions = where.split(' AND ').map((condition) => condition.trim());
+    // One table, no subquery, no alternative: the filters below hold for every row.
+    expect(where).not.toMatch(/\b(OR|SELECT|FROM|JOIN|UNION)\b/i);
+    const conditions = where.split(/ AND /i).map((condition) => condition.trim());
     // A tenant's own row by its id; a branch's own row by its id; every other row by both columns.
     const tenantFilter = table === 'tenants' ? `id = ${TENANT}` : `tenant_id = ${TENANT}`;
     expect(conditions).toContain(tenantFilter);
     if (table === 'tenants') return;
     const branchFilter = table === 'branches' ? `id = ${BRANCH}` : `branch_id = ${BRANCH}`;
     expect(conditions).toContain(branchFilter);
-    expect(where).not.toMatch(/\bOR\b/i);
   });
 
   it('stream every published table', () => {

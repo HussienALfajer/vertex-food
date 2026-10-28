@@ -227,10 +227,21 @@ export type CommandFlag = z.infer<typeof commandFlagSchema>;
 /** At most this many envelopes per upload (rule 7). */
 export const MAX_COMMANDS_PER_UPLOAD = 100;
 
+/**
+ * One uploaded command: its signed envelope, and whether the standby held it when the hub
+ * committed it (rules 5, 21). The mirror runs after signing, so the flag travels beside the
+ * envelope; the server records `mirrored_false` from it.
+ */
+export const uploadedCommandSchema = z
+  .object({ envelope: commandEnvelopeSchema, mirrored: z.boolean() })
+  .meta({ id: 'UploadedCommand' });
+
+export type UploadedCommand = z.infer<typeof uploadedCommandSchema>;
+
 export const uploadCommandsSchema = z
   .object({
     protocol: protocolSchema,
-    commands: z.array(commandEnvelopeSchema).min(1).max(MAX_COMMANDS_PER_UPLOAD),
+    commands: z.array(uploadedCommandSchema).min(1).max(MAX_COMMANDS_PER_UPLOAD),
   })
   .meta({ id: 'UploadCommands' });
 

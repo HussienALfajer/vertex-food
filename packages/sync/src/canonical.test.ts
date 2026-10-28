@@ -34,6 +34,16 @@ describe('canonical JSON', () => {
     expect(() => canonicalJson({ big: 1n })).toThrow(CanonicalJsonError);
     expect(() => canonicalJson(undefined)).toThrow(CanonicalJsonError);
   });
+
+  it('refuses what PostgreSQL’s jsonb cannot store: U+0000 and lone surrogates', () => {
+    expect(() => canonicalJson({ note: 'a\u0000b' })).toThrow(CanonicalJsonError);
+    // A note cut at a length limit through an emoji keeps half of it.
+    expect(() => canonicalJson({ note: '😀'.slice(0, 1) })).toThrow(CanonicalJsonError);
+    expect(() => canonicalJson({ note: '\udc00x' })).toThrow(CanonicalJsonError);
+    expect(() => canonicalJson({ 'k\u0000': 1 })).toThrow(CanonicalJsonError);
+    expect(() => canonicalJson({ '\ud800': 1 })).toThrow(CanonicalJsonError);
+    expect(canonicalJson({ note: 'طلب 😀' })).toBe('{"note":"طلب 😀"}');
+  });
 });
 
 describe('hashes', () => {

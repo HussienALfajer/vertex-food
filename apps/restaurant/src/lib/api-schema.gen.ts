@@ -2464,10 +2464,14 @@ export interface components {
         };
         UploadCommands: {
             protocol: number;
-            commands: components["schemas"]["CommandEnvelope"][];
+            commands: components["schemas"]["UploadedCommand"][];
         };
         UploadCommandsResult: {
             results: components["schemas"]["CommandResult"][];
+        };
+        UploadedCommand: {
+            envelope: components["schemas"]["CommandEnvelope"];
+            mirrored: boolean;
         };
         Weekday: number;
         WeeklyPeriod: {

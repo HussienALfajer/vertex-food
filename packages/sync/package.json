@@ -25,7 +25,8 @@
     "@types/node": "24.19.2",
     "@vertex-food/config": "workspace:*",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.8.1"
   },
   "dependencies": {
     "@noble/hashes": "2.3.0",

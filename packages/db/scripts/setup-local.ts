@@ -9,6 +9,9 @@
 //   BYPASSRLS, with SELECT only on the tables a migration publishes to it. REPLICATION also lets
 //   it decode the whole WAL with any output plugin the server has, so servers carry pgoutput only
 //   (packages/db/CLAUDE.md, open question Q20).
+// Only these five connect to the development database. With POWERSYNC_STORAGE_URI set, also the
+// sync service's bucket storage (spec S04): its own role, food_sync_storage, owning its own
+// database, so the sync service holds no credential of the five roles but the sync role's.
 // Safe to run again: it only creates what is missing and resets the roles' passwords and
 // attributes. It never drops anything and does not migrate (`pnpm db:migrate` does).
 // Run from the repository root: `pnpm db:setup-local`, with the six URLs of .env.example in .env
@@ -39,6 +42,8 @@ const ROLES = {
     attributes: 'NOSUPERUSER BYPASSRLS NOCREATEROLE REPLICATION NOCREATEDB NOINHERIT',
   },
 } as const;
+
+const STORAGE_ROLE = 'food_sync_storage';
 
 function url(name: string): URL {
   const value = process.env[name];
@@ -101,6 +106,47 @@ try {
     throw new Error(`Database ${database} exists and belongs to ${current.owner}, not ${owner}`);
   } else {
     process.stdout.write(`database ${database} exists\n`);
+  }
+
+  // Only the five roles connect to the development database.
+  await client.query(`REVOKE CONNECT ON DATABASE ${client.escapeIdentifier(database)} FROM PUBLIC`);
+  for (const role of roles) {
+    await client.query(
+      `GRANT CONNECT ON DATABASE ${client.escapeIdentifier(database)} TO ${client.escapeIdentifier(role.name)}`,
+    );
+  }
+
+  if (process.env.POWERSYNC_STORAGE_URI) {
+    const storage = url('POWERSYNC_STORAGE_URI');
+    const storageDatabase = decodeURIComponent(storage.pathname.slice(1));
+    if (storage.username !== STORAGE_ROLE) {
+      throw new Error(`POWERSYNC_STORAGE_URI must use the role ${STORAGE_ROLE}`);
+    }
+    if (!storageDatabase || storageDatabase === database) {
+      throw new Error('POWERSYNC_STORAGE_URI must name a database of its own');
+    }
+    const exists = await client.query('select 1 from pg_roles where rolname = $1', [STORAGE_ROLE]);
+    const verb = exists.rowCount ? 'ALTER' : 'CREATE';
+    await client.query(
+      `${verb} ROLE ${STORAGE_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOREPLICATION NOCREATEDB NOINHERIT PASSWORD ${client.escapeLiteral(decodeURIComponent(storage.password))}`,
+    );
+    process.stdout.write(`${verb === 'CREATE' ? 'created' : 'updated'} role ${STORAGE_ROLE}\n`);
+    const found = await client.query<{ owner: string }>(
+      'select pg_get_userbyid(datdba) as owner from pg_database where datname = $1',
+      [storageDatabase],
+    );
+    const storageOwner = found.rows[0]?.owner;
+    if (!storageOwner) {
+      await client.query(
+        `CREATE DATABASE ${client.escapeIdentifier(storageDatabase)} OWNER ${STORAGE_ROLE} ENCODING 'UTF8' TEMPLATE template0`,
+      );
+      process.stdout.write(`created database ${storageDatabase}\n`);
+    } else if (storageOwner !== STORAGE_ROLE) {
+      throw new Error(`Database ${storageDatabase} exists and belongs to ${storageOwner}`);
+    }
+    await client.query(
+      `REVOKE CONNECT ON DATABASE ${client.escapeIdentifier(storageDatabase)} FROM PUBLIC`,
+    );
   }
 } finally {
   await client.end();

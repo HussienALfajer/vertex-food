@@ -9266,7 +9266,7 @@
             "maxItems": 100,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CommandEnvelope"
+              "$ref": "#/components/schemas/UploadedCommand"
             }
           }
         },
@@ -9288,6 +9288,22 @@
         },
         "required": [
           "results"
+        ],
+        "additionalProperties": false
+      },
+      "UploadedCommand": {
+        "type": "object",
+        "properties": {
+          "envelope": {
+            "$ref": "#/components/schemas/CommandEnvelope"
+          },
+          "mirrored": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "envelope",
+          "mirrored"
         ],
         "additionalProperties": false
       },

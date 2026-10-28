@@ -250,6 +250,7 @@ describe('contractJsonSchemas', () => {
         'SyncToken',
         'UploadCommands',
         'UploadCommandsResult',
+        'UploadedCommand',
       ].sort(),
     );
   });

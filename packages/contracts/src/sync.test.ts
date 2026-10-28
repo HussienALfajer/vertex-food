@@ -345,13 +345,17 @@ describe('the command envelope (rule 3)', () => {
     ).toBe(false);
   });
 
-  it('takes one to 100 envelopes per upload', () => {
+  it('takes one to 100 envelopes per upload, each with whether the standby held it', () => {
+    const item = { envelope, mirrored: false };
     expect(uploadCommandsSchema.safeParse({ protocol: 1, commands: [] }).success).toBe(false);
     expect(
-      uploadCommandsSchema.safeParse({ protocol: 1, commands: Array(100).fill(envelope) }).success,
+      uploadCommandsSchema.safeParse({ protocol: 1, commands: Array(100).fill(item) }).success,
     ).toBe(true);
     expect(
-      uploadCommandsSchema.safeParse({ protocol: 1, commands: Array(101).fill(envelope) }).success,
+      uploadCommandsSchema.safeParse({ protocol: 1, commands: Array(101).fill(item) }).success,
     ).toBe(false);
+    expect(uploadCommandsSchema.safeParse({ protocol: 1, commands: [envelope] }).success).toBe(
+      false,
+    );
   });
 });

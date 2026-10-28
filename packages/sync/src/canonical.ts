@@ -3,8 +3,10 @@ import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 // The canonical JSON of S04 rule 4, defined once here: object keys sorted by UTF-16 code units, no
 // insignificant whitespace, strings escaped as JSON.stringify escapes them, numbers as safe integers
-// only, keys whose value is undefined left out (as JSON.stringify and a parse round trip do). Hashes
-// and signatures are computed over it, so the PC, the hub and the server agree byte for byte.
+// only, keys whose value is undefined left out (as JSON.stringify and a parse round trip do), and no
+// string PostgreSQL's jsonb cannot store (U+0000, a lone surrogate): a command the server could not
+// keep would fail its upload forever. Hashes and signatures are computed over it, so the PC, the
+// hub and the server agree byte for byte.
 
 export class CanonicalJsonError extends Error {
   override readonly name = 'CanonicalJsonError';
@@ -15,11 +17,18 @@ function isPlainObject(value: object): boolean {
   return prototype === Object.prototype || prototype === null;
 }
 
+function text(value: string, path: string): string {
+  if (value.includes('\u0000') || !value.isWellFormed()) {
+    throw new CanonicalJsonError(`${path} holds a character JSON storage refuses`);
+  }
+  return JSON.stringify(value);
+}
+
 function write(value: unknown, path: string): string {
   if (value === null) return 'null';
   switch (typeof value) {
     case 'string':
-      return JSON.stringify(value);
+      return text(value, path);
     case 'boolean':
       return value ? 'true' : 'false';
     case 'number':
@@ -36,7 +45,7 @@ function write(value: unknown, path: string): string {
       const entries = Object.entries(value)
         .filter(([, item]) => item !== undefined)
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-      return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${write(item, `${path}.${key}`)}`).join(',')}}`;
+      return `{${entries.map(([key, item]) => `${text(key, `${path} key`)}:${write(item, `${path}.${key}`)}`).join(',')}}`;
     }
     default:
       throw new CanonicalJsonError(`${path} is a ${typeof value}`);
