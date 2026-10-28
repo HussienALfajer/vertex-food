@@ -174,9 +174,7 @@ export class HubClient {
       }
       if (answer.status === 'refused') {
         await this.options.store.delete(item.command.id);
-        // A kept version was acknowledged: the hub that answered it holds it and forwards it
-        // when it rejoins, so it is no refusal to show.
-        if (item.state === 'pending') this.options.onRefused?.(item.command, answer.reason);
+        this.options.onRefused?.(item.command, answer.reason);
         continue;
       }
       if (answer.mirrored) {

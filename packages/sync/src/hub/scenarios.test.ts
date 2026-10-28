@@ -839,4 +839,35 @@ describe('review findings of PR 2', () => {
     expect(await branch.pc1.store.entry(bad.id)).toBeNull();
     expect(await branch.pc1.store.entry(next.id)).not.toBeNull();
   });
+
+  it('finds the shared lineage from below, so an entry the hub lacks under a match is forwarded', async () => {
+    const phone = await branch.pairPhone();
+    branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
+    // pc1 takes B alone, then the phone's C; both unmirrored. Then pc1 dies.
+    const b = branch.networkCheck(1);
+    await cashier(branch.pc1, b);
+    const c = branch.networkCheck(2);
+    await phone.client.send(c);
+    branch.pc1.powerOff();
+    branch.lan.heal(branch.pc1.deviceId, branch.pc2.deviceId);
+    await branch.run(3500);
+    // pc2 runs X at the number of B, and the phone's re-sent C lands at the number of C.
+    const x = branch.networkCheck(3);
+    await cashier(branch.pc2, x);
+    phone.client.checkLive();
+    await phone.client.flush();
+    const atB = (await branch.pc1.store.entry(b.id))?.seq;
+    expect((await branch.pc2.store.entry(x.id))?.seq).toBe(atB);
+    expect((await branch.pc2.store.entry(c.id))?.seq).toBe(
+      (await branch.pc1.store.entry(c.id))?.seq,
+    );
+    await branch.pc1.start();
+    await branch.run(1500);
+    expectSameJournal(branch);
+    expect(branch.pc2.store.lineageIds()).toEqual(expect.arrayContaining([b.id, c.id, x.id]));
+    const seqs = [...branch.pc1.store.data.journal.values()]
+      .filter((e) => !e.ownLineage)
+      .map((e) => e.seq);
+    expect(new Set(seqs).size).toBe(seqs.length);
+  });
 });

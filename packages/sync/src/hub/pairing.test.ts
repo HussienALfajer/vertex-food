@@ -242,6 +242,25 @@ describe('PIN sessions on a personal pairing (rule 35)', () => {
     });
   });
 
+  it('keeps a PIN locked on a phone locked for the manual promotion on the standby', async () => {
+    const phone = await branch.pairPhone();
+    const pairing = await hub().pairing.authenticate(phone.pairingToken);
+    if (!pairing) throw new Error('paired');
+    for (let i = 0; i < 5; i++) {
+      await expect(
+        hub().pairing.startSession(pairing, { membershipId: MEMBERS.manager, pin: '111111' }),
+      ).rejects.toMatchObject({ code: expect.stringMatching(/INVALID_PIN|PIN_DISABLED/) });
+    }
+    await branch.settle();
+    await expect(
+      standby().promoteManually({
+        membershipId: MEMBERS.manager,
+        pin: '246810',
+        acknowledgedMissing: 0,
+      }),
+    ).rejects.toMatchObject({ code: 'PIN_DISABLED' });
+  });
+
   it('keeps the session through a failover', async () => {
     const phone = await branch.pairPhone();
     await phone.client.send(branch.networkCheck(1));

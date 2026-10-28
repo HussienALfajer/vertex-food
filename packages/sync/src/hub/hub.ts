@@ -877,6 +877,10 @@ export class BranchHub implements PeerHandlers {
     pin: string;
     acknowledgedMissing: number;
   }): Promise<void> {
+    // A PIN locked on a hub client is locked here too (rule 35).
+    if (await this.ports.store.pinDisabled(input.membershipId)) {
+      throw new DomainError('PIN_DISABLED', 'This PIN is disabled');
+    }
     const pin = await this.ports.members.checkPcPin(input.membershipId, input.pin);
     if (pin === 'disabled') throw new DomainError('PIN_DISABLED', 'This PIN is disabled');
     if (pin !== 'ok') throw new DomainError('INVALID_PIN', 'Wrong PIN');
@@ -1143,8 +1147,9 @@ export class BranchHub implements PeerHandlers {
   }
 
   /**
-   * The last sequence this PC and the hub hold the same entry at, searched page by page from the
-   * latest one backwards; entries older than the hub's oldest kept one count as shared (rule 29).
+   * The end of the lineage this PC shares with the hub: scanned page by page upward from the
+   * hub's oldest kept entry, it stops at the first number where the two hold different commands.
+   * Entries older than the hub's oldest kept one count as shared (rule 29).
    */
   private async commonPrefix(
     hubDeviceId: string,
@@ -1153,17 +1158,17 @@ export class BranchHub implements PeerHandlers {
     top: number,
   ): Promise<number> {
     const mineBySeq = new Map(mine.map((e) => [e.seq, e]));
-    let high = top;
-    while (high >= oldest && high > 0) {
-      const after = Math.max(oldest - 1, high - PEER_BATCH, 0);
-      const page = await this.journalPage(hubDeviceId, after);
-      for (const entry of [...page.entries].reverse()) {
-        if (entry.seq > high) continue;
-        if (mineBySeq.get(entry.seq)?.id === entry.id) return entry.seq;
+    let prefix = Math.min(top, Math.max(oldest - 1, 0));
+    while (prefix < top) {
+      const page = await this.journalPage(hubDeviceId, prefix);
+      for (const entry of page.entries) {
+        if (entry.seq > top) return prefix;
+        if (entry.seq !== prefix + 1 || mineBySeq.get(entry.seq)?.id !== entry.id) return prefix;
+        prefix = entry.seq;
       }
-      high = after;
+      if (page.entries.length < PEER_BATCH) return prefix;
     }
-    return Math.min(top, Math.max(oldest - 1, 0));
+    return prefix;
   }
 
   /** Sends the hub every own-lineage entry not forwarded yet; answers how many. */
