@@ -127,11 +127,8 @@ const attention = (tenantId: string, commandId: string) =>
       .where(eq(attentionItems.commandId, commandId)),
   );
 
-const command = (
-  device: Parameters<typeof signedCommand>[0],
-  name: string,
-  membershipId: string,
-) => signedCommand(device, { name, membershipId, payload: {}, resolved: {} });
+const command = (device: Parameters<typeof signedCommand>[0], name: string, membershipId: string) =>
+  signedCommand(device, { name, membershipId, payload: {}, resolved: {} });
 
 describe('execution in a savepoint (rule 9, SYNC-01)', () => {
   it('rolls back what a rejected command wrote and records the rejection', async () => {

@@ -50,18 +50,18 @@ function indexAt(history: readonly AccessSnapshot[], at: Date): number {
 /**
  * When the member stopped being able to act in the branch, as seen from `at`: the start of the
  * inactive stretch in force then, or the first change after it that made them inactive; null when
- * neither happened.
+ * neither happened, and `never` when they could never act there before.
  */
 function inactiveSince(
   history: readonly AccessSnapshot[],
   index: number,
   branchId: string,
-): Date | null {
+): Date | null | 'never' {
   const current = history[index] as AccessSnapshot;
   if (!activeIn(current, branchId)) {
     let start = index;
     while (start > 0 && !activeIn(history[start - 1] as AccessSnapshot, branchId)) start--;
-    return (history[start] as AccessSnapshot).effectiveFrom;
+    return start === 0 ? 'never' : (history[start] as AccessSnapshot).effectiveFrom;
   }
   for (let i = index + 1; i < history.length; i++) {
     const later = history[i] as AccessSnapshot;
@@ -79,7 +79,7 @@ export type MemberDecision =
  * Rules 8 and 16 for the member who made a command: the access in force at its effective time
  * decides the permission; a member who stopped being able to act in the branch within 10 minutes
  * of the command, or at any time after a command with an uncertain clock, sends it to the
- * quarantine. A command the owner accepted from the quarantine (`accepted`) is checked against the
+ * quarantine; one who never could act there is rejected `member_inactive`. A command the owner accepted from the quarantine (`accepted`) is checked against the
  * member's last access in the branch before it, so the owner's decision is not quarantined again.
  */
 export function memberDecision(
@@ -99,6 +99,7 @@ export function memberDecision(
     if (index < 0) return { kind: 'rejected', reason: 'member_inactive' };
   } else {
     const since = inactiveSince(history, index, input.branchId);
+    if (since === 'never') return { kind: 'rejected', reason: 'member_inactive' };
     if (
       since &&
       inactiveMemberDecision({

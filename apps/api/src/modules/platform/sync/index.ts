@@ -3,8 +3,8 @@ export {
   COMMAND_EXECUTORS,
   COMMAND_REGISTRY,
   type CommandExecution,
-  commandExecutors,
   type CommandExecutor,
+  commandExecutors,
   defineExecutor,
   type ExecutionResult,
 } from './executors.js';
