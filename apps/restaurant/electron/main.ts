@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { platform, release } from 'node:os';
 import { join } from 'node:path';
@@ -19,12 +20,19 @@ import { DeviceClient } from './device-client.js';
 import { deviceHandlers } from './device-ipc.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
-import { DeviceStore } from './device-store.js';
+import { DeviceStore, type Registration } from './device-store.js';
+import { generateDatabaseKey } from './local-db.js';
+import { LocalStore } from './local-store.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
+import { CertificateStore, privateLanAddresses } from './pc-certificate.js';
+import { pendingCounts } from './pending-work.js';
+import { uploadQuarantine } from './quarantine-upload.js';
+import { SyncService } from './sync-service.js';
+import { UpdateGate } from './update-gate.js';
 import { windowOptions } from './window-options.js';
 
-// The main process owns the PC's identity (S02) and will own the local database, the sync client,
-// the branch hub server and printing (ADR 0008, 0022, 0023); the renderer reaches them only
+// The main process owns the PC's identity (S02), its encrypted local database and sync client (S04),
+// and will own the branch hub server and printing (ADR 0008, 0022, 0023); the renderer reaches them only
 // through the preload's IPC API (`bridge.ts`). It opens one locked-down window on the renderer.
 
 const rendererDir = fileURLToPath(new URL('../renderer/', import.meta.url));
@@ -65,16 +73,71 @@ function lockDownSession(): void {
   session.defaultSession.setPermissionCheckHandler(() => false);
 }
 
+const userData = (): string => app.getPath('userData');
+
+function notifyWindows(): void {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(deviceChannels.changed);
+  }
+}
+
+/** Rule 46: the feed's HTTPS URL, from the environment until the deploy skeleton (Q1) sets it. */
+function updateFeedUrl(): string | null {
+  const value = process.env.UPDATE_FEED_URL;
+  return value?.startsWith('https://') ? value : null;
+}
+
+/** Starts the downloaded installer apart from the app, which then quits. */
+function runInstaller(file: string): void {
+  spawn(file, [], { detached: true, stdio: 'ignore' }).unref();
+}
+
 /**
- * The PC's identity (spec S02): the sealed record in the user's data folder, device routes on the
- * API the renderer was built with, the PIN check by Argon2id in WASM (Electron's BoringSSL has no
- * Argon2). The member list is fetched every 60 seconds (rule 28).
+ * The PC's identity (spec S02) and its local data and sync (spec S04): the sealed record in the
+ * user's data folder, the encrypted local database beside it, device routes on the API the
+ * renderer was built with, the PIN check by Argon2id in WASM (Electron's BoringSSL has no Argon2).
+ * The member list is fetched every 60 seconds (rule 28). At start, before the window opens, the
+ * update gate installs a downloaded update when nothing is pending (rule 46); the sync client
+ * starts after it, so the count it reads is the one the queue had at start.
  */
-function startDeviceService(): DeviceService {
-  const service = new DeviceService({
-    store: new DeviceStore(join(app.getPath('userData'), 'device.bin'), safeStorage),
-    // Development on the Vite server may run before any build: the variable's own origin then.
-    client: new DeviceClient(builtConnectOrigins()[0] ?? connectOrigins(process.env)[0] ?? ''),
+async function startDeviceService(): Promise<'started' | 'updating'> {
+  // Development on the Vite server may run before any build: the variable's own origin then.
+  const client = new DeviceClient(builtConnectOrigins()[0] ?? connectOrigins(process.env)[0] ?? '');
+  const certificates = new CertificateStore(join(userData(), 'certificate.bin'), safeStorage);
+  const updates = new UpdateGate({
+    feedUrl: updateFeedUrl(),
+    appVersion: app.getVersion(),
+    directory: join(userData(), 'updates'),
+    install: runInstaller,
+    onChange: notifyWindows,
+  });
+  let device: DeviceService | null = null;
+  let sync: SyncService | null = null;
+  // The database a start opened, held until the update gate has decided.
+  const atStart: { registration: Registration; local: LocalStore }[] = [];
+  const startSync = (registration: Registration, local: LocalStore) => {
+    const service = device;
+    if (!service) return;
+    sync = new SyncService({
+      registration,
+      local: local.opened,
+      client,
+      deviceCall: (call) => service.deviceCall(call),
+      recordServerTime: (serverTime, offsetMs) => service.recordServerTime(serverTime, offsetMs),
+      clockOffsetMs: () => service.clock()?.offsetMs ?? null,
+      now: () => new Date(),
+      elapsed: () => performance.now(),
+      appVersion: app.getVersion(),
+      lanAddresses: () => privateLanAddresses(),
+      certificates,
+      onProtocolRefused: () => updates.noteProtocolRefused(),
+      onChange: notifyWindows,
+    });
+    sync.start();
+  };
+  device = await DeviceService.open({
+    store: new DeviceStore(join(userData(), 'device.bin'), safeStorage),
+    client,
     verifyPin: (pin, verifier) => argon2Verify({ password: pin, hash: verifier }),
     generateKey: generateDeviceKey,
     sign: signWithDeviceKey,
@@ -82,12 +145,38 @@ function startDeviceService(): DeviceService {
     elapsed: () => performance.now(),
     os: `${platform()} ${release()}`,
     appVersion: app.getVersion(),
-    onChange: () => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send(deviceChannels.changed);
-      }
+    onChange: notifyWindows,
+    openData: (databaseKey) => LocalStore.open(join(userData(), 'data'), databaseKey),
+    generateDatabaseKey,
+    // Rule 40: the sync stops, the pending work goes to the quarantine, then the certificate goes
+    // with the database the device service deletes next.
+    quarantine: async (registration, data) => {
+      if (!(data instanceof LocalStore)) throw new Error('Unknown local data');
+      await sync?.stop();
+      sync = null;
+      await uploadQuarantine({
+        reads: data.opened.reads,
+        registration,
+        client,
+        sign: signWithDeviceKey,
+      });
+      certificates.remove();
+    },
+    onData: (registration, data) => {
+      if (!(data instanceof LocalStore)) return;
+      // At start the gate decides first; a registration later starts the sync at once.
+      if (device) startSync(registration, data);
+      else atStart.push({ registration, local: data });
     },
   });
+  const [opened] = atStart;
+  const pending = opened ? await pendingCounts(opened.local.opened.reads) : null;
+  if ((await updates.installAtStart(pending ?? { uploads: 0, unsettled: 0 })) === 'installed') {
+    return 'updating';
+  }
+  if (opened) startSync(opened.registration, opened.local);
+  updates.start();
+  const service = device;
   for (const [channel, handler] of Object.entries(deviceHandlers(service))) {
     ipcMain.handle(channel, (event, input: unknown) => {
       // Only the app's own page may call: never a frame from anywhere else.
@@ -99,7 +188,7 @@ function startDeviceService(): DeviceService {
   }
   void service.refresh();
   setInterval(() => void service.refresh(), memberListRefreshSeconds * 1000);
-  return service;
+  return 'started';
 }
 
 function createWindow(): BrowserWindow {
@@ -135,10 +224,13 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('window-all-closed', () => app.quit());
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     lockDownSession();
     serveRenderer();
-    startDeviceService();
+    if ((await startDeviceService()) === 'updating') {
+      app.quit();
+      return;
+    }
     mainWindow = createWindow();
     mainWindow.on('closed', () => {
       mainWindow = null;

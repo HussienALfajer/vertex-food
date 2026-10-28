@@ -65,6 +65,11 @@ export type DeviceStatus =
       window: DeviceWindowView;
       /** The last request to the API was answered. */
       online: boolean;
+      /**
+       * The local database failed `integrity_check` and is open read-only (spec S04 "Abuse and
+       * failure cases"): the screens show the corrupt-database notice.
+       */
+      localDatabase?: 'corrupt';
       session: DeviceSessionView | null;
     };
 

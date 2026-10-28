@@ -17,7 +17,7 @@ import type {
 } from './bridge.js';
 import { type DeviceApi, DeviceApiError, isUnreachable } from './device-client.js';
 import type { DeviceKey } from './device-key.js';
-import type { DeviceRecord, DeviceStore, Registration } from './device-store.js';
+import type { DeviceRecord, DeviceStore, Registration, StoredRecord } from './device-store.js';
 import {
   approveLocally,
   clearLocalLockout,
@@ -32,8 +32,11 @@ import {
   type VerifyPin,
   windowOf,
 } from './local-pins.js';
+import type { LocalData } from './local-store.js';
 
 type Registered = Extract<DeviceRecord, { state: 'registered' }>;
+type Wiping = Extract<DeviceRecord, { state: 'wiping' }>;
+type StoredRegistered = Extract<StoredRecord, { state: 'registered' }>;
 
 /**
  * A PIN session; an online one holds its tokens and when its access token is due, on the
@@ -67,6 +70,17 @@ export type DeviceServiceDeps = {
   appVersion: string;
   /** The status may have changed: the renderer reads it again. */
   onChange: () => void;
+  /** The local database with the installation's key (spec S04 "On the PC"). */
+  openData: (databaseKey: string) => Promise<LocalData>;
+  generateDatabaseKey: () => string;
+  /**
+   * Spec S04 rule 40: a revoked PC's pending commands go to the quarantine before its database is
+   * deleted. It throws until the upload succeeds; the wipe waits and tries again at the next
+   * member-list refresh.
+   */
+  quarantine: (registration: Registration, data: LocalData) => Promise<void>;
+  /** The local database of a registered PC is open: the sync client starts on it. */
+  onData?: (registration: Registration, data: LocalData) => void;
 };
 
 /** A device token is fetched again this long before it expires. */
@@ -101,14 +115,68 @@ export function membershipOfAccessToken(token: string): string | null {
  * operation runs one at a time, so two writes of the sealed record never interleave.
  */
 export class DeviceService {
-  private record: DeviceRecord | null;
+  private record: DeviceRecord | null = null;
   private session: Session | null = null;
   private deviceToken: { token: string; dueAt: number } | null = null;
   private online = false;
   private queue: Promise<unknown> = Promise.resolve();
+  private data: LocalData | null = null;
+  /** The members as last written to the local database, compared by reference. */
+  private persisted: Pick<Registered, 'memberList' | 'local'> | null = null;
+  /** Server time minus this PC's time, from the last heartbeat (spec S04 rule 14). */
+  private clockOffsetMs: number | null = null;
 
-  constructor(private readonly deps: DeviceServiceDeps) {
-    this.record = deps.store.read();
+  private constructor(private readonly deps: DeviceServiceDeps) {}
+
+  /** Reads the sealed record and opens the local database of a registered or wiping PC. */
+  static async open(deps: DeviceServiceDeps): Promise<DeviceService> {
+    const service = new DeviceService(deps);
+    await service.load();
+    return service;
+  }
+
+  private async load(): Promise<void> {
+    const stored = this.deps.store.read();
+    if (stored?.state !== 'registered') {
+      this.record = stored;
+      const key =
+        stored?.state === 'wiping' && !stored.quarantined && stored.registration.databaseKey;
+      if (key) this.data = await this.deps.openData(key).catch(() => null);
+      return;
+    }
+    this.clockOffsetMs = stored.clockOffsetMs ?? null;
+    await this.attach(stored);
+  }
+
+  /**
+   * Opens the local database of a registered PC and takes its members from it (S02 rule 29). A
+   * PC registered before S04 first gets its database key, then its list moves out of the sealed
+   * file: written to the database first, then left out of the file, so a cut between the two
+   * repeats the move at the next start. Members whose rows disagree with the list's version (a cut
+   * write) are kept, but the next refresh fetches the whole list again.
+   */
+  private async attach(input: StoredRegistered): Promise<void> {
+    const databaseKey = input.registration.databaseKey ?? this.deps.generateDatabaseKey();
+    const stored = { ...input, registration: { ...input.registration, databaseKey } };
+    if (!input.registration.databaseKey) this.deps.store.write(stored);
+    const data = await this.deps.openData(databaseKey);
+    this.data = data;
+    const sealed = stored.memberList.members;
+    const loaded = sealed ? null : await data.loadMembers();
+    const record: Registered = {
+      ...stored,
+      memberList: {
+        ...stored.memberList,
+        members: sealed ?? loaded?.members ?? [],
+        version:
+          sealed || loaded?.version === stored.memberList.version ? stored.memberList.version : '',
+      },
+      local: stored.local ?? loaded?.local ?? {},
+    };
+    this.record = record;
+    if (!sealed) this.persisted = record;
+    else if (data.state === 'ok') await this.save(record);
+    this.deps.onData?.(stored.registration, data);
   }
 
   private run<T>(task: () => Promise<T>): Promise<T> {
@@ -122,14 +190,47 @@ export class DeviceService {
    * record before awaiting the API keeps what `status` saw meanwhile (rule 31). Only a confirmed
    * member list sets it from the server's time (`clockFromServer`, `withList`).
    */
-  private save(record: DeviceRecord, options: { clockFromServer?: boolean } = {}): void {
+  private async save(
+    record: DeviceRecord,
+    options: { clockFromServer?: boolean } = {},
+  ): Promise<void> {
     const current = this.registered();
     const next =
       record.state === 'registered' && current && !options.clockFromServer
         ? seeTime(record, new Date(current.highestSeenAt))
         : record;
-    this.deps.store.write(next);
+    if (next.state === 'registered' && this.data?.state === 'ok' && this.membersChanged(next)) {
+      await this.data.saveMembers({
+        version: next.memberList.version,
+        members: next.memberList.members,
+        local: next.local,
+      });
+      this.persisted = next;
+    }
+    this.deps.store.write(this.stored(next));
     this.record = next;
+  }
+
+  private membersChanged(record: Registered): boolean {
+    const persisted = this.persisted;
+    return (
+      persisted?.memberList.members !== record.memberList.members ||
+      persisted.memberList.version !== record.memberList.version ||
+      persisted.local !== record.local
+    );
+  }
+
+  /**
+   * The sealed file's part of a record: without the members while the local database holds them;
+   * with them while it cannot be written (S02's file, until the database opens whole).
+   */
+  private stored(record: DeviceRecord): StoredRecord {
+    if (record.state !== 'registered') return record;
+    const withClock = { ...record, clockOffsetMs: this.clockOffsetMs };
+    if (this.data?.state !== 'ok') return withClock;
+    const { members: _members, ...header } = record.memberList;
+    const { local: _local, ...rest } = withClock;
+    return { ...rest, memberList: header };
   }
 
   /**
@@ -144,7 +245,9 @@ export class DeviceService {
     if (!record || now.getTime() <= Date.parse(record.highestSeenAt)) return;
     const seen = seeTime(record, now);
     try {
-      this.save(seen);
+      // The members are unchanged: only the sealed file is written, synchronously.
+      this.deps.store.write(this.stored(seen));
+      this.record = seen;
     } catch {
       this.record = seen;
     }
@@ -178,6 +281,7 @@ export class DeviceService {
       })),
       window: windowOf(record, now),
       online: this.online,
+      ...(this.data?.state === 'corrupt' ? { localDatabase: 'corrupt' as const } : {}),
       session: this.session
         ? {
             membershipId: this.session.membershipId,
@@ -212,13 +316,19 @@ export class DeviceService {
           deviceId: result.device.id,
           privateKey: key.privateKey,
           publicKey: key.publicKey,
+          databaseKey: this.deps.generateDatabaseKey(),
         };
         this.online = true;
         const registered = this.withList(registration, result.members);
         const membershipId = membershipOfAccessToken(result.session.accessToken);
-        // Saved at once, with the key; the registering member's session follows from the token.
-        this.save(membershipId ? recordSession(registered, membershipId, now) : registered);
+        const record = membershipId ? recordSession(registered, membershipId, now) : registered;
+        // Saved at once, with the keys, in the sealed file; the registering member's session
+        // follows from the token.
+        await this.save(record);
         if (membershipId) this.session = this.onlineSession(membershipId, result.session);
+        // Then the members move into the local database; a failure leaves them sealed until the
+        // next start opens it.
+        await this.attach(record).catch(() => undefined);
         return { ok: true };
       } catch (error) {
         if (isUnreachable(error)) this.online = false;
@@ -272,6 +382,59 @@ export class DeviceService {
     }
   }
 
+  /**
+   * A sync route's call with a device token (spec S04), outside the queue so an upload never holds
+   * up a PIN. A revoked PC starts its wipe (rule 40); the error goes back to the caller.
+   */
+  async deviceCall<T>(call: (token: string) => Promise<T>): Promise<T> {
+    const record = this.registered();
+    if (!record) throw new DeviceApiError('DEVICE_UNKNOWN');
+    try {
+      const result = await this.withToken(record.registration, call);
+      this.online = true;
+      return result;
+    } catch (error) {
+      if (isUnreachable(error)) this.online = false;
+      if (codeOf(error) === 'DEVICE_REVOKED') void this.revoked();
+      throw error;
+    }
+  }
+
+  /** The PC learned it was revoked outside the member list: it wipes (rule 19, spec S04 rule 40). */
+  revoked(): Promise<void> {
+    return this.run(async () => {
+      const record = this.registered();
+      if (!record) return;
+      await this.wipe(record);
+      this.deps.onChange();
+    });
+  }
+
+  /**
+   * Spec S04 rule 14: the offset a heartbeat measured, kept with the highest time seen, which the
+   * server's time raises (S02 rule 31). Written synchronously, like `observe`.
+   */
+  recordServerTime(serverTime: Date, offsetMs: number): void {
+    const record = this.registered();
+    if (!record) return;
+    this.clockOffsetMs = offsetMs;
+    const seen = seeTime(record, serverTime);
+    this.record = seen;
+    try {
+      this.deps.store.write(this.stored(seen));
+    } catch {
+      // Kept in memory; the next write carries it.
+    }
+  }
+
+  /** What every command this PC signs carries about its clock (spec S04 rules 3, 14). */
+  clock(): { offsetMs: number | null; highestSeenTime: Date } | null {
+    const record = this.registered();
+    return record
+      ? { offsetMs: this.clockOffsetMs, highestSeenTime: new Date(record.highestSeenAt) }
+      : null;
+  }
+
   /** Rule 44: a 5-minute device token for the device key's signature of a server nonce. */
   private async token(registration: Registration): Promise<string> {
     if (this.deviceToken && this.deviceToken.dueAt > this.deps.elapsed()) {
@@ -311,7 +474,7 @@ export class DeviceService {
           this.deps.client.openSession(token, input),
         );
         this.online = true;
-        this.save(recordSession(seeTime(record, now), input.membershipId, now));
+        await this.save(recordSession(seeTime(record, now), input.membershipId, now));
         this.session = this.onlineSession(input.membershipId, tokens);
         return { ok: true };
       } catch (error) {
@@ -326,7 +489,7 @@ export class DeviceService {
         }
         if (codeOf(error) === 'INVALID_PIN') {
           const counted = countFailure(record, input.membershipId);
-          this.save(counted);
+          await this.save(counted);
           const disabled = localMember(counted, input.membershipId).disabled;
           return { ok: false, code: disabled ? 'PIN_DISABLED' : 'INVALID_PIN' };
         }
@@ -365,7 +528,7 @@ export class DeviceService {
         });
         this.online = true;
         const now = this.deps.now();
-        this.save(recordSession(seeTime(record, now), input.membershipId, now));
+        await this.save(recordSession(seeTime(record, now), input.membershipId, now));
         this.session = {
           ...this.onlineSession(input.membershipId, tokens),
           replacing: { pinVerifier: member.pinVerifier },
@@ -392,7 +555,7 @@ export class DeviceService {
       now,
       this.deps.verifyPin,
     );
-    this.save(outcome.record);
+    await this.save(outcome.record);
     if (outcome.ok)
       this.session = { membershipId: input.membershipId, tokens: null, accessDueAt: 0 };
     return this.result(outcome);
@@ -461,7 +624,7 @@ export class DeviceService {
   refresh(): Promise<void> {
     return this.run(async () => {
       const record = this.record;
-      if (record?.state === 'wiping') return this.confirmWipe(record);
+      if (record?.state === 'wiping') return this.finishWipe(record);
       if (record?.state !== 'registered') return;
       try {
         const list = await this.withToken(record.registration, async (token) => {
@@ -492,7 +655,7 @@ export class DeviceService {
           const { replacing: _, ...session } = this.session;
           this.session = session;
         }
-        this.save(next, { clockFromServer: true });
+        await this.save(next, { clockFromServer: true });
       } catch (error) {
         if (isUnreachable(error)) {
           this.online = false;
@@ -505,21 +668,46 @@ export class DeviceService {
   }
 
   /**
-   * Rule 19: the member list and the session go at once; the key stays only until the server has
-   * the wipe confirmation, then only the notice is kept.
+   * Rule 19: the session and the sealed member list go at once; the pending commands reach the
+   * quarantine, then the local database is deleted (spec S04 rule 40); the key stays only until
+   * the server has the wipe confirmation, then only the notice is kept.
    */
   private async wipe(record: Registered): Promise<void> {
     this.session = null;
-    const wiping: DeviceRecord = {
+    const wiping: Wiping = {
       state: 'wiping',
       registration: record.registration,
       tenantName: record.memberList.tenant.nameAr,
+      quarantined: false,
     };
-    this.save(wiping);
-    await this.confirmWipe(wiping);
+    await this.save(wiping);
+    await this.finishWipe(wiping);
   }
 
-  private async confirmWipe(record: Extract<DeviceRecord, { state: 'wiping' }>): Promise<void> {
+  /** Spec S04 rule 40: the upload is tried again at every refresh until it succeeds. */
+  private async finishWipe(record: Wiping): Promise<void> {
+    let current = record;
+    if (!current.quarantined) {
+      const key = current.registration.databaseKey;
+      try {
+        const data = this.data ?? (key ? await this.deps.openData(key) : null);
+        this.data = data;
+        if (data) {
+          await this.deps.quarantine(current.registration, data);
+          await data.destroy();
+        }
+      } catch {
+        return;
+      }
+      this.data = null;
+      this.persisted = null;
+      current = { ...current, quarantined: true };
+      await this.save(current);
+    }
+    await this.confirmWipe(current);
+  }
+
+  private async confirmWipe(record: Wiping): Promise<void> {
     try {
       await this.withToken(record.registration, (token) => this.deps.client.wiped(token));
     } catch (error) {
@@ -527,7 +715,7 @@ export class DeviceService {
       if (codeOf(error) !== 'DEVICE_REVOKED') return;
     }
     this.deviceToken = null;
-    this.save({ state: 'wiped', tenantName: record.tenantName });
+    await this.save({ state: 'wiped', tenantName: record.tenantName });
   }
 
   /** Rule 27: the acting member is the one whose session is open on this PC. */
@@ -548,7 +736,7 @@ export class DeviceService {
       const record = this.registered();
       if (!record) return { ok: false, code: 'DEVICE_UNKNOWN' };
       const outcome = await check(record);
-      this.save(outcome.record);
+      await this.save(outcome.record);
       this.deps.onChange();
       return this.result(outcome);
     });
