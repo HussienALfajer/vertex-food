@@ -125,6 +125,30 @@ test.describe('platform WhatsApp numbers', () => {
     ).toBeVisible();
   });
 
+  test('a number unlinked elsewhere while linking ends the dialog and its reads', async ({
+    page,
+  }) => {
+    const api = await mockConsoleApi(page, { signedIn: 'admin' });
+    await page.goto('/whatsapp');
+    await page.getByRole('button', { name: 'إضافة رقم' }).click();
+    await page.getByLabel('اسم الرقم').fill('رقم احتياطي');
+    await page.getByRole('button', { name: 'متابعة' }).click();
+    await confirmTotp(page);
+    await expect(page.getByRole('img', { name: 'رمز QR لربط رقم واتساب بالمنصة' })).toBeVisible();
+    const created = api.whatsapp.sessions.at(-1);
+    if (created?.label !== 'رقم احتياطي') throw new Error('no number was added');
+
+    // Another admin unlinks it: the API answers `NOT_FOUND` for an archived number.
+    Object.assign(created, { state: 'unlinked', archivedAt: new Date().toISOString() });
+    const gone = page.getByRole('dialog', { name: 'فُصل هذا الرقم' });
+    await expect(gone).toContainText('فُصل الرقم من مكان آخر أثناء الربط');
+    await expect(gone.getByRole('img')).toHaveCount(0);
+    await expect(gone.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
+    const reads = api.requests.filter((item) => item.endsWith('/qr')).length;
+    await page.waitForTimeout(2500);
+    expect(api.requests.filter((item) => item.endsWith('/qr'))).toHaveLength(reads);
+  });
+
   test('pause, resume and unlink ask first, and the banner follows the healthy count', async ({
     page,
   }, testInfo) => {

@@ -1,6 +1,6 @@
 import { queryOptions, useQueryClient } from '@tanstack/react-query';
 import type { WhatsAppQr } from '@vertex-food/contracts';
-import { api, unwrap, unwrapEmpty } from '../../lib/api';
+import { api, apiErrorCode, unwrap, unwrapEmpty } from '../../lib/api';
 
 // Vertex's platform WhatsApp numbers (spec S03, screens 1–5): read with `console.messaging.read`;
 // every change needs `console.messaging.manage` and a TOTP in the last 5 minutes (S02 rule 40),
@@ -38,8 +38,12 @@ export function whatsappQrQuery(id: string) {
     queryFn: () =>
       unwrap(api.GET('/api/console/whatsapp-sessions/{id}/qr', { params: { path: { id } } })),
     gcTime: 0,
+    // A number gone meanwhile (unlinked elsewhere: `NOT_FOUND`) is not read again.
     refetchInterval: (query) =>
-      (query.state.data as WhatsAppQr | undefined)?.state === 'linking' ? 2000 : false,
+      (query.state.data as WhatsAppQr | undefined)?.state === 'linking' &&
+      apiErrorCode(query.state.error) !== 'NOT_FOUND'
+        ? 2000
+        : false,
   });
 }
 

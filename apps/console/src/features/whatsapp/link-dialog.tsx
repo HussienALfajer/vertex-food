@@ -17,6 +17,7 @@ import { CircleCheckIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TextField } from '../../components/text-field';
+import { apiErrorCode } from '../../lib/api';
 import { useOnline } from '../../lib/online';
 import { QrCode } from '../session/qr-code';
 import { useReauth } from '../session/reauth';
@@ -164,13 +165,19 @@ function QrStep({
   const queryClient = useQueryClient();
   const changed = useWhatsAppSessionsChanged();
   const qr = useQuery(whatsappQrQuery(session.id));
-  const state = qr.data?.state;
+  // Unlinked elsewhere meanwhile: the API no longer knows the number, so the link cannot end.
+  const gone = apiErrorCode(qr.error) === 'NOT_FOUND';
+  const state = gone ? undefined : qr.data?.state;
   const ended = state !== undefined && state !== 'linking';
   const detail = useQuery({ ...whatsappSessionQuery(session.id), enabled: ended });
   // Once the link ends, its outcome is read from a fresh copy of the number and its events.
   useEffect(() => {
     if (!ended) return;
-    void queryClient.invalidateQueries({ queryKey: whatsappSessionQuery(session.id).queryKey });
+    // Exact: the QR's key starts with the number's, and must not be read again.
+    void queryClient.invalidateQueries({
+      queryKey: whatsappSessionQuery(session.id).queryKey,
+      exact: true,
+    });
   }, [ended, queryClient, session.id]);
   const now = useNow(state === 'linking');
 
@@ -181,23 +188,29 @@ function QrStep({
     onSuccess: () => changed(),
   });
 
-  const outcome: LinkOutcome | undefined =
-    state === undefined
+  // The events are read only from a copy fetched after the link ended, never an older cached one.
+  const fresh =
+    detail.data !== undefined && !detail.isFetching && detail.dataUpdatedAt >= qr.dataUpdatedAt;
+  const outcome: LinkOutcome | 'gone' | undefined = gone
+    ? 'gone'
+    : state === undefined || (ended && !fresh)
       ? undefined
-      : ended && (detail.isFetching || !detail.data)
-        ? undefined
-        : linkOutcome(state, detail.data?.events);
+      : linkOutcome(state, detail.data?.events);
+  const qrText =
+    qr.data?.qr && qr.data.expiresAt && Date.parse(qr.data.expiresAt) > now ? qr.data.qr : null;
 
   const title =
-    outcome === 'connected'
-      ? t('whatsapp.linkDialog.successTitle')
-      : outcome === 'timeout'
-        ? t('whatsapp.linkDialog.timeoutTitle')
-        : outcome === 'duplicate'
-          ? t('whatsapp.linkDialog.duplicateTitle')
-          : outcome === 'failed'
-            ? t('whatsapp.linkDialog.failedTitle')
-            : t('whatsapp.linkDialog.relinkTitle', { label: session.label });
+    outcome === 'gone'
+      ? t('whatsapp.linkDialog.goneTitle')
+      : outcome === 'connected'
+        ? t('whatsapp.linkDialog.successTitle')
+        : outcome === 'timeout'
+          ? t('whatsapp.linkDialog.timeoutTitle')
+          : outcome === 'duplicate'
+            ? t('whatsapp.linkDialog.duplicateTitle')
+            : outcome === 'failed'
+              ? t('whatsapp.linkDialog.failedTitle')
+              : t('whatsapp.linkDialog.relinkTitle', { label: session.label });
 
   return (
     <div className="flex flex-col gap-4">
@@ -211,14 +224,30 @@ function QrStep({
             {t('whatsapp.linkDialog.successDescription', { label: session.label })}
           </DialogDescription>
         )}
-        {(outcome === 'timeout' || outcome === 'duplicate' || outcome === 'failed') && (
+        {(outcome === 'timeout' ||
+          outcome === 'duplicate' ||
+          outcome === 'failed' ||
+          outcome === 'gone') && (
           <DialogDescription>{t(`whatsapp.linkDialog.${outcome}Description`)}</DialogDescription>
         )}
       </div>
 
-      {qr.isLoadingError && <Callout role="alert" tone="danger" title={errorText(qr.error)} />}
+      {/* A failed read: the first one, or a later one while the last QR is shown (read again). */}
+      {qr.isError && !gone && <Callout role="alert" tone="danger" title={errorText(qr.error)} />}
+      {ended && detail.isError && (
+        <Callout
+          role="alert"
+          tone="danger"
+          title={errorText(detail.error)}
+          action={
+            <Button type="button" variant="outline" size="sm" onClick={() => void detail.refetch()}>
+              {t('whatsapp.linkDialog.retry')}
+            </Button>
+          }
+        />
+      )}
 
-      {outcome === undefined && !qr.isLoadingError && (
+      {outcome === undefined && !qr.isLoadingError && !detail.isError && (
         <div aria-busy="true" className="flex justify-center">
           <span className="sr-only">{t('states.loading')}</span>
           <Skeleton className="size-56" />
@@ -227,12 +256,9 @@ function QrStep({
 
       {outcome === 'linking' && qr.data && (
         <div className="flex flex-col items-center gap-4">
-          {qr.data.qr ? (
-            <QrCode
-              value={qr.data.qr}
-              label={t('whatsapp.linkDialog.qrLabel')}
-              className="size-56"
-            />
+          {/* An expired code is never left on screen (a read failed, the gateway is late). */}
+          {qrText ? (
+            <QrCode value={qrText} label={t('whatsapp.linkDialog.qrLabel')} className="size-56" />
           ) : (
             <div className="flex size-56 items-center justify-center rounded-md bg-muted p-4 text-center text-sm text-muted-foreground">
               {t('whatsapp.linkDialog.qrWaiting')}
