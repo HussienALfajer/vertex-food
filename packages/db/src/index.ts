@@ -1,5 +1,17 @@
 export { createDatabase, type Database, type Transaction } from './client.js';
 export { describeForLog } from './describe-for-log.js';
+export {
+  type EnqueueResult,
+  type EnqueueWhatsAppMessage,
+  enqueueWhatsAppMessage,
+  isWhatsAppOptedOut,
+  type MessagingCrypto,
+  sendAvailability,
+  type WhatsAppSealedField,
+  whatsappNumberCandidates,
+  whatsappRecipientHash,
+  whatsappSealContext,
+} from './messaging-queue.js';
 export * from './operators.js';
 export * from './schema/index.js';
 export {

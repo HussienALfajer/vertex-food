@@ -25,14 +25,13 @@ const CHECK_REFUSAL = /violates check constraint/;
 const DENIED = /permission denied for table/;
 const UNIQUE_REFUSAL = /duplicate key value violates unique constraint/;
 
-let labels = 0;
 const soon = () => new Date(Date.now() + 60_000);
 
 async function newSession(values: Partial<typeof whatsappSessions.$inferInsert> = {}) {
   const [row] = await app
     .insert(whatsappSessions)
     .values({
-      label: `رقم ${labels++}`,
+      label: `رقم ${uuidv7().slice(-12)}`,
       state: 'linking',
       linkDeadlineAt: soon(),
       ...values,

@@ -12,7 +12,7 @@ PR order: 1 → (2 and 3 in parallel sessions, different apps) → (4 and 5 in p
 - [x] contracts `messaging.ts`: `whatsappPolicy`, kinds, `messageTemplates`, session states and transitions, `disconnectReasonSchema`, `whatsappWarmUpDay`, `whatsappDailyCap`, `sendBudget`, `chooseWhatsAppNumber`, `whatsappRetryDelaySeconds`, `matchWhatsAppKeyword`, `canAdvanceWhatsAppMessage`, `isWhatsAppSessionHealthy`, console shapes, `otpDeliverySchema`; `console.messaging.read` and `.manage` in `access.ts`; error code `WHATSAPP_SESSION_LIMIT`; audit actions; layer entries; unit tests
 - [x] i18n `messaging` namespace (message texts), the error text and the two permission labels; OpenAPI, console and restaurant API types regenerated for the new enums
 - [x] db (`/db-migration`): `schema/messaging.ts` (six tables), registry, grants and `refuse_change()` custom migration, `otp_challenges.delivery_status` values; conventions test with the `DELETE` exceptions; `pnpm db:migrate` locally
-- [ ] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
+- [x] db `src/messaging-queue.ts`: `enqueueWhatsAppMessage` (schema check, wrong kind, opt-out for `notification`, `source_event_id` once, `NOTIFY`) and `sendAvailability`, with tests
 - [ ] Wiring, docs (ROADMAP, architecture, folder `CLAUDE.md`), `.env.example` keys
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, endpoints/rules summary in the report
 
