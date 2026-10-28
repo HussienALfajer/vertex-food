@@ -35,6 +35,19 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | جهاز شخصي | personal device | An owner's or manager's own browser or app, signed in for the back office, online only |
 | المحطة | station | A paired hub client without personal sign-in, such as the kitchen display (not a kitchen station, below) |
 | الحجر | quarantine | Commands from a revoked device held until the owner accepts or rejects them |
+| الأمر | command | A typed, signed change made on a restaurant PC or hub client, run by the hub and re-executed by the server once per id (ADR 0008, 0035) |
+| سجل الأوامر | command log | The server's append-only record of each command's first execution and its outcome: accepted, adjusted or rejected |
+| حاسوب المركز | hub-capable PC | One of the two PCs of a branch configured as hub or standby (ADR 0035) |
+| حاسوب عميل | client PC | A third or later PC of a branch: it sends its commands to the active hub and is never a hub |
+| الإقران | pairing | A phone or screen trusted by the branch's hub PCs after a manager opened pairing and the code was typed; a station or a personal (shared) phone |
+| شهادة الفرع | branch CA | The branch's certificate authority, issued by the platform, that every hub PC's certificate and every paired browser trust |
+| كتلة الأرقام | number block | A span of order numbers (1–4999, 5001–9999, …) the server gives one hub PC for one business day |
+| رقم مؤقت | provisional label | An order's label from its id when its PC has no number left; the server numbers it on sync |
+| قائمة الإرسال | outbox | A client's commands not yet answered, re-sent with the same id until the hub answers; shown as "sending" |
+| يحتاج انتباهًا | needs attention | Commands the server adjusted, rejected or flagged, listed until an owner or manager closes them with a reason |
+| حالة الاتصال | connectivity state | A branch's `online`, `weak` or `offline` state from its PCs' heartbeats (ADR 0030, 0035) |
+| الوقت الفعلي للأمر | effective time | A command's device time corrected by its PC's measured clock offset |
+| فحص شبكة الفرع | network check | Test commands sent through the hub and the standby to the server, with their times |
 | مستخدم المنصة | platform user | A Vertex staff account in the console, with a role and mandatory TOTP |
 | الحساب | account | One person on the platform: phone, name, password; holds staff memberships in tenants (ADR 0005, 0032) |
 | رمز التحقق | OTP | A one-time code sent to a phone sent by WhatsApp from a platform number (S03), with expiry, attempts, cooldown and an hourly limit; for console users, the TOTP code of their authenticator app |
