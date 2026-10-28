@@ -31,9 +31,12 @@ import { useOnline } from '../../lib/online';
 
 const TICKET_HEADER = 'x-sign-in-ticket';
 
+/** Why a code is asked for without a password: a first sign-in, or an authorized reset (rule 14). */
+type CodePurpose = 'first_sign_in' | 'password_reset';
+
 type Step =
   | { kind: 'credentials' }
-  | { kind: 'first' }
+  | { kind: 'code'; purpose: CodePurpose }
   | { kind: 'otp'; challengeId: string; sentAt: number }
   | { kind: 'password'; ticket: string; needsName: boolean; suggestedName: string | null };
 
@@ -72,9 +75,10 @@ function useCooldown(sentAt: number): number {
 }
 
 /**
- * Signing in (spec S02 screen 2, rules 10–13): phone and password, then the OTP on a device new to
- * the person; or a first sign-in, where an OTP leads to the name and the first password. Ends with
- * a `signed_in` ticket for `onSignedIn`. Online only.
+ * Signing in (spec S02 screen 2, rules 10–14): phone and password, then the OTP on a device new to
+ * the person; or a first sign-in, where an OTP leads to the name and the first password; or a
+ * forgotten password whose reset an owner, a manager or Vertex support authorized, where an OTP
+ * leads to the new password. Ends with a `signed_in` ticket for `onSignedIn`. Online only.
  */
 export function SignInFlow({
   intent,
@@ -105,11 +109,13 @@ export function SignInFlow({
           onPhone={setPhone}
           onOtp={(challengeId) => setStep({ kind: 'otp', challengeId, sentAt: Date.now() })}
           onDone={onSignedIn}
-          onFirst={() => setStep({ kind: 'first' })}
+          onCode={(purpose) => setStep({ kind: 'code', purpose })}
         />
       )}
-      {step.kind === 'first' && (
-        <FirstStep
+      {step.kind === 'code' && (
+        <CodeRequestStep
+          key={step.purpose}
+          purpose={step.purpose}
           intent={intent}
           phone={phone}
           onPhone={setPhone}
@@ -174,14 +180,14 @@ function CredentialsStep({
   onPhone,
   onOtp,
   onDone,
-  onFirst,
+  onCode,
 }: {
   intent: SignInIntent;
   phone: string;
   onPhone: (phone: string) => void;
   onOtp: (challengeId: string) => void;
   onDone: (ticket: string) => Promise<void> | void;
-  onFirst: () => void;
+  onCode: (purpose: CodePurpose) => void;
 }) {
   const { t } = useTranslation('restaurant');
   const online = useOnline();
@@ -241,21 +247,27 @@ function CredentialsStep({
         <Button type="submit" loading={busy} disabled={!online}>
           {t('signIn.submit')}
         </Button>
-        <Button type="button" variant="ghost" onClick={onFirst}>
+        <Button type="button" variant="ghost" onClick={() => onCode('first_sign_in')}>
           {t('signIn.firstTime')}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => onCode('password_reset')}>
+          {t('signIn.forgotPassword')}
         </Button>
       </FormActions>
     </Form>
   );
 }
 
-function FirstStep({
+/** The phone for a code without a password: the API answers the same whether one is sent. */
+function CodeRequestStep({
+  purpose,
   intent,
   phone,
   onPhone,
   onSent,
   onBack,
 }: {
+  purpose: CodePurpose;
   intent: SignInIntent;
   phone: string;
   onPhone: (phone: string) => void;
@@ -276,7 +288,7 @@ function FirstStep({
         api.POST('/api/auth/otp/request', {
           body: {
             phone: parsedPhone.data,
-            purpose: 'first_sign_in',
+            purpose,
             intent,
             proofOfWork: await proofOfWork(),
           },
@@ -290,8 +302,14 @@ function FirstStep({
   return (
     <Form onSubmit={submit} busy={busy} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold text-foreground">{t('signIn.firstTitle')}</h2>
-        <p className="text-sm text-muted-foreground">{t('signIn.firstDescription')}</p>
+        <h2 className="text-lg font-semibold text-foreground">
+          {purpose === 'first_sign_in' ? t('signIn.firstTitle') : t('signIn.resetTitle')}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {purpose === 'first_sign_in'
+            ? t('signIn.firstDescription')
+            : t('signIn.resetDescription')}
+        </p>
       </div>
       {error && <Callout role="alert" tone="danger" title={error} />}
       <FormFields>

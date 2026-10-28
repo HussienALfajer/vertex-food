@@ -29,3 +29,14 @@ export interface TenantDevices {
 }
 
 export const TENANT_DEVICES = Symbol('TenantDevices');
+
+/** The tenant's staff memberships (owned by access). */
+export interface TenantMembers {
+  /**
+   * Spec S02 edge case 6: refuses with `BRANCH_HAS_MEMBERS` while an active member has the branch
+   * as their only active branch; they are given another one first.
+   */
+  assertBranchNotSoleScope(tx: Transaction, branchId: string): Promise<void>;
+}
+
+export const TENANT_MEMBERS = Symbol('TenantMembers');

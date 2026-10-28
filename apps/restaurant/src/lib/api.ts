@@ -5,8 +5,8 @@ import { deviceBridge } from './device';
 
 /**
  * The API client of the online-only screens (S01, ADR 0020), typed from `apps/api/openapi.json`.
- * `VITE_API_URL` is the API's origin; unset, requests go to the renderer's own origin, which only
- * the E2E uses. On a registered PC every request carries the PIN session's access token from the
+ * `VITE_API_URL` is the API's origin; unset, requests go to the renderer's own origin: the E2E's
+ * mock, or the dev server, which forwards `/api` to the local API (`vite.config.ts`). On a registered PC every request carries the PIN session's access token from the
  * main process; in a browser the personal session is an `HttpOnly` cookie (spec S02 rules 24, 35).
  */
 export const api = createClient<paths>({ baseUrl: import.meta.env.VITE_API_URL ?? '' });

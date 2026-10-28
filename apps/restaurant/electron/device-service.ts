@@ -117,9 +117,37 @@ export class DeviceService {
     return next;
   }
 
-  private save(record: DeviceRecord): void {
-    this.deps.store.write(record);
-    this.record = record;
+  /**
+   * Writes the record. The highest time seen never goes down here: an operation that read the
+   * record before awaiting the API keeps what `status` saw meanwhile (rule 31). Only a confirmed
+   * member list sets it from the server's time (`clockFromServer`, `withList`).
+   */
+  private save(record: DeviceRecord, options: { clockFromServer?: boolean } = {}): void {
+    const current = this.registered();
+    const next =
+      record.state === 'registered' && current && !options.clockFromServer
+        ? seeTime(record, new Date(current.highestSeenAt))
+        : record;
+    this.deps.store.write(next);
+    this.record = next;
+  }
+
+  /**
+   * Rule 31: every look at the PC's clock raises the highest time seen and keeps it, so a clock
+   * set back later, even before any PIN is typed or a restart, never reopens the window. The
+   * write is synchronous, so it never interleaves with an operation's. A write that fails (a file
+   * held by an antivirus scan) keeps the time in memory and is tried again at the next look; the
+   * window shown already counts from it.
+   */
+  private observe(now: Date): void {
+    const record = this.registered();
+    if (!record || now.getTime() <= Date.parse(record.highestSeenAt)) return;
+    const seen = seeTime(record, now);
+    try {
+      this.save(seen);
+    } catch {
+      this.record = seen;
+    }
   }
 
   private registered(): Registered | null {
@@ -127,6 +155,8 @@ export class DeviceService {
   }
 
   status(): DeviceStatus {
+    const now = this.deps.now();
+    this.observe(now);
     const record = this.record;
     if (!record) return { state: 'unregistered' };
     if (record.state !== 'registered') return { state: 'wiped', tenantName: record.tenantName };
@@ -146,7 +176,7 @@ export class DeviceService {
         pinDisabledHere: localMember(record, member.membershipId).disabled,
         usedThisDevice: localMember(record, member.membershipId).firstSessionAt !== null,
       })),
-      window: windowOf(record, this.deps.now()),
+      window: windowOf(record, now),
       online: this.online,
       session: this.session
         ? {
@@ -372,12 +402,16 @@ export class DeviceService {
     return outcome.ok ? { ok: true } : { ok: false, code: outcome.code };
   }
 
-  /** Rule 32: locking ends the session, online too when the API answers. */
+  /**
+   * Rule 32: locking ends the session at once, outside the queue, so nothing waiting on a slow
+   * connection (a member-list refresh, a token refresh) keeps it open; ending it on the server
+   * follows in turn, when the API answers.
+   */
   lock(reason: LockReason): Promise<void> {
+    const ended = this.session;
+    this.session = null;
+    this.deps.onChange();
     return this.run(async () => {
-      const ended = this.session;
-      this.session = null;
-      this.deps.onChange();
       if (!ended?.tokens) return;
       await this.deps.client.endSession(ended.tokens.accessToken, reason).catch(() => undefined);
     });
@@ -396,6 +430,11 @@ export class DeviceService {
           this.deps.client.refreshSession(token, current.refreshToken),
         );
         this.online = true;
+        if (this.session !== session) {
+          // Locked while the refresh ran (rule 32): the rotated session ends too.
+          await this.deps.client.endSession(tokens.accessToken, 'locked').catch(() => undefined);
+          return null;
+        }
         // A session opened to replace a forgotten PIN still waits for it (rule 22).
         this.session = { ...session, ...this.onlineSession(session.membershipId, tokens) };
         return tokens.accessToken;
@@ -405,6 +444,7 @@ export class DeviceService {
           return null;
         }
         // The session ended on the server (rule 44, a reuse, a deactivation): the PC locks.
+        if (this.session !== session) return null;
         this.session = null;
         this.deps.onChange();
         if (codeOf(error) === 'DEVICE_REVOKED') await this.wipe(record);
@@ -452,10 +492,12 @@ export class DeviceService {
           const { replacing: _, ...session } = this.session;
           this.session = session;
         }
-        this.save(next);
+        this.save(next, { clockFromServer: true });
       } catch (error) {
-        if (isUnreachable(error)) this.online = false;
-        else if (codeOf(error) === 'DEVICE_REVOKED') await this.wipe(record);
+        if (isUnreachable(error)) {
+          this.online = false;
+          this.observe(this.deps.now());
+        } else if (codeOf(error) === 'DEVICE_REVOKED') await this.wipe(record);
       } finally {
         this.deps.onChange();
       }

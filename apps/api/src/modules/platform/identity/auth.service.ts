@@ -117,6 +117,7 @@ export class AuthService {
     input: SignIn,
     address: string,
     known: { deviceToken?: string | undefined; personalDeviceToken?: string | undefined },
+    cookies: CookieJar,
   ): Promise<SignInResult> {
     this.perAddress.take(this.hashes.hash('address', address));
     await this.pow.verify(input.proofOfWork);
@@ -136,7 +137,7 @@ export class AuthService {
       if (device && (await this.isMemberOnDevice(device.tid, device.did, account.id))) {
         return {
           step: 'done',
-          ticket: this.tickets.issue('signed_in', input.intent, account.id, {
+          ticket: this.tickets.issue('signed_in', input.intent, account, {
             device: { tenantId: device.tid, deviceId: device.did },
           }),
         };
@@ -148,10 +149,17 @@ export class AuthService {
         known.personalDeviceToken,
         now,
       );
-      if (personalDeviceId) {
+      if (personalDeviceId && known.personalDeviceToken) {
+        // Its 90 days start again in the database (`recognize`), so in the browser too.
+        cookies.set(
+          PERSONAL_DEVICE_COOKIE,
+          known.personalDeviceToken,
+          PERSONAL_DEVICE_COOKIE_PATH,
+          PERSONAL_DEVICE_COOKIE_SECONDS,
+        );
         return {
           step: 'done',
-          ticket: this.tickets.issue('signed_in', input.intent, account.id, { personalDeviceId }),
+          ticket: this.tickets.issue('signed_in', input.intent, account, { personalDeviceId }),
         };
       }
     }
@@ -248,7 +256,7 @@ export class AuthService {
       ticket: this.tickets.issue(
         needsPassword ? 'set_password' : 'signed_in',
         input.intent,
-        account.id,
+        account,
         { personalDeviceId },
       ),
       needsPassword,
@@ -324,9 +332,14 @@ export class AuthService {
       }
     });
     return {
-      ticket: this.tickets.issue('signed_in', ticket.intent, account.id, {
-        personalDeviceId: ticket.personalDeviceId,
-      }),
+      ticket: this.tickets.issue(
+        'signed_in',
+        ticket.intent,
+        { id: account.id, passwordHash },
+        {
+          personalDeviceId: ticket.personalDeviceId,
+        },
+      ),
     };
   }
 

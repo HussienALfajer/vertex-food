@@ -88,8 +88,9 @@ import { TokenSigner } from './tokens.js';
     },
     {
       provide: Tickets,
-      inject: [DATABASE, TokenSigner],
-      useFactory: (db: Database, tokens: TokenSigner) => new Tickets(db, tokens),
+      inject: [DATABASE, TokenSigner, KEYED_HASH],
+      useFactory: (db: Database, tokens: TokenSigner, hashes: KeyedHash) =>
+        new Tickets(db, tokens, hashes),
     },
     {
       provide: SessionIssuer,

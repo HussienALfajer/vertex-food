@@ -81,7 +81,14 @@ import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { AreasService } from '../areas/index.js';
 import { encodeImage, FilesService } from '../files/index.js';
 import type { MapLinkResolver } from './map-link-resolver.js';
-import { TENANT_DEVICES, TENANT_OWNERS, type TenantDevices, type TenantOwners } from './ports.js';
+import {
+  TENANT_DEVICES,
+  TENANT_MEMBERS,
+  TENANT_OWNERS,
+  type TenantDevices,
+  type TenantMembers,
+  type TenantOwners,
+} from './ports.js';
 import {
   activeBranches,
   type BranchRow,
@@ -126,6 +133,7 @@ export class TenancyService {
     @Inject(MAP_LINK_RESOLVER) private readonly resolver: MapLinkResolver,
     @Inject(TENANT_OWNERS) private readonly owners: TenantOwners,
     @Inject(TENANT_DEVICES) private readonly devices: TenantDevices,
+    @Inject(TENANT_MEMBERS) private readonly members: TenantMembers,
   ) {}
 
   // The restaurant's tenant.
@@ -875,7 +883,9 @@ export class TenancyService {
 
   /**
    * Rule 2: never the last non-archived branch (`LAST_ACTIVE_BRANCH`), nor one with an active PC
-   * (`BRANCH_HAS_DEVICES`, spec S02 rule 21); archiving twice is a no-op.
+   * (`BRANCH_HAS_DEVICES`, spec S02 rule 21), nor the only branch of an active member
+   * (`BRANCH_HAS_MEMBERS`, spec S02 edge case 6); archiving twice is a no-op. The tenant row is
+   * locked first, as staff writes lock it, so no member is given the branch meanwhile.
    */
   async archiveBranch(
     operator: PlatformOperator,
@@ -893,6 +903,7 @@ export class TenancyService {
         throw new DomainError('LAST_ACTIVE_BRANCH', 'The last branch cannot be archived');
       }
       await this.devices.assertNoActiveDevices(tx, row.id);
+      await this.members.assertBranchNotSoleScope(tx, row.id);
       const now = new Date();
       const [archived] = await tx
         .update(branches)

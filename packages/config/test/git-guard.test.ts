@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -133,4 +133,31 @@ describe('git guard: pushes', () => {
       expect(refused(command)).toBe(false);
     },
   );
+});
+
+describe('git guard: registration (TOOL-01)', () => {
+  it('runs before every shell tool the settings allow', () => {
+    const settings = JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL('../../../.claude/settings.json', import.meta.url)),
+        'utf8',
+      ),
+    ) as {
+      permissions: { allow: string[] };
+      hooks: { PreToolUse: { matcher: string; hooks: { command: string }[] }[] };
+    };
+    const matchers = settings.hooks.PreToolUse.filter((entry) =>
+      entry.hooks.some((hook) => hook.command.includes('git-guard.mjs')),
+    ).flatMap((entry) => entry.matcher.split('|'));
+    const shells = settings.permissions.allow.filter((tool) =>
+      ['Bash', 'PowerShell'].includes(tool),
+    );
+    expect(shells.length).toBeGreaterThan(0);
+    for (const shell of shells) expect(matchers, shell).toContain(shell);
+  });
+
+  it('refuses the same commands as PowerShell writes them', () => {
+    expect(refused(`git -C "${main}" commit -m "x"; git status`)).toBe(true);
+    expect(refused('Set-Location D:\\repo; git add -A')).toBe(true);
+  });
 });

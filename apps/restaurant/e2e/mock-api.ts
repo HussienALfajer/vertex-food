@@ -99,8 +99,16 @@ export type MockApi = {
   sessionPassword: string;
 };
 
-/** A synthetic account; `password` null until its first sign-in (rule 13). */
-export type MockAccount = { password: string | null; name: string; me: Me };
+/**
+ * A synthetic account; `password` null until its first sign-in (rule 13); `resetAuthorized` while
+ * an owner, a manager or Vertex support has authorized a new password (rule 14).
+ */
+export type MockAccount = {
+  password: string | null;
+  name: string;
+  me: Me;
+  resetAuthorized?: boolean;
+};
 
 /** The OTP the mocked sender "sends" (spec S02: the fake sender until S03). */
 export const mockOtp = '246810';
@@ -384,6 +392,8 @@ export async function mockApi(
   };
   // Challenges and tickets of the sign-in steps, by id: the phone they belong to.
   const challenges = new Map<string, string>();
+  // The codes sent for an authorized password reset (rule 14).
+  const resets = new Set<string>();
   const tickets = new Map<string, string>();
   const ticketFor = (phone: string) => {
     const ticket = `ticket-${syntheticId()}`;
@@ -541,7 +551,14 @@ export async function mockApi(
     if (path === '/api/auth/otp/request' && method === 'POST') {
       const input = otpRequestSchema.parse(body());
       const challengeId = syntheticId();
-      challenges.set(challengeId, input.phone);
+      const account = state.accounts.get(input.phone);
+      // The same answer either way; a code is sent only to an eligible account.
+      const eligible =
+        input.purpose === 'password_reset'
+          ? account?.password !== null && account?.resetAuthorized === true
+          : account?.password === null;
+      if (eligible) challenges.set(challengeId, input.phone);
+      if (eligible && input.purpose === 'password_reset') resets.add(challengeId);
       return route.fulfill({ json: { challengeId } });
     }
     if (path === '/api/auth/otp/resend' && method === 'POST') {
@@ -557,7 +574,7 @@ export async function mockApi(
       return route.fulfill({
         json: {
           ticket: ticketFor(phone),
-          needsPassword: first,
+          needsPassword: first || resets.has(input.challengeId),
           needsName: first,
           suggestedName: first ? (account?.name ?? null) : null,
         },
@@ -568,7 +585,10 @@ export async function mockApi(
       if (!ticketPhone) return refuse(route, 'TICKET_INVALID');
       const { password } = body() as { password: string };
       const account = state.accounts.get(ticketPhone);
-      if (account) account.password = password;
+      if (account) {
+        account.password = password;
+        account.resetAuthorized = false;
+      }
       return route.fulfill({ json: { ticket: ticketFor(ticketPhone) } });
     }
     if (path === '/api/auth/tenant-options' && method === 'GET') {

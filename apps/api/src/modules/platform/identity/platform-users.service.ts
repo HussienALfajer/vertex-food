@@ -147,6 +147,7 @@ export class PlatformUsersService {
       if (isAdmin(current) && !isAdmin(next)) {
         assertAdminRemains(admins.filter((admin) => admin.id !== id && isAdmin(admin)).length);
       }
+      await this.assertOperatorActive(tx, operator);
       const [row] = await tx
         .update(platformUsers)
         .set({
@@ -186,18 +187,25 @@ export class PlatformUsersService {
 
   /**
    * Rule 42: a lost password or TOTP. The user starts over with a new setup code; their password,
-   * TOTP, recovery codes and sessions go. A disabled user is enabled first.
+   * TOTP, recovery codes and sessions go. A disabled user is enabled first. From the console the
+   * last admin is never reset (`LAST_ADMIN`), so two admins resetting each other leave one; the
+   * CLI, as the system, recovers even the last.
    */
   async reset(operator: PlatformOperator, id: string): Promise<PlatformUserSetup> {
     this.refuseSelf(operator, id);
     const now = new Date();
     const setup = newSetupCode(this.hashes, now);
     return this.db.transaction(async (tx) => {
+      const admins = await this.lockAdmins(tx);
       const current = await platformUserById(tx, id, { lock: 'update' });
       if (!current || current.archivedAt) throw notFound();
       if (current.status === 'disabled') {
         throw new DomainError('INVALID_STATUS_TRANSITION', 'Enable the user before a reset');
       }
+      if (operator.kind === 'platform' && isAdmin(current)) {
+        assertAdminRemains(admins.filter((admin) => admin.id !== id && isAdmin(admin)).length);
+      }
+      await this.assertOperatorActive(tx, operator);
       const [row] = await tx
         .update(platformUsers)
         .set({
@@ -231,6 +239,18 @@ export class PlatformUsersService {
   private refuseSelf(operator: PlatformOperator, id: string): void {
     if (operator.kind === 'platform' && operator.userId === id) {
       throw new DomainError('FORBIDDEN', 'An admin does not change or reset themself');
+    }
+  }
+
+  /**
+   * The operator as they are once the admins are locked: one whom a concurrent change just
+   * disabled, reset or deprived of `console.users.manage` changes no one (BE-01).
+   */
+  private async assertOperatorActive(tx: Transaction, operator: PlatformOperator): Promise<void> {
+    if (operator.kind !== 'platform') return;
+    const row = await platformUserById(tx, operator.userId);
+    if (!row || row.archivedAt || !isAdmin(row)) {
+      throw new DomainError('FORBIDDEN', 'The operator may no longer manage platform users');
     }
   }
 

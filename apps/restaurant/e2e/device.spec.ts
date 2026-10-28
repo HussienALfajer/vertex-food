@@ -329,6 +329,44 @@ test.describe('a personal device (browser)', () => {
     await expect(page.getByRole('button', { name: 'تبديل الكاشير' })).toHaveCount(0);
   });
 
+  test('a member whose reset was authorized sets a new password by OTP (rule 14)', async ({
+    page,
+  }, testInfo) => {
+    failOnCspViolation(page);
+    const restaurant = active();
+    const only = completeBranch();
+    const api = await mockApi(page, {
+      tenant: restaurant,
+      branches: [only],
+      hours: { [only.id]: everyDay('10:00', '23:00') },
+      me: null,
+      accounts: {
+        '+963900000011': {
+          password: 'a forgotten old phrase',
+          name: 'ليلى المديرة',
+          me: me(restaurant, { roles: ['manager'], displayName: 'ليلى المديرة' }),
+          resetAuthorized: true,
+        },
+      },
+    });
+    await page.goto('/sign-in');
+    await page.getByRole('button', { name: 'نسيت كلمة المرور؟' }).click();
+    await expect(page.getByRole('heading', { name: 'كلمة مرور جديدة' })).toBeVisible();
+    await page.getByLabel('رقم الهاتف').fill('0900000011');
+    await screenshot(page, testInfo, 'personal-password-reset');
+    await page.getByRole('button', { name: 'أرسل رمز التحقق' }).click();
+    await page.getByLabel('رمز التحقق').fill(mockOtp);
+    await page.getByRole('button', { name: 'تحقّق' }).click();
+    // The name is known: only the new password, typed twice.
+    await expect(page.getByRole('heading', { name: 'عيّن كلمة المرور' })).toBeVisible();
+    await expect(page.getByLabel('اسمك')).toHaveCount(0);
+    await page.getByLabel('كلمة المرور الجديدة').fill('a bright new lemon tree');
+    await page.getByLabel('أعد كتابة كلمة المرور').fill('a bright new lemon tree');
+    await page.getByRole('button', { name: 'حفظ ومتابعة' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
+    expect(api.writes).toContain('POST /api/auth/password');
+  });
+
   test('the password lock says when to try again', async ({ page }) => {
     failOnCspViolation(page);
     const api = await mockApi(page, { tenant: active(), me: null });

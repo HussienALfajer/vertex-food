@@ -588,6 +588,66 @@ describe('platform users (rule 42)', () => {
     const reset = await service.reset(OPERATOR, survivor.userId);
     expect(reset.user.status).toBe('pending_setup');
   });
+
+  it('never resets the last admin from the console, concurrently too (BE-01)', async () => {
+    await db
+      .update(platformUsers)
+      .set({ status: 'disabled' })
+      .where(and(eq(platformUsers.role, 'admin'), eq(platformUsers.status, 'active')));
+    const first = await setUpUser(app, 'admin');
+    const second = await setUpUser(app, 'admin');
+    nextStep();
+    const service = app.get(PlatformUsersService);
+    const actor = (user: SignedIn) => ({
+      kind: 'platform' as const,
+      userId: user.userId,
+      sessionId: user.userId,
+      permissions: [],
+      reauthenticatedAt: null,
+    });
+    // Each resets the other at once: one wins, the other is refused, one admin stays active.
+    const [a, b] = await Promise.allSettled([
+      service.reset(actor(first), second.userId),
+      service.reset(actor(second), first.userId),
+    ]);
+    const outcomes = [a, b].map((result) =>
+      result.status === 'fulfilled' ? 'ok' : (result.reason as { code: string }).code,
+    );
+    expect(outcomes.sort()).toEqual(['LAST_ADMIN', 'ok']);
+    const active = await db
+      .select({ id: platformUsers.id })
+      .from(platformUsers)
+      .where(and(eq(platformUsers.role, 'admin'), eq(platformUsers.status, 'active')));
+    expect(active).toHaveLength(1);
+    // The one reset may no longer act, and the CLI still recovers the last admin.
+    const survivor = a.status === 'fulfilled' ? first : second;
+    const resetOne = survivor === first ? second : first;
+    await expect(service.reset(actor(resetOne), survivor.userId)).rejects.toMatchObject({
+      code: 'LAST_ADMIN',
+    });
+    expect((await service.reset(OPERATOR, survivor.userId)).user.status).toBe('pending_setup');
+  });
+
+  it('refuses a change by an operator who lost user management meanwhile', async () => {
+    // Another admin stays, so the operator may be disabled.
+    await setUpUser(app, 'admin');
+    const operatorUser = await setUpUser(app, 'admin');
+    const target = await setUpUser(app, 'support');
+    nextStep();
+    const service = app.get(PlatformUsersService);
+    await service.update(OPERATOR, operatorUser.userId, { disabled: true });
+    const stale = {
+      kind: 'platform' as const,
+      userId: operatorUser.userId,
+      sessionId: operatorUser.userId,
+      permissions: [],
+      reauthenticatedAt: null,
+    };
+    await expect(service.reset(stale, target.userId)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.update(stale, target.userId, { disabled: true })).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
 });
 
 describe('owner recovery (rule 15)', () => {

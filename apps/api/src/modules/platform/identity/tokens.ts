@@ -26,6 +26,8 @@ const claimsOf = {
     purpose: z.enum(ticketPurposes),
     intent: signInIntentSchema,
     acc: z.uuid(),
+    /** A keyed hash of the account's password when issued, so a password change voids it. */
+    ref: z.string(),
     /** The registered PC the person signed in on, whose device token came with the sign-in. */
     did: z.uuid().nullable(),
     tid: z.uuid().nullable(),

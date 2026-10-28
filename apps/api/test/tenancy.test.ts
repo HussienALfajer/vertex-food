@@ -21,6 +21,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, inject, it, vi } from
 import type { StaffActor, SystemActor } from '../src/core/access/actor.js';
 import { toErrorResponse } from '../src/core/errors/error.filter.js';
 import { listRoutes } from '../src/core/routes.js';
+import { StaffService } from '../src/modules/platform/access/staff.service.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
@@ -324,6 +325,43 @@ describe('status lifecycle', () => {
       }),
     );
     // The write waits for the row while the suspension's time passes, then is checked at its time.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    release();
+    await holder;
+    expect(await write).toBe('TENANT_SUSPENDED');
+  });
+
+  it('checks a staff write at its lock time too: adding a member past a suspension is refused (BE-03)', async () => {
+    const { tenantId, owner } = await activeTenant();
+    await tenancy.changeStatus(OPERATOR, tenantId, { to: 'suspended', reason: 'non_payment' });
+    let release = () => {};
+    const released = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let holding = () => {};
+    const held = new Promise<void>((resolve) => {
+      holding = resolve;
+    });
+    const holder = withTenant(db, tenantId, async (tx) => {
+      await tx.select().from(tenants).where(eq(tenants.id, tenantId)).for('update');
+      await tx
+        .update(tenants)
+        .set({ scheduledStatusAt: new Date(Date.now() + 300) })
+        .where(eq(tenants.id, tenantId));
+      holding();
+      await released;
+    });
+    await held;
+    const write = codeOf(
+      app.get(StaffService).add(owner, {
+        phone: newPhone(),
+        displayName: 'كاشير',
+        roles: ['cashier'],
+        branchScope: { allBranches: true },
+        grantedPermissions: [],
+        revokedPermissions: [],
+      }),
+    );
     await new Promise((resolve) => setTimeout(resolve, 600));
     release();
     await holder;
