@@ -42,8 +42,11 @@ const OPT_OUT_STOPS = new Set<MessageKind>(['notification', 'alert', 'auto_reply
 const CLAIM_BATCH = 100;
 /** How long a receipt may wait for the send it acknowledges to be recorded. */
 const PENDING_RECEIPT_MS = 60_000;
-/** How long one send may take before it counts as a transport error. */
-const SEND_TIMEOUT_MS = 30_000;
+/**
+ * How long one send may take before it counts as a transport error: past Baileys' own 60 s query
+ * timeout, so a send that went is never counted as failed and sent again.
+ */
+const SEND_TIMEOUT_MS = 75_000;
 
 type QueuedRow = {
   id: string;

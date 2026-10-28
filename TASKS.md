@@ -35,7 +35,7 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - [x] `incoming/`: known-recipient filter, `notify` and `append` de-duplicated, keywords ordered by time, opt-out, auto-reply once per 24 h
 - [x] Alerts (recipients, 30-minute throttle, healthy count to and from zero) and the sweep
 - [x] Log test: no phone, parameter, body, code or QR; docs, folder `CLAUDE.md`
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 3 `feat/s03-messaging-api` — API (after PR 1, parallel with PR 2)
 
