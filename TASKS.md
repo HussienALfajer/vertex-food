@@ -37,15 +37,15 @@ Rules that keep the parallel PRs apart:
 
 ## PR 2 `feat/s04-hub-protocol` — hub protocol in `packages/sync` (after PR 1, parallel with PR 3 and PR 4)
 
-- [ ] Ports: journal and hub-state storage with one-transaction commits, clock, peer and client transports
-- [ ] Hub: writer lock, validate, local access check, resolve, journal, mirror, commit, answers `ok`/`duplicate`/`refused` (rules 5, 6); numbering from local blocks with provisional labels (rules 18, 19)
-- [ ] Mirror with the previous entry's id and hash, 0.8 s wait, `mirrored: false`; heartbeats every 0.5 s; restart takes back copied entries (rules 21–23)
-- [ ] Promotion (automatic and manual by PIN with the missing count), demotion, resumable rejoin with forwarding and re-sequencing, divergence adopted, re-checks of forwarded and re-sent entries with signatures, `alreadyApplied`, equal-epoch tie-break, journal retention and "too far behind" (rules 20, 22, 24–29)
-- [ ] Pairing window, single-use codes, delays, station and personal pairings, PIN sessions with S02's lockout, 30-day expiry (rules 33–36)
-- [ ] From PR 1's review: the hub refuses a `device` actor from a hub client (only a client PC, by mutual TLS, may send its own device commands), and a hub client's command takes the hub's clock as its `deviceTime` with the hub's offset; the uploader sends `mirrored` beside each envelope (`uploadedCommandSchema`)
-- [ ] Client: hub discovery by highest epoch, outbox state machine (re-send same id, keep `mirrored: false` versions, "sending", `refused` removes), live snapshot (rules 30–32)
-- [ ] The spike's scenarios in memory: setup, pairing offline, offline LAN commands, crash between mirror and commit, power cut, both splits, rejoin cut short, LAN blip with re-sent versions, forged re-send, divergence, ten cuts, manual promotion during a pending rejoin, tie-break, standby too far behind, client PC following a failover, both PCs down with the outbox kept, revoked hub, protocol mismatch between peers
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Ports: journal and hub-state storage with one-transaction commits, clock, peer and client transports
+- [x] Hub: writer lock, validate, local access check, resolve, journal, mirror, commit, answers `ok`/`duplicate`/`refused` (rules 5, 6); numbering from local blocks with provisional labels (rules 18, 19)
+- [x] Mirror with the previous entry's id and hash, 0.8 s wait, `mirrored: false`; heartbeats every 0.5 s; restart takes back copied entries (rules 21–23)
+- [x] Promotion (automatic and manual by PIN with the missing count), demotion, resumable rejoin with forwarding and re-sequencing, divergence adopted, re-checks of forwarded and re-sent entries with signatures, `alreadyApplied`, equal-epoch tie-break, journal retention and "too far behind" (rules 20, 22, 24–29)
+- [x] Pairing window, single-use codes, delays, station and personal pairings, PIN sessions with S02's lockout, 30-day expiry (rules 33–36)
+- [x] From PR 1's review: the hub refuses a `device` actor from a hub client (only a client PC, by mutual TLS, may send its own device commands), and a hub client's command takes the hub's clock as its `deviceTime` with the hub's offset; the uploader sends `mirrored` beside each envelope (`uploadedCommandSchema`)
+- [x] Client: hub discovery by highest epoch, outbox state machine (re-send same id, keep `mirrored: false` versions, "sending", `refused` removes), live snapshot (rules 30–32)
+- [x] The spike's scenarios in memory (`src/hub/scenarios.test.ts`, with `pairing`, `access`, `numbering` and the client's `outbox` tests; the ports in memory in `src/test-support/`): setup, pairing offline, offline LAN commands, crash between mirror and commit, power cut, both splits, rejoin cut short, LAN blip with re-sent versions, forged re-send, divergence, ten cuts, manual promotion during a pending rejoin, tie-break, standby too far behind, client PC following a failover, both PCs down with the outbox kept, revoked hub, protocol mismatch between peers
+- [x] Docs, checks (`pnpm verify` green), reviewer (nine findings fixed: re-sent versions checked by their envelope, a shared phone's maker, the standby's state under the lock, pages of 500 for catch-up, journal and rejoin, rejoin retries while the hub is silent, claimed numbers, a failing `resolve` refused, the PC PIN lockout on manual promotion; the first fix-only round found three more, fixed: the common prefix scanned upward, refused re-sent versions shown, the shared PIN lockout; the second round clean), PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 3 `feat/s04-sync-api` — API and worker (after PR 1, parallel with PR 2)
 

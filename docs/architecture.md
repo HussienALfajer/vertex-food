@@ -50,7 +50,7 @@ apps/
 packages/
   contracts/          Zod schemas (exportable as JSON Schema), error codes, state tables, money, totals, agreement terms
   db/                 Drizzle schema, migrations, RLS policies, shared write paths
-  sync/               command registry and definitions, canonical JSON and signed envelopes, the sync service's streams (powersync/); hub protocol and client outbox (S04)
+  sync/               command registry and definitions, canonical JSON and signed envelopes, the sync service's streams (powersync/); hub protocol (`src/hub/`) and client outbox (`src/client/`) behind ports (S04)
   print/              receipt and ticket documents, Skia rendering to 1-bit pages, ESC/POS, network and spooler transports, print queue (ADR 0023) (later: S10, S11)
   tokens/             design tokens (palette, semantic roles light and dark, scales, logo paths, restaurant identity slots), shared by web and native
   ui/                 web design system: Tailwind v4 theme, fonts, Base UI components, theme toggle, PoweredBy (restaurant, console, web)
