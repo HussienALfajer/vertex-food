@@ -23,6 +23,7 @@ import {
   type TenantStatus,
 } from '@vertex-food/contracts';
 import {
+  appendAccessSnapshot,
   branches,
   type Database,
   staffMembershipBranches,
@@ -212,6 +213,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         );
       }
       await linkAccount(tx, accountId, actor.tenantId, now);
+      await appendAccessSnapshot(tx, id);
       await audit(tx, actor.tenantId, actor, {
         action: existing ? 'staff.reactivated' : 'staff.added',
         entityType: 'staff_membership',
@@ -264,6 +266,7 @@ export class StaffService implements TenantOwners, TenantMembers {
       if (left.length > 0) {
         await this.credentials.endSessions(tx, member.id, 'branch_left', now, left);
       }
+      await appendAccessSnapshot(tx, member.id);
       await audit(tx, actor.tenantId, actor, {
         action: 'staff.access_changed',
         entityType: 'staff_membership',
@@ -311,6 +314,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         })
         .where(eq(staffMemberships.id, member.id));
       await this.credentials.endSessions(tx, member.id, 'member_deactivated', now);
+      await appendAccessSnapshot(tx, member.id);
       await audit(tx, actor.tenantId, actor, {
         action: 'staff.deactivated',
         entityType: 'staff_membership',
@@ -346,6 +350,7 @@ export class StaffService implements TenantOwners, TenantMembers {
           updatedAt: nextUpdatedAt(member, now),
         })
         .where(eq(staffMemberships.id, member.id));
+      await appendAccessSnapshot(tx, member.id);
       await audit(tx, actor.tenantId, actor, {
         action: 'staff.reactivated',
         entityType: 'staff_membership',
@@ -413,6 +418,7 @@ export class StaffService implements TenantOwners, TenantMembers {
       .returning({ id: staffMemberships.id });
     if (!row) throw new Error('No owner inserted');
     await linkAccount(tx, accountId, tenantId, now);
+    await appendAccessSnapshot(tx, row.id);
     await audit(tx, tenantId, operator, {
       action: 'staff.added',
       entityType: 'staff_membership',

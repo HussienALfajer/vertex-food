@@ -71,6 +71,20 @@
       "when": 1793189812885,
       "tag": "0009_messaging-grants",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793201841374,
+      "tag": "0010_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793201869741,
+      "tag": "0011_sync-isolation-grants-publication",
+      "breakpoints": true
     }
   ]
 }

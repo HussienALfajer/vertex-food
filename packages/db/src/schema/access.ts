@@ -155,3 +155,47 @@ export const staffMembershipBranches = pgTable(
     index('staff_membership_branches_branch_idx').on(t.tenantId, t.branchId),
   ],
 );
+
+/**
+ * A member's access as it stood from `effective_from` (spec S04, ADR 0035): every S02 access
+ * change appends one in its transaction, so the server checks a command against the access its
+ * member held at the command's effective time. `permissions` are the effective ones of that
+ * release's presets, kept as they were.
+ */
+export const membershipAccessSnapshots = pgTable(
+  'membership_access_snapshots',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    membershipId: uuid().notNull(),
+    status: text().notNull(),
+    roles: text().array().notNull(),
+    allBranches: boolean().notNull(),
+    branchIds: uuid().array().notNull(),
+    permissions: text().array().notNull(),
+    effectiveFrom: timestamptz().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    idIsUuidV7('membership_access_snapshots', t.id),
+    foreignKey({
+      name: 'membership_access_snapshots_membership_fk',
+      columns: [t.tenantId, t.membershipId],
+      foreignColumns: [staffMemberships.tenantId, staffMemberships.id],
+    }),
+    check('membership_access_snapshots_status', sql`${t.status} in ('active', 'deactivated')`),
+    check(
+      'membership_access_snapshots_roles',
+      sql`cardinality(${t.roles}) between 1 and 6 and ${t.roles} <@ array[${sql.raw(ROLES.map((role) => `'${role}'`).join(', '))}]`,
+    ),
+    check(
+      'membership_access_snapshots_scope',
+      sql`not ${t.allBranches} or cardinality(${t.branchIds}) = 0`,
+    ),
+    index('membership_access_snapshots_tenant_membership_idx').on(
+      t.tenantId,
+      t.membershipId,
+      t.effectiveFrom,
+    ),
+  ],
+);

@@ -166,6 +166,8 @@ export const devices = pgTable(
     revokeNote: text(),
     /** When the installation confirmed it deleted its keys and the member list. */
     wipedAt: timestamptz(),
+    /** Spec S04: the configured hub or standby of its branch; other PCs are client PCs. */
+    hubRole: text(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     archivedAt: archivedAt(),
@@ -209,6 +211,11 @@ export const devices = pgTable(
     check('devices_wiped', sql`${t.wipedAt} is null or ${t.status} = 'revoked'`),
     check('devices_os', sql`char_length(${t.os}) between 1 and 100`),
     check('devices_app_version', sql`char_length(${t.appVersion}) between 1 and 50`),
+    check('devices_hub_role', sql`${t.hubRole} in ('hub', 'standby')`),
+    // One configured hub and one standby per branch among its active PCs.
+    uniqueIndex('devices_branch_hub_role_unique')
+      .on(t.tenantId, t.branchId, t.hubRole)
+      .where(sql`${t.hubRole} is not null and ${t.status} = 'active'`),
     index('devices_tenant_branch_status_idx').on(t.tenantId, t.branchId, t.status),
     index('devices_tenant_registered_by_idx').on(t.tenantId, t.registeredByMembershipId),
     index('devices_tenant_revoked_by_idx').on(t.tenantId, t.revokedByMembershipId),
