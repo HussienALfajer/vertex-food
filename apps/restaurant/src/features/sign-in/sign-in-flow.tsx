@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import {
   accountNameSchema,
   mobilePhoneNumberSchema,
+  type OtpDeliveryStatus,
   type OtpVerified,
   otpCodeSchema,
   otpPolicy,
@@ -22,8 +24,8 @@ import {
   Input,
   toast,
 } from '@vertex-food/ui';
-import { WifiOffIcon } from 'lucide-react';
-import { type ComponentProps, useEffect, useId, useState } from 'react';
+import { CheckCheckIcon, CheckIcon, CircleAlertIcon, Loader2Icon, WifiOffIcon } from 'lucide-react';
+import { type ComponentProps, type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, apiErrorCode, body, unwrap } from '../../lib/api';
 import { useErrorText } from '../../lib/error-text';
@@ -37,7 +39,8 @@ type CodePurpose = 'first_sign_in' | 'password_reset';
 type Step =
   | { kind: 'credentials' }
   | { kind: 'code'; purpose: CodePurpose }
-  | { kind: 'otp'; challengeId: string; sentAt: number }
+  /** `delivery` for a new device's code, whose WhatsApp delivery is shown (spec S03 screen 6). */
+  | { kind: 'otp'; challengeId: string; sentAt: number; delivery: boolean }
   | { kind: 'password'; ticket: string; needsName: boolean; suggestedName: string | null };
 
 /** A proof of work for a sign-in or OTP request (ADR 0016), solved here. */
@@ -107,7 +110,9 @@ export function SignInFlow({
           intent={intent}
           phone={phone}
           onPhone={setPhone}
-          onOtp={(challengeId) => setStep({ kind: 'otp', challengeId, sentAt: Date.now() })}
+          onOtp={(challengeId) =>
+            setStep({ kind: 'otp', challengeId, sentAt: Date.now(), delivery: true })
+          }
           onDone={onSignedIn}
           onCode={(purpose) => setStep({ kind: 'code', purpose })}
         />
@@ -119,7 +124,9 @@ export function SignInFlow({
           intent={intent}
           phone={phone}
           onPhone={setPhone}
-          onSent={(challengeId) => setStep({ kind: 'otp', challengeId, sentAt: Date.now() })}
+          onSent={(challengeId) =>
+            setStep({ kind: 'otp', challengeId, sentAt: Date.now(), delivery: false })
+          }
           onBack={() => setStep({ kind: 'credentials' })}
         />
       )}
@@ -129,7 +136,8 @@ export function SignInFlow({
           intent={intent}
           challengeId={step.challengeId}
           sentAt={step.sentAt}
-          onResent={(challengeId) => setStep({ kind: 'otp', challengeId, sentAt: Date.now() })}
+          delivery={step.delivery}
+          onResent={(challengeId) => setStep({ ...step, challengeId, sentAt: Date.now() })}
           onVerified={(verified: OtpVerified) =>
             verified.needsPassword
               ? setStep({
@@ -336,10 +344,78 @@ function CodeRequestStep({
   );
 }
 
+/** How often, and how long, a new device's code delivery is read (spec S03 screen 6). */
+const DELIVERY_POLL_MS = 2000;
+const DELIVERY_WATCH_MS = 60_000;
+
+/**
+ * The WhatsApp delivery of a new device's code (spec S03 screen 6, rules 19–21), read every 2 s
+ * until it is final or 60 s passed, and never again on focus or reconnect. A code still queued at
+ * 60 s has expired (rule 20), though the gateway's sweep may mark it later: it reads as failed.
+ */
+function useOtpDelivery(challengeId: string, sentAt: number, watched: boolean) {
+  const [watching, setWatching] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setWatching(false),
+      Math.max(0, sentAt + DELIVERY_WATCH_MS - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [sentAt]);
+  const { data } = useQuery({
+    queryKey: ['otp-delivery', challengeId],
+    queryFn: async () =>
+      (
+        await unwrap(
+          api.GET('/api/auth/otp/{challengeId}/delivery', { params: { path: { challengeId } } }),
+        )
+      ).status,
+    enabled: watched,
+    // Only the interval reads again: it ignores staleness, focus and reconnect do not.
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+    refetchIntervalInBackground: true,
+    refetchInterval: (query) => {
+      const status = query.state.data;
+      const final = status === 'delivered' || status === 'failed' || status === 'unknown';
+      return final || Date.now() - sentAt >= DELIVERY_WATCH_MS ? false : DELIVERY_POLL_MS;
+    },
+  });
+  return !watching && data === 'queued' ? 'failed' : data;
+}
+
+const deliveryIcons: Record<Exclude<OtpDeliveryStatus, 'unknown'>, ReactNode> = {
+  queued: <Loader2Icon aria-hidden className="animate-spin text-muted-foreground" />,
+  sent: <CheckIcon aria-hidden className="text-muted-foreground" />,
+  delivered: <CheckCheckIcon aria-hidden className="text-status-success-foreground" />,
+  failed: <CircleAlertIcon aria-hidden className="text-destructive-text" />,
+};
+
+function DeliveryLine({ status }: { status: OtpDeliveryStatus | undefined }) {
+  const { t } = useTranslation('restaurant');
+  return (
+    <p
+      role="status"
+      data-slot="otp-delivery"
+      className="flex min-h-5 items-center gap-2 text-sm text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+    >
+      {status && status !== 'unknown' && (
+        <>
+          {deliveryIcons[status]}
+          <span className={status === 'failed' ? 'text-destructive-text' : undefined}>
+            {t(`signIn.delivery.${status}`)}
+          </span>
+        </>
+      )}
+    </p>
+  );
+}
+
 function OtpStep({
   intent,
   challengeId,
   sentAt,
+  delivery,
   onResent,
   onVerified,
   onBack,
@@ -347,6 +423,7 @@ function OtpStep({
   intent: SignInIntent;
   challengeId: string;
   sentAt: number;
+  delivery: boolean;
   onResent: (challengeId: string) => void;
   onVerified: (verified: OtpVerified) => Promise<void> | void;
   onBack: () => void;
@@ -354,7 +431,10 @@ function OtpStep({
   const { t } = useTranslation('restaurant');
   const online = useOnline();
   const { busy, error, run } = useStepAction();
-  const cooldown = useCooldown(sentAt);
+  const deliveryStatus = useOtpDelivery(challengeId, sentAt, delivery);
+  // A failed code starts no cooldown (spec S03 rule 19): the resend is open at once.
+  const remaining = useCooldown(sentAt);
+  const cooldown = deliveryStatus === 'failed' ? 0 : remaining;
   const [code, setCode] = useState('');
   const [checked, setChecked] = useState(false);
   const valid = otpCodeSchema.safeParse(code).success;
@@ -394,6 +474,7 @@ function OtpStep({
           onChange={(event) => setCode(event.currentTarget.value.replace(/\D/g, ''))}
           error={checked && !valid ? t('signIn.otpInvalid') : undefined}
         />
+        {delivery && <DeliveryLine status={deliveryStatus} />}
       </FormFields>
       <FormActions>
         <Button type="submit" loading={busy} disabled={!online}>

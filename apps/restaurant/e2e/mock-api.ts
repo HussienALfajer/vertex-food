@@ -17,6 +17,7 @@ import {
   type HourException,
   isWeakPin,
   type Me,
+  type OtpDeliveryStatus,
   onboardingCompleteness,
   otpRequestSchema,
   otpVerifySchema,
@@ -47,7 +48,8 @@ import {
  * validates bodies with the same contracts, and applies the rules the screens react to: suspended
  * or closed writes refused, `CONFLICT` on a stale `updatedAt`, `INVALID_HOURS`,
  * `ONBOARDING_INCOMPLETE`, onboarding completeness; the sign-in steps of spec S02 (an OTP on every
- * new device, the first password, the tenant choice) and the browser's personal session, the
+ * new device, the first password, the tenant choice), the new device code's WhatsApp delivery of
+ * spec S03 (`otpDelivery`) and the browser's personal session, the
  * owner's unless a test says otherwise. Staff routes do not check the session: the API's own tests
  * do. Synthetic data only.
  */
@@ -84,6 +86,14 @@ export type MockApi = {
   accounts: Map<string, MockAccount>;
   /** The next password sign-in answers `RATE_LIMITED` (rule 11's lock). */
   signInLocked: boolean;
+  /**
+   * What `GET /api/auth/otp/{challengeId}/delivery` answers for a new device's code (spec S03
+   * rule 19), one status per read of the same challenge, the last one repeated; every other
+   * challenge reads `unknown` (rule 21). A resent code starts the list again.
+   */
+  otpDelivery: OtpDeliveryStatus[];
+  /** Every read of a code's delivery, by challenge id. */
+  deliveryReads: Map<string, number>;
   /** The tenant's members (spec S02 screens 9, 10). */
   staff: StaffMember[];
   /** The registered PCs (screen 11). */
@@ -384,6 +394,8 @@ export async function mockApi(
     }),
     accounts: new Map(Object.entries(seed.accounts ?? {})),
     signInLocked: false,
+    otpDelivery: ['delivered'],
+    deliveryReads: new Map(),
     staff: seed.staff ?? [],
     devices: seed.devices ?? [],
     personalDevices: seed.personalDevices ?? [],
@@ -394,6 +406,8 @@ export async function mockApi(
   const challenges = new Map<string, string>();
   // The codes sent for an authorized password reset (rule 14).
   const resets = new Set<string>();
+  // The codes of a device new to the person (spec S02 rule 12), whose delivery is readable.
+  const newDevice = new Set<string>();
   const tickets = new Map<string, string>();
   const ticketFor = (phone: string) => {
     const ticket = `ticket-${syntheticId()}`;
@@ -546,6 +560,7 @@ export async function mockApi(
       // A device new to the person: the OTP (rule 12).
       const challengeId = syntheticId();
       challenges.set(challengeId, input.phone);
+      newDevice.add(challengeId);
       return route.fulfill({ json: { step: 'otp', challengeId } });
     }
     if (path === '/api/auth/otp/request' && method === 'POST') {
@@ -562,8 +577,25 @@ export async function mockApi(
       return route.fulfill({ json: { challengeId } });
     }
     if (path === '/api/auth/otp/resend' && method === 'POST') {
-      const { challengeId } = body() as { challengeId: string };
+      // A new challenge for the same phone and purpose.
+      const { challengeId: previous } = body() as { challengeId: string };
+      const challengeId = syntheticId();
+      const phone = challenges.get(previous);
+      if (phone) challenges.set(challengeId, phone);
+      if (resets.has(previous)) resets.add(challengeId);
+      if (newDevice.has(previous)) newDevice.add(challengeId);
       return route.fulfill({ json: { challengeId } });
+    }
+    const delivery = /^\/api\/auth\/otp\/([^/]+)\/delivery$/.exec(path);
+    if (delivery && method === 'GET') {
+      const challengeId = delivery[1] as string;
+      const reads = state.deliveryReads.get(challengeId) ?? 0;
+      state.deliveryReads.set(challengeId, reads + 1);
+      const { otpDelivery } = state;
+      const status = newDevice.has(challengeId)
+        ? (otpDelivery[Math.min(reads, otpDelivery.length - 1)] ?? 'unknown')
+        : 'unknown';
+      return route.fulfill({ json: { status } });
     }
     if (path === '/api/auth/otp/verify' && method === 'POST') {
       const input = otpVerifySchema.parse(body());
