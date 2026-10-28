@@ -4,8 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { checkEnvelope, envelopeSigningMessage, signEnvelope } from './envelope.js';
 import { ed25519Signer, ed25519Verifier } from './node.js';
 
-// A fixed Ed25519 key (seed 1..32): its signature of a fixed message must never change.
-const FIXED_PRIVATE_KEY = 'MC4CAQAwBQYDK2VwBCIEIAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8g';
+// A fixed Ed25519 key, built from the public seed 1..32 (PKCS #8 prefix and seed): its signature of
+// a fixed message must never change.
+const FIXED_PRIVATE_KEY = Buffer.concat([
+  Buffer.from('302e020100300506032b657004220420', 'hex'),
+  Buffer.from(Array.from({ length: 32 }, (_, i) => i + 1)),
+]).toString('base64');
 const FIXED_PUBLIC_KEY = 'ebVWLo/mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ=';
 
 function newKey() {
