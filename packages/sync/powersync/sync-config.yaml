@@ -1,0 +1,24 @@
+# The sync streams of PowerSync Open Edition (spec S04, ADR 0022, 0035): what a restaurant PC holds
+# offline. Every query filters by the token's tenant_id and branch_id (a tenant's own row by its id,
+# a branch's own row by its id) and selects only the columns the PC needs; `stream-conventions.test.ts`
+# fails on a query without both filters or on a table the migrations do not publish. Payloads and CA
+# keys live in tables that are never published (packages/db/CLAUDE.md, "Roles").
+config:
+  edition: 3
+
+streams:
+  branch:
+    auto_subscribe: true
+    queries:
+      # The tenant's name, status and logo for the lock screen (S02).
+      - SELECT id, name_ar, status, logo_file_id FROM tenants WHERE id = auth.parameter('tenant_id')
+      # The settings the PC needs offline: names, currencies, the business day, the idle lock.
+      - SELECT id, name_ar, name_latin, default_currency, accepted_currencies, business_day_ends_at, idle_lock_minutes FROM branches WHERE tenant_id = auth.parameter('tenant_id') AND id = auth.parameter('branch_id')
+      # The branch's PCs: names, roles and keys, so a peer and a re-sent version are checked offline.
+      - SELECT id, name, status, hub_role, public_key FROM devices WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT id, device_id, fingerprint_sha256, lan_addresses, expires_at FROM device_certificates WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT id, certificate_pem, fingerprint_sha256 FROM branch_certificate_authorities WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id') AND archived_at IS NULL
+      # Every command's outcome, whichever PC of the branch uploaded it.
+      - SELECT id, branch_id, name, outcome, reason, details, executed_by_device_id, origin_device_id, membership_id, received_at FROM command_log WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT id, command_id, kind, membership_id, created_at FROM attention_items WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      - SELECT id, item_id, reason, resolved_by_membership_id, resolved_at FROM attention_resolutions WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')

@@ -175,6 +175,8 @@ export const devices = pgTable(
   (t) => [
     idIsUuidV7('devices', t.id),
     unique('devices_tenant_id_id_unique').on(t.tenantId, t.id),
+    // Parent of keys that also name the PC's branch (spec S04: its certificates, streamed by branch).
+    unique('devices_tenant_branch_id_unique').on(t.tenantId, t.branchId, t.id),
     // A double submit of the same registration is refused here; keys are random per installation.
     unique('devices_tenant_public_key_unique').on(t.tenantId, t.publicKey),
     foreignKey({

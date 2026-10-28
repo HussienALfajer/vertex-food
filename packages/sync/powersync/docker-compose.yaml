@@ -1,0 +1,23 @@
+# The sync service for development and the sync scenarios (spec S04): PowerSync Open Edition against
+# the local PostgreSQL 17 (`wal_level = logical`, packages/sync/CLAUDE.md). Published on loopback only.
+# Servers run the same pinned image from the deploy skeleton (Q1).
+services:
+  powersync:
+    image: journeyapps/powersync-service:1.27.0
+    command: ["start", "-r", "unified"]
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      NODE_OPTIONS: --max-old-space-size=1000
+      PS_DATA_SOURCE_URI: ${POWERSYNC_DATA_SOURCE_URI:?set in .env}
+      PS_DATA_SOURCE_SSLMODE: disable
+      PS_STORAGE_SOURCE_URI: ${POWERSYNC_STORAGE_URI:?set in .env}
+      PS_STORAGE_SSLMODE: disable
+      PS_JWKS_URL: ${POWERSYNC_JWKS_URL:-http://host.docker.internal:3100/api/.well-known/jwks.json}
+      PS_ADMIN_TOKEN: ${POWERSYNC_ADMIN_TOKEN:?set in .env}
+      PS_PORT: "8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./:/config:ro
+    ports:
+      - "127.0.0.1:8080:8080"

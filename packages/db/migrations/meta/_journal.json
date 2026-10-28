@@ -85,6 +85,20 @@
       "when": 1793201869741,
       "tag": "0011_sync-isolation-grants-publication",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793202418215,
+      "tag": "0012_sync-branch-keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793202419341,
+      "tag": "0013_sync-stream-branches",
+      "breakpoints": true
     }
   ]
 }

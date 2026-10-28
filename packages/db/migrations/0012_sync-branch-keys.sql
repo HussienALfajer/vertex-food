@@ -1,0 +1,2 @@
+ALTER TABLE "devices" ADD CONSTRAINT "devices_tenant_branch_id_unique" UNIQUE("tenant_id","branch_id","id");--> statement-breakpoint
+ALTER TABLE "attention_items" ADD CONSTRAINT "attention_items_tenant_branch_id_unique" UNIQUE("tenant_id","branch_id","id");

@@ -1,0 +1,6 @@
+ALTER TABLE "attention_resolutions" ADD COLUMN "branch_id" uuid NOT NULL;--> statement-breakpoint
+ALTER TABLE "device_certificates" ADD COLUMN "branch_id" uuid NOT NULL;--> statement-breakpoint
+ALTER TABLE "attention_resolutions" ADD CONSTRAINT "attention_resolutions_branch_item_fk" FOREIGN KEY ("tenant_id","branch_id","item_id") REFERENCES "public"."attention_items"("tenant_id","branch_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "device_certificates" ADD CONSTRAINT "device_certificates_branch_device_fk" FOREIGN KEY ("tenant_id","branch_id","device_id") REFERENCES "public"."devices"("tenant_id","branch_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "attention_resolutions_tenant_branch_item_idx" ON "attention_resolutions" USING btree ("tenant_id","branch_id","item_id");--> statement-breakpoint
+CREATE INDEX "device_certificates_tenant_branch_device_idx" ON "device_certificates" USING btree ("tenant_id","branch_id","device_id");

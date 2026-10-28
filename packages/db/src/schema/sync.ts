@@ -453,6 +453,8 @@ export const deviceCertificates = pgTable(
   {
     id: id(),
     tenantId: tenantId(),
+    /** The PC's branch, so the sync streams filter it by branch. */
+    branchId: uuid().notNull(),
     deviceId: uuid().notNull(),
     certificatePem: text().notNull(),
     fingerprintSha256: text().notNull(),
@@ -468,6 +470,12 @@ export const deviceCertificates = pgTable(
       columns: [t.tenantId, t.deviceId],
       foreignColumns: [devices.tenantId, devices.id],
     }),
+    foreignKey({
+      name: 'device_certificates_branch_device_fk',
+      columns: [t.tenantId, t.branchId, t.deviceId],
+      foreignColumns: [devices.tenantId, devices.branchId, devices.id],
+    }),
+    index('device_certificates_tenant_branch_device_idx').on(t.tenantId, t.branchId, t.deviceId),
     check(
       'device_certificates_fingerprint',
       sql`${t.fingerprintSha256} ~ ${sql.raw(`'${SHA256}'`)}`,
@@ -604,6 +612,7 @@ export const attentionItems = pgTable(
   (t) => [
     idIsUuidV7('attention_items', t.id),
     unique('attention_items_tenant_id_id_unique').on(t.tenantId, t.id),
+    unique('attention_items_tenant_branch_id_unique').on(t.tenantId, t.branchId, t.id),
     unique('attention_items_command_kind_unique').on(t.tenantId, t.commandId, t.kind),
     foreignKey({
       name: 'attention_items_branch_fk',
@@ -632,6 +641,8 @@ export const attentionResolutions = pgTable(
   {
     id: id(),
     tenantId: tenantId(),
+    /** The item's branch, so the sync streams filter it by branch. */
+    branchId: uuid().notNull(),
     itemId: uuid().notNull(),
     reason: text().notNull(),
     resolvedByMembershipId: uuid().notNull(),
@@ -646,6 +657,12 @@ export const attentionResolutions = pgTable(
       columns: [t.tenantId, t.itemId],
       foreignColumns: [attentionItems.tenantId, attentionItems.id],
     }),
+    foreignKey({
+      name: 'attention_resolutions_branch_item_fk',
+      columns: [t.tenantId, t.branchId, t.itemId],
+      foreignColumns: [attentionItems.tenantId, attentionItems.branchId, attentionItems.id],
+    }),
+    index('attention_resolutions_tenant_branch_item_idx').on(t.tenantId, t.branchId, t.itemId),
     foreignKey({
       name: 'attention_resolutions_resolved_by_fk',
       columns: [t.tenantId, t.resolvedByMembershipId],

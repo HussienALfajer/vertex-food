@@ -1,0 +1,32 @@
+# PowerSync Open Edition, self-hosted (ADR 0022, 0035). Only PS_* environment variables are read.
+telemetry:
+  disable_telemetry_sharing: true
+
+replication:
+  connections:
+    # As food_sync: REPLICATION and BYPASSRLS, reading only the published tables (packages/db).
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
+      sslmode: !env PS_DATA_SOURCE_SSLMODE
+
+# Bucket storage in PostgreSQL, a database of its own (no MongoDB).
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_SOURCE_URI
+  sslmode: !env PS_STORAGE_SSLMODE
+
+port: !env PS_PORT
+
+sync_config:
+  path: sync-config.yaml
+
+# Device tokens from GET /api/sync/token: EdDSA, 5 minutes, checked against the API's keys.
+client_auth:
+  jwks_uri: !env PS_JWKS_URL
+  audience: ["powersync"]
+  # The API may share the sync service's host or network, so its address can be a local one.
+  block_local_jwks: false
+
+api:
+  tokens:
+    - !env PS_ADMIN_TOKEN
