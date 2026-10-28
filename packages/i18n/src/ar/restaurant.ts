@@ -368,6 +368,13 @@ export const restaurant = {
     resend: 'أعد إرسال الرمز',
     resendIn: 'إعادة الإرسال بعد {{seconds}} ثانية',
     resent: 'أُعيد إرسال الرمز',
+    /** The delivery of a new device's code (spec S03 screen 6). */
+    delivery: {
+      queued: 'جارٍ إرسال الرمز…',
+      sent: 'أُرسل الرمز عبر واتساب',
+      delivered: 'وصل الرمز إلى واتساب',
+      failed: 'تعذّر إرسال الرمز',
+    },
     passwordTitle: 'عيّن كلمة المرور',
     passwordDescription: 'تستخدمها للدخول من أجهزتك ولتأكيد العمليات الحساسة.',
     name: 'اسمك',

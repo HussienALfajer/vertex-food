@@ -5,6 +5,7 @@ import {
   completeBranch,
   device,
   everyDay,
+  me,
   mockApi,
   staffMember,
   tenant,
@@ -213,6 +214,29 @@ for (const viewport of viewports) {
       await page.getByRole('link', { name: 'تسجيل الدخول' }).click();
       await expect(page.getByLabel('رقم الهاتف')).toBeVisible();
       await laidOut(page, testInfo, 'sign-in');
+    });
+
+    test('lays out the OTP step with its delivery status', async ({ page }, testInfo) => {
+      const restaurant = active();
+      const api = await mockApi(page, {
+        tenant: restaurant,
+        me: null,
+        accounts: {
+          '+963900000011': {
+            password: 'a quiet olive grove',
+            name: 'ليلى المديرة',
+            me: me(restaurant),
+          },
+        },
+      });
+      api.otpDelivery = ['failed'];
+      await page.goto('/sign-in');
+      await page.getByLabel('رقم الهاتف').fill('0900000011');
+      await page.getByLabel('كلمة المرور').fill('a quiet olive grove');
+      await page.getByRole('button', { name: 'دخول' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'تعذّر إرسال الرمز' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'أعد إرسال الرمز' })).toBeEnabled();
+      await laidOut(page, testInfo, 'sign-in-otp-delivery');
     });
   });
 }
