@@ -341,6 +341,20 @@ describe('the quarantine (rules 40–42)', () => {
     expect([wiped.response.status, wiped.response.body.code]).toEqual([403, 'DEVICE_REVOKED']);
   });
 
+  it('leaves out another PC’s command the revoked PC changed, so the real one still runs', async () => {
+    const b = await branch();
+    const hubCommand = signedCommand(b.hub, { membershipId: b.ownerMembershipId });
+    await revoke(b, b.standby.device);
+    const tampered = { ...hubCommand, payload: { ...hubCommand.payload, sequence: 9 } };
+    await quarantineUpload(b.standby.device, [tampered]);
+    const logged = await withTenant(db, b.tenantId, (tx) =>
+      tx.select().from(commandLog).where(eq(commandLog.id, hubCommand.id)),
+    );
+    expect(logged).toEqual([]);
+    const real = await upload(b.hub, [uploaded(hubCommand)], 200);
+    expect(real.body.results).toEqual([{ id: hubCommand.id, outcome: 'accepted', replay: false }]);
+  });
+
   it('runs a revoked PC’s command made before its revocation, held or not', async () => {
     const b = await branch();
     const before = signedCommand(b.standby.device, { membershipId: b.ownerMembershipId });

@@ -21,9 +21,9 @@ import {
   type Transaction,
   withTenant,
 } from '@vertex-food/db';
-import type { CommandRegistry } from '@vertex-food/sync';
+import { type CommandRegistry, checkEnvelope } from '@vertex-food/sync';
 import { ed25519Verifier } from '@vertex-food/sync/node';
-import { count, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { requirePermission, type StaffActor } from '../../../core/access/actor.js';
 import { audit } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
@@ -140,8 +140,25 @@ export class QuarantineService {
     });
     if (!received.decided) {
       for (const envelope of [...others].sort(byJournal)) {
-        await withTenant(this.db, input.tenantId, (tx) =>
-          this.pipeline.run(
+        await withTenant(this.db, input.tenantId, async (tx) => {
+          // A revoked PC is not trusted with another PC's command: one that its executor did not
+          // sign is left out, unrecorded, so the executor's own upload still runs the real one.
+          const [executor] = await tx
+            .select({ publicKey: devices.publicKey })
+            .from(devices)
+            .where(
+              and(
+                eq(devices.id, envelope.executedByDeviceId),
+                eq(devices.branchId, received.branchId),
+              ),
+            );
+          if (!executor || !checkEnvelope(envelope, ed25519Verifier(executor.publicKey)).ok) {
+            this.logger.warn(
+              `Quarantine upload with a command its executor did not sign: command ${envelope.id} uploader ${input.deviceId}`,
+            );
+            return;
+          }
+          await this.pipeline.run(
             tx,
             {
               tenantId: input.tenantId,
@@ -150,8 +167,8 @@ export class QuarantineService {
             },
             { envelope, mirrored: true },
             { fromQuarantine: false },
-          ),
-        );
+          );
+        });
       }
     }
     return { batchId: received.batchId };
