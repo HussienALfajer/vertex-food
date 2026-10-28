@@ -1,6 +1,6 @@
 # 0012 — Messaging: push and WhatsApp only, through our own gateway
 
-Status: Accepted · Date: 2026-10-18
+Status: Accepted (numbers, send queue, opt-out and alerts amended by [0034](0034-platform-messaging-numbers-and-send-queue.md)) · Date: 2026-10-18
 
 ## Context
 Syria is not eligible for Meta's WhatsApp Business Platform; SMS is costly and unreliable; email is not used by most customers. Vertex Shifa built and tested a WhatsApp gateway on Baileys and Expo push from Azaz (Vertex Shifa ADR 0012, 0022, `docs/spikes/B-whatsapp-gateway.md` there).

@@ -22,7 +22,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [x] S02 Identity, access and devices: F02 · F03 (spec: `docs/specs/S02-identity-access-and-devices.md`, ADR 0032). PR 1 (staff identity backend): contracts, schema with RLS, the authentication step ahead of the body parser (BE-01), the identity and access modules (sign-in, OTP behind the fake sender, PC registration, member lists, PIN sessions, personal devices, staff management), the first owner with the tenant. PR 2 (console identity backend): console sessions with TOTP and recovery codes, platform users, owner recovery, the platform audit. PR 3 (restaurant devices): the Electron main process holds the device key and the member list sealed by `safeStorage` and checks PINs offline; welcome, sign-in, registration, lock screen, choose PIN, approval, idle lock, the wipe notice; the browser's personal session. PR 4 (restaurant back office): staff list, add member with the PIN handover and member detail with the owner's permission adjustments, devices (rename, revoke), branch idle lock, My account, the password re-auth dialog of sensitive actions, a forgotten PIN replaced by password on the lock screen, the personal-device shell with sign-out and the tenant switcher; a shared PC forgets each member's data at lock. PR 5 (console screens): sign-in with setup and TOTP, recovery codes, re-auth, platform users, my account
 - [x] Workflow speed and one set of rules (2026-10-28, ADR 0033): standing approvals for PRs, auto-merge and Auto-fix with the owner's acceptance after the merge; `pnpm verify` runs the whole E2E suite of each affected app; E2E shards in Playwright's image; one full review then at most two fix-only rounds; the two flaky restaurant tests fixed at their cause; instruction files made consistent
 - [x] External audit of Phase 0, S01 and S02 (2026-10-28, `docs/audits/2026-10-28-S02-audit.md`): 12 findings verified; 11 fixed on `fix/S02-audit`; TEST-01 on `refactor/sales-channels`: branch charges on generic sales channels and the ADR 0025 boundary tested for `packages/contracts` and `packages/db`
-- [ ] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012)
+- [~] S03 WhatsApp gateway and OTP: F08 (from Vertex Shifa's gateway and ADR 0012; spec: `docs/specs/S03-whatsapp-gateway-and-otp.md`, ADR 0034)
 - [ ] S04 Sync foundation and restaurant hub: commands, number ranges, LAN hub with journal, standby and failover, client outbox, sync status (ADR 0008, 0022)
 - [ ] S05 Entitlements and agreements core: F04 · F05 (resolver, enforcement, effective-dated terms; console screens in S22)
 - [ ] S06 Audit and export: F09
@@ -72,7 +72,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
 - [ ] Hosting, platform domain and TLS (Q1)
 - [ ] Off-server encrypted backups configured and a restore tested
 - [ ] Company, terms, privacy policy, restaurant and driver contracts reviewed (Q2, Q5, Q9)
-- [ ] Platform WhatsApp numbers active with failover (Q4)
+- [ ] Platform WhatsApp numbers active with failover (one Syrian, one Turkish, ADR 0034), linked at least three weeks before Phase 3's deploy
 - [ ] Store accounts and listings, or the APK distribution path (Q3)
 - [ ] Console accounts with TOTP; monitoring and alerts active
 - [ ] Field team trained: onboarding checklist, support rota

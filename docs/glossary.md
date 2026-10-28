@@ -37,7 +37,16 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | الحجر | quarantine | Commands from a revoked device held until the owner accepts or rejects them |
 | مستخدم المنصة | platform user | A Vertex staff account in the console, with a role and mandatory TOTP |
 | الحساب | account | One person on the platform: phone, name, password; holds staff memberships in tenants (ADR 0005, 0032) |
-| رمز التحقق | OTP | A one-time code sent to a phone (fake sender until S03), with expiry, attempts, cooldown and an hourly limit; for console users, the TOTP code of their authenticator app |
+| رمز التحقق | OTP | A one-time code sent to a phone sent by WhatsApp from a platform number (S03), with expiry, attempts, cooldown and an hourly limit; for console users, the TOTP code of their authenticator app |
+| رقم المنصة | platform number | A WhatsApp number owned by Vertex, linked to the gateway, that sends OTPs and transactional messages (ADR 0034) |
+| بوابة واتساب | WhatsApp gateway | `apps/whatsapp-gateway`: runs the platform numbers and sends the send queue |
+| طابور الإرسال | send queue | `whatsapp_messages`: every outgoing WhatsApp message, claimed by the gateway |
+| قالب الرسالة | message template | A fixed message text with named parameters, in code (`packages/contracts`, `packages/i18n`) |
+| إشعار | notification | A transactional message about something the person started (an order, a link to confirm); never marketing |
+| فترة الإحماء | warm-up | A new platform number's first weeks, when its daily cap grows with its age |
+| أول تواصل | first contact | A message from a platform number to a phone it never messaged before; capped at half the daily cap |
+| إيقاف الرسائل | opt-out | «إيقاف» to a platform number stops every message but requested OTPs; «تشغيل» restores them |
+| رد آلي | auto-reply | The once-a-day answer to a known recipient's message: incoming messages are not read |
 | إثبات العمل | proof of work | A small computation the client solves before sign-in and OTP requests, against abuse (ADR 0016) |
 | التذكرة | ticket | A short-lived, single-use token proving a passed sign-in step (OTP verified, password set); never a kitchen ticket |
 | رمز الإعداد | setup code | The one-time code a console admin hands a new or reset platform user for their first sign-in |
