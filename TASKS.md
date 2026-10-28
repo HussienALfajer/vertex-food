@@ -63,7 +63,7 @@ Rules that keep the parallel PRs apart:
 - [x] PowerSync connection with device tokens, upload connector (batches of 100, `426`), heartbeat every 15 s with clock offset and `highestSeenTime`, number blocks, certificates on registration and address change
 - [x] Revocation: quarantine upload retried until it succeeds, then the wipe; update gate (feed URL configurable, 6-hour check, install at start with an empty queue and journal)
 - [x] Electron main tests (reopen, `integrity_check`, member list migration, wipe, update gate)
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Docs, checks (`pnpm verify` green), reviewer (five findings fixed: uploads under the API's 1 MB body, a failed installer never blocks a start, any open failure opens read-only, a database and certificate per device id, no install with work pending after a protocol refusal; the first fix-only round found two more, fixed: an unreadable database throws instead of reading as "nothing pending", a failing gate at start opens the old version; the second round clean), PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 5 `feat/s04-restaurant-hub` — restaurant hub server (after PR 2 and PR 4)
 
@@ -88,6 +88,7 @@ Rules that keep the parallel PRs apart:
 
 ## Follow-ups (not this spec)
 
+- From S04 PR 4's review: an update whose installer did not start, or left the same version in place (elevation refused), is not tried again by that version; the next release is. Whether a failed install is retried, and how often, is the owner's call (with the deploy skeleton, Q1)
 - From S04 PR 4: the Windows installer (Q1) must unpack the native modules from the asar archive (`better-sqlite3-multiple-ciphers`' prebuild, `@powersync/node`'s core DLL) and set `UPDATE_FEED_URL` for the packaged app; the update installer's signature is checked there too
 
 - From PR 3's review (S04): `POST /api/sync/commands` still records `rejected: signature_invalid` under the uploaded id, so an active hub or standby could pre-empt another PC's command id with a forged envelope; answering every `signature_invalid` unstored needs a decision on its attention item (S04 rule 47)
