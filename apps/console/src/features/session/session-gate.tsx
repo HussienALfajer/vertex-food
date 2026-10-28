@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useRouterState } from '@tanstack/react-router';
 import type { ConsoleMe } from '@vertex-food/contracts';
 import { IconButton, sidebarLinkClassName, toast } from '@vertex-food/ui';
-import { CircleUserIcon, HouseIcon, LogOutIcon, UsersIcon } from 'lucide-react';
+import { CircleUserIcon, HouseIcon, LogOutIcon, MessageCircleIcon, UsersIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from '../../components/app-shell';
 import { QueryStates } from '../../components/query-states';
 import { apiErrorCode } from '../../lib/api';
 import { useErrorText } from '../../lib/error-text';
+import { MessagingHealthBanner } from '../whatsapp/messaging-health-banner';
 import { ReauthProvider } from './reauth';
 import { forgetSession, holds, meQuery, signOut } from './session';
 
@@ -36,7 +37,14 @@ function SignedIn({ children }: { children: ReactNode }) {
       navigation={me.data && ((close) => <MainNav me={me.data} close={close} />)}
       actions={me.data && <UserControls me={me.data} />}
     >
-      <QueryStates queries={[me]}>{() => <ReauthProvider>{children}</ReauthProvider>}</QueryStates>
+      <QueryStates queries={[me]}>
+        {() => (
+          <ReauthProvider>
+            {holds(me.data, 'console.messaging.read') && <MessagingHealthBanner />}
+            {children}
+          </ReauthProvider>
+        )}
+      </QueryStates>
     </AppShell>
   );
 }
@@ -57,6 +65,12 @@ function MainNav({ me, close }: { me: ConsoleMe; close: () => void }) {
         <Link to="/platform-users" onClick={close} className={sidebarLinkClassName}>
           <UsersIcon aria-hidden />
           {t('nav.platformUsers')}
+        </Link>
+      )}
+      {holds(me, 'console.messaging.read') && (
+        <Link to="/whatsapp" onClick={close} className={sidebarLinkClassName}>
+          <MessageCircleIcon aria-hidden />
+          {t('nav.whatsapp')}
         </Link>
       )}
       <Link to="/me" onClick={close} className={sidebarLinkClassName}>

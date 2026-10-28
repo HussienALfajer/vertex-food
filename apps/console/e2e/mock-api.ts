@@ -20,6 +20,7 @@ import {
   solvesProofOfWork,
   updatePlatformUserSchema,
 } from '@vertex-food/contracts';
+import { handleWhatsApp, type MockWhatsApp, mockWhatsApp } from './mock-whatsapp.js';
 import { trackActivity } from './settle.js';
 
 /**
@@ -58,6 +59,8 @@ export type MockConsoleApi = {
   requests: string[];
   /** Adds a user who has not set up yet, with a setup code. */
   addPendingUser: (input: { phone: string; name: string; role: ConsoleRole }) => MockUser;
+  /** Vertex's platform WhatsApp numbers (spec S03), and the gateway's side of a link. */
+  whatsapp: MockWhatsApp;
 };
 
 const DIFFICULTY = 4;
@@ -121,7 +124,7 @@ const publicUser = ({
 
 export async function mockConsoleApi(
   page: Page,
-  seed: { signedIn?: 'admin' | 'support' } = {},
+  seed: { signedIn?: 'admin' | 'support'; whatsapp?: 'healthy' | 'empty' } = {},
 ): Promise<MockConsoleApi> {
   const admin = user({
     phone: adminPhone,
@@ -148,6 +151,7 @@ export async function mockConsoleApi(
       if (state.session) state.session.reauthUntil = null;
     },
     requests: [],
+    whatsapp: mockWhatsApp(seed.whatsapp ?? 'healthy'),
     addPendingUser: (input) => {
       const pending = user({
         ...input,
@@ -422,6 +426,12 @@ export async function mockConsoleApi(
         });
       }
     }
+    const whatsapp = {
+      name: current.name,
+      permissions: current.effectivePermissions,
+      reauthenticated: reauthenticated(),
+    };
+    if (await handleWhatsApp(state.whatsapp, route, whatsapp, refuse)) return;
     return refuse(route, 'NOT_FOUND');
   });
   return state;

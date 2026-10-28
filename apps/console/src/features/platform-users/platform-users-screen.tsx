@@ -38,6 +38,7 @@ import {
 } from '@vertex-food/ui';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ConfirmDialog } from '../../components/confirm-dialog';
 import { OfflineNotice } from '../../components/offline-notice';
 import { QueryStates } from '../../components/query-states';
 import { StateCard } from '../../components/state-card';
@@ -479,42 +480,6 @@ function AccessDialog({ user, disabled }: { user: PlatformUser; disabled: boolea
       </FormFields>
       {save.error && <Callout role="alert" tone="danger" title={errorText(save.error)} />}
     </FormDialog>
-  );
-}
-
-/** A confirmation before an action that ends the user's sessions. */
-function ConfirmDialog({
-  trigger,
-  title,
-  description,
-  confirm,
-  onConfirm,
-}: {
-  trigger: ReactNode;
-  title: string;
-  description: string;
-  confirm: string;
-  onConfirm: () => void;
-}) {
-  const { t } = useTranslation('console');
-  return (
-    <Dialog>
-      {trigger}
-      <DialogContent>
-        <div className="flex flex-col gap-1">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </div>
-        <DialogActions>
-          <DialogClose render={<Button type="button" variant="destructive" />} onClick={onConfirm}>
-            {confirm}
-          </DialogClose>
-          <DialogClose render={<Button type="button" variant="outline" />}>
-            {t('platformUsers.back')}
-          </DialogClose>
-        </DialogActions>
-      </DialogContent>
-    </Dialog>
   );
 }
 

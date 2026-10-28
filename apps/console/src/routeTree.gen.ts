@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as PlatformUsersRouteImport } from './routes/platform-users'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as WhatsappIndexRouteImport } from './routes/whatsapp/index'
+import { Route as WhatsappSessionIdRouteImport } from './routes/whatsapp/$sessionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +36,32 @@ const SignInRoute = SignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WhatsappIndexRoute = WhatsappIndexRouteImport.update({
+  id: '/whatsapp/',
+  path: '/whatsapp/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatsappSessionIdRoute = WhatsappSessionIdRouteImport.update({
+  id: '/whatsapp/$sessionId',
+  path: '/whatsapp/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/me': typeof MeRoute
   '/platform-users': typeof PlatformUsersRoute
   '/sign-in': typeof SignInRoute
+  '/whatsapp/$sessionId': typeof WhatsappSessionIdRoute
+  '/whatsapp/': typeof WhatsappIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/me': typeof MeRoute
   '/platform-users': typeof PlatformUsersRoute
   '/sign-in': typeof SignInRoute
+  '/whatsapp/$sessionId': typeof WhatsappSessionIdRoute
+  '/whatsapp': typeof WhatsappIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +69,34 @@ export interface FileRoutesById {
   '/me': typeof MeRoute
   '/platform-users': typeof PlatformUsersRoute
   '/sign-in': typeof SignInRoute
+  '/whatsapp/$sessionId': typeof WhatsappSessionIdRoute
+  '/whatsapp/': typeof WhatsappIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/me' | '/platform-users' | '/sign-in'
+  fullPaths:
+    | '/'
+    | '/me'
+    | '/platform-users'
+    | '/sign-in'
+    | '/whatsapp/$sessionId'
+    | '/whatsapp/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/me' | '/platform-users' | '/sign-in'
-  id: '__root__' | '/' | '/me' | '/platform-users' | '/sign-in'
+  to:
+    | '/'
+    | '/me'
+    | '/platform-users'
+    | '/sign-in'
+    | '/whatsapp/$sessionId'
+    | '/whatsapp'
+  id:
+    | '__root__'
+    | '/'
+    | '/me'
+    | '/platform-users'
+    | '/sign-in'
+    | '/whatsapp/$sessionId'
+    | '/whatsapp/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +104,8 @@ export interface RootRouteChildren {
   MeRoute: typeof MeRoute
   PlatformUsersRoute: typeof PlatformUsersRoute
   SignInRoute: typeof SignInRoute
+  WhatsappSessionIdRoute: typeof WhatsappSessionIdRoute
+  WhatsappIndexRoute: typeof WhatsappIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +138,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/whatsapp/': {
+      id: '/whatsapp/'
+      path: '/whatsapp'
+      fullPath: '/whatsapp/'
+      preLoaderRoute: typeof WhatsappIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whatsapp/$sessionId': {
+      id: '/whatsapp/$sessionId'
+      path: '/whatsapp/$sessionId'
+      fullPath: '/whatsapp/$sessionId'
+      preLoaderRoute: typeof WhatsappSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +160,8 @@ const rootRouteChildren: RootRouteChildren = {
   MeRoute: MeRoute,
   PlatformUsersRoute: PlatformUsersRoute,
   SignInRoute: SignInRoute,
+  WhatsappSessionIdRoute: WhatsappSessionIdRoute,
+  WhatsappIndexRoute: WhatsappIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
