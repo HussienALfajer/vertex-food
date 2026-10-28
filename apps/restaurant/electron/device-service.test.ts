@@ -530,6 +530,19 @@ describe('DeviceService with a PC clock that is off (rule 31, edge case 8)', () 
     expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
   });
 
+  it('still answers a status when keeping the time fails, and keeps it at the next look', async () => {
+    const { service, server, store, make } = await registered();
+    server.pcClockOffsetMs = 8 * 24 * 3600_000;
+    vi.spyOn(store, 'write').mockImplementationOnce(() => {
+      throw new Error('EBUSY');
+    });
+    expect(service.status()).toMatchObject({ window: { open: false } });
+    server.pcClockOffsetMs = 8 * 24 * 3600_000 + 60_000;
+    service.status();
+    server.pcClockOffsetMs = 0;
+    expect(make().status()).toMatchObject({ window: { open: false, clockBehind: true } });
+  });
+
   it('an offline member-list refresh keeps the time it saw too', async () => {
     const { service, server, make } = await registered();
     server.reachable = false;

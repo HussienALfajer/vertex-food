@@ -158,6 +158,6 @@ describe('git guard: registration (TOOL-01)', () => {
 
   it('refuses the same commands as PowerShell writes them', () => {
     expect(refused(`git -C "${main}" commit -m "x"; git status`)).toBe(true);
-    expect(refused('Set-Location D:\repo; git add -A')).toBe(true);
+    expect(refused('Set-Location D:\\repo; git add -A')).toBe(true);
   });
 });

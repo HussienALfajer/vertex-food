@@ -135,11 +135,19 @@ export class DeviceService {
   /**
    * Rule 31: every look at the PC's clock raises the highest time seen and keeps it, so a clock
    * set back later, even before any PIN is typed or a restart, never reopens the window. The
-   * write is synchronous, so it never interleaves with an operation's.
+   * write is synchronous, so it never interleaves with an operation's. A write that fails (a file
+   * held by an antivirus scan) keeps the time in memory and is tried again at the next look; the
+   * window shown already counts from it.
    */
   private observe(now: Date): void {
     const record = this.registered();
-    if (record && now.getTime() > Date.parse(record.highestSeenAt)) this.save(seeTime(record, now));
+    if (!record || now.getTime() <= Date.parse(record.highestSeenAt)) return;
+    const seen = seeTime(record, now);
+    try {
+      this.save(seen);
+    } catch {
+      this.record = seen;
+    }
   }
 
   private registered(): Registered | null {

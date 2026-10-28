@@ -306,7 +306,9 @@ function CodeRequestStep({
           {purpose === 'first_sign_in' ? t('signIn.firstTitle') : t('signIn.resetTitle')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {purpose === 'first_sign_in' ? t('signIn.firstDescription') : t('signIn.resetDescription')}
+          {purpose === 'first_sign_in'
+            ? t('signIn.firstDescription')
+            : t('signIn.resetDescription')}
         </p>
       </div>
       {error && <Callout role="alert" tone="danger" title={error} />}
