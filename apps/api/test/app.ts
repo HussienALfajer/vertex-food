@@ -17,16 +17,29 @@ export const TEST_IDENTITY_ENV = {
   IDENTITY_POW_DIFFICULTY: '4',
 };
 
+/** Messaging keys made for this run: tests open sealed messages with them (`test/messaging.ts`). */
+export const TEST_MESSAGING_ENV = {
+  MESSAGING_HASH_KEY: randomBytes(32).toString('base64'),
+  MESSAGING_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+};
+
 /**
  * The API as production builds it, on this run's test database, plus `imports` (test-only
  * modules, which the global guard, filter and serializer cover too). Close it after the test.
  */
 export async function createTestApp(
-  options: { databaseUrl?: string; imports?: ModuleMetadata['imports'] } = {},
+  options: {
+    databaseUrl?: string;
+    imports?: ModuleMetadata['imports'];
+    /** The OTP sender: the fake by default, `gateway` for the messaging tests. */
+    otpSender?: 'fake' | 'gateway';
+  } = {},
 ): Promise<INestApplication> {
   const config = loadConfig({
     DATABASE_APP_URL: options.databaseUrl ?? inject('databaseUrl'),
     ...TEST_IDENTITY_ENV,
+    ...TEST_MESSAGING_ENV,
+    OTP_SENDER: options.otpSender ?? 'fake',
   });
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],

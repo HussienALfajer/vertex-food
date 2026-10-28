@@ -118,7 +118,7 @@ Indexes: `(status, kind, next_attempt_at)` where `status = 'queued'` (the claim)
 | `connected`, `disconnected` | `needs_relink` | Logged out (`401`) |
 | `connected`, `disconnected` | `banned` | Forbidden (`403`) |
 | `needs_relink`, `banned`, `disconnected` | `linking` | An admin re-links (new QR); the old link's credentials are deleted first |
-| any but `unlinked` | `unlinked` | An admin unlinks: logout through the transport when connected; credentials, known recipients and the session's queued messages deleted; session archived |
+| any but `unlinked` | `unlinked` | An admin unlinks: logout through the transport when connected; credentials, known recipients and the session's queued messages deleted (a queued OTP this number had claimed is handed back to any healthy number instead, within its 60 s); session archived. The API keeps the lease, so the gateway holding it sees the archived session and logs the link out |
 
 `restart_required` (`515`) reconnects at once, once, without a state change; `connection_replaced` (`440`) closes that connection and never reconnects it, leaving the session to the lease holder. Pause is not a state: a flag on any unarchived session.
 
@@ -154,7 +154,7 @@ Indexes: `(status, kind, next_attempt_at)` where `status = 'queued'` (the claim)
 
 **OTP delivery**
 18. `OtpSender.send` takes `{ challengeId, accountId, phone, code, purpose }`. The gateway sender, in the challenge's transaction, checks `sendAvailability` for `otp`; if no number could send now it throws and S02's paths answer (`OTP_DELIVERY_UNAVAILABLE` for a password sign-in, the quiet answer otherwise). Otherwise it queues an `otp` message (template `otp`, parameter `code`, `otp_challenge_id`) and returns without waiting for WhatsApp. The API refuses to start in production with `OTP_SENDER=fake` (unchanged).
-19. The challenge's `delivery_status` follows its message: `queued`, then `sent`, `delivered`, or `failed` (on `failed` or `expired`). A failed challenge expires at once (no code can be tried against it), does not start the 60-second resend cooldown and still counts toward the 3 codes an hour per phone. This changes S02 rule 12 only for failed deliveries.
+19. The challenge's `delivery_status` follows its message: `queued`, then `sent`, `delivered`, or `failed` (on `failed` or `expired`). A failed challenge expires at once (no code can be tried against it), does not start the 60-second resend cooldown and still counts toward the 3 codes an hour per phone. This changes S02 rule 12 only for failed deliveries, and only for `new_device` codes: a failed first sign-in or reset keeps its expiry and cooldown, as a decoy's would (S02 rule 13). The gateway only moves `delivery_status`; the API reads a `failed` new-device challenge as expired (implementation, PR 3).
 20. An OTP not sent within 60 s of being queued expires (`deadline`).
 21. The delivery status is readable only for `new_device` challenges (the password was already checked). For any other purpose, a decoy or an unknown id, the route answers `{ status: 'unknown' }`, so it never tells an account from a decoy (S02 rule 13).
 22. OTPs are sent even to a phone that opted out: the person asked for the code.
@@ -200,10 +200,10 @@ None created in S03: recipients are staff and Vertex admins. Rules that apply to
 - Message texts are transactional; no marketing; parameters carry only what that message needs.
 - Recipient phones are stored only sealed (cleared one hour after a final status) or hashed; parameters and texts only sealed (cleared within an hour); QR codes only sealed. Nothing from senders who are not known recipients is stored.
 - Logs hold session ids, message ids, kinds, templates, states and reason codes: never a phone, a parameter, a body, a code, a QR or a library error message (`describeForLog`).
-- Fixtures and tests use the unassigned country code `+999` and never connect to WhatsApp.
+- Fixtures and tests use the unassigned country code `+999` for platform numbers and message recipients, and never connect to WhatsApp. Account phones must be Syrian or Turkish (`phone.ts`), so API tests that queue OTPs use synthetic `+963` numbers (`newPhone()`), never sent.
 
 ## API and commands
-Module `apps/api/src/modules/platform/messaging/` (console routes, the health read, the gateway `OtpSender` provided to `platform/identity`).
+Module `apps/api/src/modules/platform/messaging/` (console routes, the health read, the gateway `OtpSender` provided to `platform/identity`). The delivery route reads `otp_challenges`, so it lives in identity's `AuthController`. The QR is sealed with the messaging key under context `whatsapp-qr:<session id>` (`whatsappQrSealContext`). `otpAvailable` asks `sendAvailability` for a recipient no number knows (a first contact, the strictest case).
 
 | Method and path | Access | Request | Response | Error codes |
 |---|---|---|---|---|

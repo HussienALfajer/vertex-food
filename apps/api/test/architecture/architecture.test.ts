@@ -49,6 +49,12 @@ const OWNED_TABLES = {
   platformUserRecoveryCodes: 'platform/identity',
   platformSessions: 'platform/identity',
   accountTenantLinks: 'platform/access',
+  whatsappSessions: 'platform/messaging',
+  whatsappSessionCredentials: 'platform/messaging',
+  whatsappSessionEvents: 'platform/messaging',
+  whatsappMessages: 'platform/messaging',
+  whatsappKnownRecipients: 'platform/messaging',
+  whatsappOptOuts: 'platform/messaging',
 };
 
 /** The `.ts` files under `root`; a shared package's tests are left out (they import any file). */

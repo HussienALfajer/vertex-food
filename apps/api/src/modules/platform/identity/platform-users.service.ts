@@ -13,11 +13,12 @@ import {
 } from '@vertex-food/contracts';
 import type { KeyedHash } from '@vertex-food/crypto';
 import { type Database, platformUsers, type Transaction } from '@vertex-food/db';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { PlatformOperator } from '../../../core/access/actor.js';
 import { auditPlatform } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { isUniqueViolation } from '../../../core/database/unique-violation.js';
+import type { PlatformUserNames } from '../messaging/index.js';
 import {
   archiveRecoveryCodes,
   endPlatformSessions,
@@ -42,6 +43,21 @@ export function toPlatformUser(row: PlatformUserRow): PlatformUser {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/**
+ * Platform users' names for messaging's session events (spec S03), behind its
+ * `PLATFORM_USER_NAMES` port: the platform users table is identity's alone.
+ */
+export class PlatformUserNamesStore implements PlatformUserNames {
+  async names(db: Database | Transaction, ids: readonly string[]): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const rows = await db
+      .select({ id: platformUsers.id, name: platformUsers.name })
+      .from(platformUsers)
+      .where(inArray(platformUsers.id, [...ids]));
+    return new Map(rows.map((row) => [row.id, row.name]));
+  }
 }
 
 /** An admin in the sense of rule 42: active, and able to manage platform users. */
