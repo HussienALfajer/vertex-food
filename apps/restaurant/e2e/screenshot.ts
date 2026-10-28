@@ -70,27 +70,38 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
  * Hovers a link and waits until the screen's code it preloads has arrived. The router preloads
  * after a short delay, so `waitForLoadState('networkidle')` (already reached) would not wait for
  * it; a test that then cuts the connection would lose the code, which the desktop app ships. Only
- * scripts count: an API call still running from the page's load is not the preload. The page's
- * own code loads first: hovered while its route chunks still load, the helper took one of them
- * for the preload and returned before the preload began (without a trace's slowdown, 19 runs in
- * 20).
+ * scripts count: an API call still running from the page's load is not the preload.
+ *
+ * The page's own code must be in first. Under load (a CI runner, CPU throttled 6 times here) the
+ * current screen's route chunk can arrive after `networkidle`: the helper took it for the preload
+ * and returned before the preload began, 1 run in 20 (S01) and again on CI in S02. So it waits for
+ * the current screen's heading, which only its route chunk renders, then for the network to rest;
+ * and the preload is done only once its scripts finished and no new one started for a moment, since
+ * a chunk can import further chunks after it arrives.
  */
 export async function preloadOnHover(page: Page, link: Locator): Promise<void> {
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.waitForLoadState('networkidle');
   const pending = new Set<Request>();
   let started = false;
+  let lastActivity = Date.now();
   const onRequest = (request: Request) => {
     if (request.resourceType() !== 'script') return;
     pending.add(request);
     started = true;
+    lastActivity = Date.now();
   };
-  const onDone = (request: Request) => pending.delete(request);
+  const onDone = (request: Request) => {
+    if (pending.delete(request)) lastActivity = Date.now();
+  };
   page.on('request', onRequest);
   page.on('requestfinished', onDone);
   page.on('requestfailed', onDone);
   try {
     await link.hover();
-    await expect.poll(() => started && pending.size === 0).toBe(true);
+    await expect
+      .poll(() => started && pending.size === 0 && Date.now() - lastActivity >= 250)
+      .toBe(true);
   } finally {
     page.off('request', onRequest);
     page.off('requestfinished', onDone);

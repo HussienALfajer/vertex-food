@@ -130,4 +130,28 @@ describe('Form', () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     expect(document.activeElement).toBe(field('wrong'));
   });
+
+  it('leaves the focus where the user moved it before the errors show', async () => {
+    function Invalid() {
+      const [checking, setChecking] = useState(false);
+      return (
+        <Form
+          onSubmit={() => {
+            setChecking(true);
+            return false;
+          }}
+        >
+          <input aria-label="wrong" aria-invalid={checking || undefined} />
+          <input aria-label="typing" />
+          <Button type="submit">save</Button>
+        </Form>
+      );
+    }
+    render(<Invalid />);
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+    // A slow frame: the user is already in another field.
+    field('typing').focus();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(document.activeElement).toBe(field('typing'));
+  });
 });

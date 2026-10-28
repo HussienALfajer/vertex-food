@@ -9,8 +9,8 @@ From the analysis of 2026-10-28 (S02 sessions and CI runs 26–30), approved by 
 - [x] Standing authorization, the same in every source: commit, push, open the PR, auto-merge (merge commits) and Auto-fix without asking; owner acceptance after the merge; no v1-scope/ADR exception; `pnpm db:migrate` on the local database without asking for backward-compatible migrations (`CLAUDE.md`, `AGENTS.md`, ADR 0019, skills, agents, `docs/workflow.md`, folder `CLAUDE.md` files)
 - [x] `pnpm verify` runs the whole E2E suite of every app the branch affects (its files, its workspace dependencies, `brand/`, root config), not only the changed specs; test guard, checker, skills and docs follow
 - [x] CI: the E2E shards run in the official Playwright container instead of installing Chromium and its system packages on every run
-- [ ] Review: one full review, then at most two fix-only re-reviews of the fix commits; reviewer, spec and db-migration ADR lists up to 0032
-- [ ] Flaky E2E fixed at their cause: `apps/restaurant/e2e/setup.spec.ts` (wizard, hours) and `apps/restaurant/e2e/settings.spec.ts` (offline)
+- [x] Review: one full review, then at most two fix-only re-reviews of the fix commits; reviewer, spec and db-migration ADR lists up to 0032
+- [x] Flaky E2E fixed at their cause: `apps/restaurant/e2e/setup.spec.ts` (wizard, hours) and `apps/restaurant/e2e/settings.spec.ts` (offline)
 - [ ] Docs: README, ROADMAP, S02 spec references and rule 11 deviation, `deploy/` wording (ADR 0017, Q1, `packages/db/CLAUDE.md`), restaurant `hub-clients/`, glossary, architecture, ADR 0005 amendment note, 44 px in folder rules, api `configureApp` order, native-only checks, Q14/Q21, cache eviction in `docs/testing.md`
 - [ ] Settings: drop the allow rules `bypassPermissions` makes redundant; remove the orphaned `.claude/worktrees/S02-console-screens`
 - [ ] Consistency audit of every instruction file (fresh context), `pnpm verify`, PR with auto-merge and Auto-fix

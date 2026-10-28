@@ -56,7 +56,7 @@ interface FormProps extends Omit<ComponentProps<'form'>, 'onSubmit'> {
   /**
    * The form's primary action (Save, Next), run by its submit button or by Enter on the last field.
    * It returns whether the values passed their checks: on `false` the focus goes to the first
-   * invalid control once the errors show.
+   * invalid control once the errors show, unless the user moved it meanwhile.
    */
   onSubmit: () => boolean;
   /** A save is running: `FormFields` are locked, the layout does not move. */
@@ -106,8 +106,12 @@ function Form({ onSubmit, busy = false, className, onKeyDown, children, ...props
     if (submitter instanceof HTMLElement && document.activeElement !== submitter) {
       submitter.focus();
     }
+    const focused = document.activeElement;
     if (!onSubmit()) {
       requestAnimationFrame(() => {
+        // On a slow PC the frame can come after the user clicked into a field and started typing:
+        // moving the focus then would send their keys to another field.
+        if (document.activeElement !== focused) return;
         const invalid = form.querySelector<HTMLElement>(INVALID_SELECTOR);
         if (!invalid) return;
         const target = invalid.matches(FIELD_SELECTOR)

@@ -56,8 +56,9 @@ The hook is `.claude/hooks/test-guard.mjs` (PreToolUse on Bash and PowerShell), 
 - `fullyParallel`: tests run in any order and in parallel within a file, so `--shard` splits a suite by test, not by file (four of the five apps have one spec file).
 - Traces are recorded on the first retry only (`trace: 'on-first-retry'`): CI retries a failed test once and keeps its trace. Recording one for every test made the wizard tour in `apps/restaurant/e2e/setup.spec.ts` time out under load, and it hid a race (below). Debug locally with `--trace on`.
 - CI fails a test that only passes on its retry (`failOnFlakyTests`).
-- A test that cuts the connection waits for the page's own code to load before preloading a screen (`preloadOnHover` in `apps/restaurant/e2e/screenshot.ts`): without a trace's slowdown it took one of the page's own chunks for the preload and failed 19 runs in 20.
+- A test that cuts the connection waits for the page's own code to load before preloading a screen (`preloadOnHover` in `apps/restaurant/e2e/screenshot.ts`): the current screen's heading first, then the network at rest, then the preload's scripts with a quiet moment after them. Without that it took one of the page's own chunks for the preload: 19 runs in 20 without a trace's slowdown (S01), and on CI's loaded runners in S02; with the CPU throttled 6 times, 28 runs in 30 before the fix and none after.
 - In the Expo web exports, a test that changes the page waits until React has hydrated it (`apps/customer` and `apps/driver` `e2e/shell.spec.ts`): hydration replaces nodes added to the static HTML.
+- A failed check moves the focus to the first invalid field one frame later (`Form` in `packages/ui`). On a loaded runner that frame came after the wizard test had clicked into the next field, so its keys went to another field (S02's runs: `Received: "05:00"`); a slow restaurant PC does the same to a cashier. `Form` now leaves the focus where the user moved it, and a frame delayed by 300 ms reproduces the failure without the fix.
 - A timeout is fixed at its cause, never by raising timeouts globally. A test that tours many screens may set its own `test.setTimeout`.
 
 ## CI
