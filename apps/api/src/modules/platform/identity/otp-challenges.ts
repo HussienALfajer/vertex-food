@@ -1,4 +1,5 @@
 import { randomInt } from 'node:crypto';
+import { Logger } from '@nestjs/common';
 import {
   DomainError,
   type ErrorCode,
@@ -7,7 +8,7 @@ import {
   otpPolicy,
 } from '@vertex-food/contracts';
 import type { KeyedHash } from '@vertex-food/crypto';
-import { accounts, type Database, otpChallenges } from '@vertex-food/db';
+import { accounts, type Database, describeForLog, otpChallenges } from '@vertex-food/db';
 import { and, desc, eq, gt } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import type { OtpSender } from './otp-sender.js';
@@ -62,6 +63,7 @@ type Decoy = ChallengeState & { phoneKey: string; purpose: OtpPurpose; createdAt
  * never tell whether the phone has an account.
  */
 export class OtpChallenges {
+  private readonly logger = new Logger('OtpChallenges');
   private readonly decoys = new Map<string, Decoy>();
   private readonly decoySends = new Map<string, number[]>();
 
@@ -135,7 +137,11 @@ export class OtpChallenges {
           }),
         );
         return false;
-      } catch {
+      } catch (error) {
+        // No number could send is expected; anything else is a fault, logged without its message.
+        if (!(error instanceof DomainError && error.code === 'OTP_DELIVERY_UNAVAILABLE')) {
+          this.logger.error(`OTP challenge ${id} could not be sent: ${describeForLog(error)}`);
+        }
         // A quiet failure keeps the normal expiry: wrong codes then count attempts as a decoy's do.
         await tx
           .update(otpChallenges)

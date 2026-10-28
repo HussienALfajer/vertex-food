@@ -44,7 +44,7 @@ Shared packages (`contracts`, `db`, `i18n`) change in PR 1 only; a later PR that
 - [x] `GET /api/auth/otp/{challengeId}/delivery` (new-device only, `unknown` otherwise, 120 per 10 minutes per IP)
 - [x] Console routes: list, detail with events, health (a number's counts start at its `linked_at`, as in `whatsappNumberCandidates`), add, QR, relink, pause, resume, unlink; re-auth; session limit; platform audit and session events
 - [x] `test/messaging.test.ts`, architecture tests; OpenAPI, console and restaurant API types regenerated
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
+- [x] Docs, checks (`pnpm verify` green), reviewer (no blocking findings; unexpected OTP send errors now logged, the spec's `+999` rule narrowed to platform numbers and recipients), PR with auto-merge and Auto-fix, endpoints summary in the report
 
 ## PR 4 `feat/s03-console-whatsapp` — console screens (after PR 3, parallel with PR 5)
 

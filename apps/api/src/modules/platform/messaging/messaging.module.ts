@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import type { Config } from '../../../core/config/config.js';
 import { CONFIG } from '../../../core/config/config.module.js';
-import { MESSAGING_CRYPTO, messagingCrypto } from './messaging-crypto.js';
 import { MessagingConsoleController } from './messaging.console.controller.js';
 import { MessagingService } from './messaging.service.js';
+import { MESSAGING_CRYPTO, messagingCrypto } from './messaging-crypto.js';
 
 /**
  * Vertex's platform WhatsApp numbers and the send queue's API side (spec S03, ADR 0034): the

@@ -200,7 +200,7 @@ None created in S03: recipients are staff and Vertex admins. Rules that apply to
 - Message texts are transactional; no marketing; parameters carry only what that message needs.
 - Recipient phones are stored only sealed (cleared one hour after a final status) or hashed; parameters and texts only sealed (cleared within an hour); QR codes only sealed. Nothing from senders who are not known recipients is stored.
 - Logs hold session ids, message ids, kinds, templates, states and reason codes: never a phone, a parameter, a body, a code, a QR or a library error message (`describeForLog`).
-- Fixtures and tests use the unassigned country code `+999` and never connect to WhatsApp.
+- Fixtures and tests use the unassigned country code `+999` for platform numbers and message recipients, and never connect to WhatsApp. Account phones must be Syrian or Turkish (`phone.ts`), so API tests that queue OTPs use synthetic `+963` numbers (`newPhone()`), never sent.
 
 ## API and commands
 Module `apps/api/src/modules/platform/messaging/` (console routes, the health read, the gateway `OtpSender` provided to `platform/identity`). The delivery route reads `otp_challenges`, so it lives in identity's `AuthController`. The QR is sealed with the messaging key under context `whatsapp-qr:<session id>` (`whatsappQrSealContext`). `otpAvailable` asks `sendAvailability` for a recipient no number knows (a first contact, the strictest case).

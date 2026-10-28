@@ -29,7 +29,6 @@ import type { PlatformActor } from '../../../core/access/actor.js';
 import { auditPlatform } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
 import { isUniqueViolation } from '../../../core/database/unique-violation.js';
-import { MESSAGING_CRYPTO, whatsappQrSealContext } from './messaging-crypto.js';
 import {
   NO_USAGE,
   toPlatformWhatsAppSession,
@@ -37,6 +36,7 @@ import {
   type WhatsAppSessionRow,
   type WhatsAppSessionUsage,
 } from './messaging.views.js';
+import { MESSAGING_CRYPTO, whatsappQrSealContext } from './messaging-crypto.js';
 import { PLATFORM_USER_NAMES, type PlatformUserNames } from './ports.js';
 
 /** Events shown on a number's detail (spec S03, "API and commands"). */
@@ -190,7 +190,9 @@ export class MessagingService {
     return this.db.transaction(async (tx) => {
       const row = await lockSession(tx, id);
       assertWhatsAppSessionStateChange(row.state as WhatsAppSessionState, 'linking', 'admin');
-      await tx.delete(whatsappSessionCredentials).where(eq(whatsappSessionCredentials.sessionId, id));
+      await tx
+        .delete(whatsappSessionCredentials)
+        .where(eq(whatsappSessionCredentials.sessionId, id));
       const [updated] = await tx
         .update(whatsappSessions)
         .set({
@@ -253,7 +255,9 @@ export class MessagingService {
     await this.db.transaction(async (tx) => {
       const row = await lockSession(tx, id);
       assertWhatsAppSessionStateChange(row.state as WhatsAppSessionState, 'unlinked', 'admin');
-      await tx.delete(whatsappSessionCredentials).where(eq(whatsappSessionCredentials.sessionId, id));
+      await tx
+        .delete(whatsappSessionCredentials)
+        .where(eq(whatsappSessionCredentials.sessionId, id));
       await tx.delete(whatsappKnownRecipients).where(eq(whatsappKnownRecipients.sessionId, id));
       const queued = and(eq(whatsappMessages.sessionId, id), eq(whatsappMessages.status, 'queued'));
       await tx.delete(whatsappMessages).where(and(queued, ne(whatsappMessages.kind, 'otp')));

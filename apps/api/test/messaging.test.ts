@@ -448,7 +448,8 @@ describe('console platform numbers', () => {
       .select()
       .from(whatsappSessions)
       .where(eq(whatsappSessions.id, created.body.id));
-    const deadline = ((row?.linkDeadlineAt?.getTime() ?? 0) - (row?.createdAt.getTime() ?? 0)) / 1000;
+    const deadline =
+      ((row?.linkDeadlineAt?.getTime() ?? 0) - (row?.createdAt.getTime() ?? 0)) / 1000;
     expect(deadline).toBeCloseTo(180, 0);
     expect(await eventsOf(created.body.id)).toEqual([
       { type: 'created', reason: null, platformUserId: admin.userId },
@@ -516,9 +517,7 @@ describe('console platform numbers', () => {
   it('pauses and resumes a number, refusing a repeat', async () => {
     const number = await platformNumber();
     const http = await asAdmin();
-    const paused = await http
-      .post(`/api/console/whatsapp-sessions/${number.id}/pause`)
-      .expect(200);
+    const paused = await http.post(`/api/console/whatsapp-sessions/${number.id}/pause`).expect(200);
     expect(paused.body).toMatchObject({ pauseReason: 'manual', healthy: false });
     expect(paused.body.pausedAt).not.toBeNull();
     const again = await http.post(`/api/console/whatsapp-sessions/${number.id}/pause`);
@@ -537,7 +536,10 @@ describe('console platform numbers', () => {
       .set({ pausedAt: sql`now()`, pauseReason: 'send_failures', consecutiveFailures: 3 })
       .where(eq(whatsappSessions.id, number.id));
     await http.post(`/api/console/whatsapp-sessions/${number.id}/resume`).expect(200);
-    const [row] = await db.select().from(whatsappSessions).where(eq(whatsappSessions.id, number.id));
+    const [row] = await db
+      .select()
+      .from(whatsappSessions)
+      .where(eq(whatsappSessions.id, number.id));
     expect(row?.consecutiveFailures).toBe(0);
 
     expect(await eventsOf(number.id)).toEqual([
@@ -649,7 +651,10 @@ describe('console platform numbers', () => {
     const http = await asAdmin();
     await http.post(`/api/console/whatsapp-sessions/${number.id}/unlink`).expect(204);
 
-    const [row] = await db.select().from(whatsappSessions).where(eq(whatsappSessions.id, number.id));
+    const [row] = await db
+      .select()
+      .from(whatsappSessions)
+      .where(eq(whatsappSessions.id, number.id));
     expect(row?.state).toBe('unlinked');
     expect(row?.archivedAt).not.toBeNull();
     expect(
@@ -665,7 +670,10 @@ describe('console platform numbers', () => {
         .where(eq(whatsappKnownRecipients.sessionId, number.id)),
     ).toEqual([]);
     expect(
-      await db.select().from(whatsappMessages).where(eq(whatsappMessages.id, reply?.id as string)),
+      await db
+        .select()
+        .from(whatsappMessages)
+        .where(eq(whatsappMessages.id, reply?.id as string)),
     ).toEqual([]);
     const kept = await db
       .select({ id: whatsappMessages.id })
@@ -678,8 +686,9 @@ describe('console platform numbers', () => {
       .where(eq(whatsappMessages.otpChallengeId, started.body.challengeId));
     expect(otp).toMatchObject({ status: 'queued', sessionId: null });
 
-    expect((await http.get('/api/console/whatsapp-sessions')).body.map((s: { id: string }) => s.id))
-      .not.toContain(number.id);
+    expect(
+      (await http.get('/api/console/whatsapp-sessions')).body.map((s: { id: string }) => s.id),
+    ).not.toContain(number.id);
     expect((await http.get(`/api/console/whatsapp-sessions/${number.id}`)).body.code).toBe(
       'NOT_FOUND',
     );
