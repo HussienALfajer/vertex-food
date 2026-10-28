@@ -167,7 +167,9 @@ export class DeviceService {
     const data = await this.deps.openData(stored.registration.deviceId, databaseKey);
     this.data = data;
     const sealed = stored.memberList.members;
-    const loaded = sealed ? null : await data.loadMembers();
+    // A database that cannot be read leaves the PC with the list's header and no members until
+    // the next list arrives; it still opens.
+    const loaded = sealed ? null : await data.loadMembers().catch(() => null);
     const record: Registered = {
       ...stored,
       memberList: {

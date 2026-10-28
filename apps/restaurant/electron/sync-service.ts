@@ -171,7 +171,7 @@ export class SyncService {
   async tick(): Promise<void> {
     if (this.stopped) return;
     await this.drain().catch(() => undefined);
-    if (await this.hubCapable()) {
+    if (await this.hubCapable().catch(() => false)) {
       await this.heartbeat().catch(() => undefined);
       await this.ensureBlocks(false).catch(() => undefined);
     }

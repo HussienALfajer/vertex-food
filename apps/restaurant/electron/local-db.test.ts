@@ -59,11 +59,12 @@ describe('the encrypted local database (spec S04 "On the PC")', () => {
     const opened = await openLocalDatabase(directory, generateDatabaseKey());
     expect(opened.state).toBe('corrupt');
     expect(opened.db).toBeNull();
-    expect(await count(opened)).toBe(0);
+    // Nothing is read as "nothing pending": every read throws.
+    await expect(count(opened)).rejects.toThrow('cannot be read');
     await opened.close();
   });
 
-  it('opens read-only when integrity_check fails, and still reads what it can', async () => {
+  it('opens read-only when integrity_check fails, and never answers a damaged read empty', async () => {
     const directory = tempFolder();
     const key = generateDatabaseKey();
     await withRows(directory, key, 400);
@@ -80,8 +81,8 @@ describe('the encrypted local database (spec S04 "On the PC")', () => {
     const opened = await openLocalDatabase(directory, key);
     expect(opened.state).toBe('corrupt');
     expect(opened.db).toBeNull();
-    // A read never throws; the schema's views are still there.
-    await expect(opened.reads.getAll('SELECT id FROM local_members')).resolves.toEqual([]);
+    // A damaged page throws rather than reading as "nothing pending".
+    await expect(count(opened)).rejects.toThrow();
     await opened.close();
   });
 
@@ -92,7 +93,8 @@ describe('the encrypted local database (spec S04 "On the PC")', () => {
     writeFileSync(blocked, 'not a folder');
     const opened = await openLocalDatabase(blocked, generateDatabaseKey());
     expect(opened.state).toBe('corrupt');
-    expect(await count(opened)).toBe(0);
+    // Nothing is read as "nothing pending": every read throws.
+    await expect(count(opened)).rejects.toThrow('cannot be read');
     await opened.close();
   });
 

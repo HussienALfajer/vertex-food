@@ -21,7 +21,7 @@ import {
 } from './device-test-kit.js';
 import { generateDatabaseKey, LOCAL_DB_FILE } from './local-db.js';
 import { LocalStore } from './local-store.js';
-import { pendingEnvelopes } from './pending-work.js';
+import { pendingCounts, pendingEnvelopes } from './pending-work.js';
 import { quarantineParts, uploadQuarantine } from './quarantine-upload.js';
 
 const now = new Date('2026-10-27T09:00:00.000Z');
@@ -162,6 +162,30 @@ describe('the quarantine upload (spec S04 rule 40)', () => {
     await expect(uploadQuarantine(input)).rejects.toThrow('NETWORK_ERROR');
     client.quarantine.mockRejectedValueOnce(new DeviceApiError('DEVICE_REVOKED'));
     await expect(uploadQuarantine(input)).resolves.toBeUndefined();
+  });
+});
+
+describe('a database that cannot be read (rules 40, 46)', () => {
+  it('uploads nothing and throws, so the wipe and the update gate wait', async () => {
+    const registration = registrationOf();
+    const folder = tempFolder();
+    const local = await LocalStore.open(folder, generateDatabaseKey());
+    await withPendingWork(local, registration.deviceId);
+    await local.opened.close();
+    // A key that does not open the file stands in for a locked or lost one.
+    const unreadable = await LocalStore.open(folder, generateDatabaseKey());
+    opened.push(unreadable);
+    const client = fakeSync();
+    await expect(
+      uploadQuarantine({
+        reads: unreadable.opened.reads,
+        registration,
+        client,
+        sign: signWithDeviceKey,
+      }),
+    ).rejects.toThrow('cannot be read');
+    expect(client.quarantine).not.toHaveBeenCalled();
+    await expect(pendingCounts(unreadable.opened.reads)).rejects.toThrow('cannot be read');
   });
 });
 

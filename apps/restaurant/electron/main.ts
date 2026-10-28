@@ -184,10 +184,15 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
     },
   });
   const [opened] = atStart;
-  const pending = opened ? await pendingCounts(opened.local.opened.reads) : null;
-  if ((await updates.installAtStart(pending ?? { uploads: 0, unsettled: 0 })) === 'installed') {
-    return 'updating';
-  }
+  // A queue that cannot be counted is pending work; a gate that fails (a full disk) installs
+  // nothing, and the old version starts.
+  const pending = opened
+    ? await pendingCounts(opened.local.opened.reads).catch(() => null)
+    : { uploads: 0, unsettled: 0 };
+  const decision = pending
+    ? await updates.installAtStart(pending).catch(() => 'failed' as const)
+    : 'waiting';
+  if (decision === 'installed') return 'updating';
   if (opened) startSync(opened.registration, opened.local);
   updates.start();
   const service = device;

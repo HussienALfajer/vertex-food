@@ -208,21 +208,21 @@ export function passesIntegrityCheck(path: string, hexKey: string): boolean {
   }
 }
 
-/** The views of a damaged file, read synchronously; nothing is written. */
+/**
+ * The views of a damaged file, read synchronously; nothing is written. A read that fails, or any
+ * read of a file that did not open at all (a lock, a lost key), throws: an empty answer would read
+ * as "nothing pending" to the quarantine upload and the update gate, which then wait instead.
+ */
 function readOnly(path: string, hexKey: string): OpenedDatabase {
   let db: Database | null = null;
   try {
     db = openRaw(path, hexKey, true);
   } catch {
-    // Nothing readable: every read answers empty.
+    // Nothing readable: every read throws.
   }
   const all = <T>(sql: string, parameters: unknown[] = []): T[] => {
-    if (!db) return [];
-    try {
-      return db.prepare(sql).all(...parameters) as T[];
-    } catch {
-      return [];
-    }
+    if (!db) throw new Error('The local database cannot be read');
+    return db.prepare(sql).all(...parameters) as T[];
   };
   return {
     state: 'corrupt',
