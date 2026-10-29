@@ -78,7 +78,7 @@ Rules that keep the parallel PRs apart:
 
 - [x] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; the corrupt-database notice («قاعدة البيانات المحلية تالفة: اتصل بدعم Vertex») when the device status has `localDatabase: 'corrupt'` (PR 4); i18n
 - [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report (`pnpm verify` green; the web shell's screenshot capture failed once under load and passed alone; reviewer: five findings, four fixed, the synced attention list offline recorded as a follow-up; fix-only round clean)
 
 ## PR 7 `feat/s04-hub-clients` — hub client pages (after PR 5, parallel with PR 6)
 
