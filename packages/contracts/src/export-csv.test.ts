@@ -41,6 +41,11 @@ describe('export CSV, format version 1', () => {
     expect(exportRowLine(text, { note: 'قال "نعم"' })).toBe('"قال ""نعم"""\r\n');
     expect(exportRowLine(text, { note: 'سطر\nline 2' })).toBe('"سطر\nline 2"\r\n');
     expect(exportRowLine(text, { note: 'Azaz عزاز' })).toBe('Azaz عزاز\r\n');
+    // A semicolon is quoted, so Excel with `;` as its list separator keeps the cell whole.
+    expect(exportRowLine(text, { note: 'x;=HYPERLINK(1)' })).toBe('"x;=HYPERLINK(1)"\r\n');
+    expect(exportRowLine([{ name: 'l', kind: 'list' }], { l: ['owner', 'manager'] })).toBe(
+      '"owner;manager"\r\n',
+    );
   });
 
   it('prefixes each formula trigger in text and list cells only', () => {
@@ -50,6 +55,7 @@ describe('export CSV, format version 1', () => {
         `'${value}`,
       ]);
       expect(exportCells({ name: 'l', kind: 'list' }, [value, 'b'])).toEqual([`'${value};b`]);
+      expect(exportCells({ name: 'l', kind: 'list' }, ['b', value])).toEqual([`b;'${value}`]);
     }
     expect(exportRowLine([{ name: 't', kind: 'text' }], { t: '\rx' })).toBe(`"'\rx"\r\n`);
     expect(exportCells({ name: 't', kind: 'text' }, 'a=b')).toEqual(['a=b']);

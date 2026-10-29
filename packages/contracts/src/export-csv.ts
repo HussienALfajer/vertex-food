@@ -53,9 +53,13 @@ export function exportHeaderCells(column: ExportColumn): string[] {
     : [column.name];
 }
 
-/** RFC 4180: a cell holding a comma, a quote or a line break is quoted, its quotes doubled. */
+/**
+ * RFC 4180: a cell holding a comma, a quote or a line break is quoted, its quotes doubled. A
+ * semicolon is quoted too: Excel in a locale whose list separator is `;` splits on it, and quoted
+ * the cell stays whole there as well.
+ */
 function quote(cell: string): string {
-  return /[",\r\n]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell;
+  return /[",;\r\n]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell;
 }
 
 /** Text typed by a person never runs as a formula in Excel: it is prefixed with `'`. */
@@ -110,7 +114,8 @@ export function exportCells(column: ExportColumn, value: unknown): string[] {
     case 'boolean':
       return [value ? 'true' : 'false'];
     case 'list':
-      return [neutralize((value as readonly unknown[]).map(String).join(';'))];
+      // Each item on its own, so none starts a formula if a spreadsheet splits the list.
+      return [(value as readonly unknown[]).map((item) => neutralize(String(item))).join(';')];
   }
 }
 

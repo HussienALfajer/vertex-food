@@ -23,6 +23,7 @@ export const devicesDataset: ExportDataset = {
     { name: 'registered_at', kind: 'instant' },
     { name: 'last_seen_at', kind: 'instant' },
     { name: 'last_sync_at', kind: 'instant' },
+    { name: 'pending_uploads', kind: 'integer' },
     { name: 'revoked_at', kind: 'instant' },
     { name: 'revoke_reason', kind: 'text' },
     { name: 'revoke_note', kind: 'text' },
@@ -36,6 +37,7 @@ export const devicesDataset: ExportDataset = {
           device: devices,
           branchCode: branches.code,
           lastSyncAt: deviceSyncStates.lastHeartbeatAt,
+          pendingUploads: deviceSyncStates.pendingUploads,
         })
         .from(devices)
         .innerJoin(branches, eq(branches.id, devices.branchId))
@@ -44,7 +46,7 @@ export const devicesDataset: ExportDataset = {
         .orderBy(asc(devices.id))
         .limit(EXPORT_PAGE_SIZE),
     );
-    for await (const { device, branchCode, lastSyncAt } of pages) {
+    for await (const { device, branchCode, lastSyncAt, pendingUploads } of pages) {
       yield {
         id: device.id,
         name: device.name,
@@ -57,6 +59,8 @@ export const devicesDataset: ExportDataset = {
         registered_at: device.createdAt,
         last_seen_at: device.lastSeenAt,
         last_sync_at: lastSyncAt,
+        // A PC back online heartbeats at once while its backlog still uploads (edge case 10).
+        pending_uploads: pendingUploads,
         revoked_at: device.revokedAt,
         revoke_reason: device.revokeReason,
         revoke_note: device.revokeNote,

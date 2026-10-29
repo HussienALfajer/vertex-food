@@ -264,7 +264,12 @@ describe('reading the datasets', () => {
       { account_id: a.accountId, name: 'مدير أ', phone: a.phone, branches: ['main'] },
     ]);
     expect(rows.devices).toMatchObject([
-      { id: a.deviceId, branch_code: 'main', last_sync_at: new Date('2026-10-29T10:00:00Z') },
+      {
+        id: a.deviceId,
+        branch_code: 'main',
+        last_sync_at: new Date('2026-10-29T10:00:00Z'),
+        pending_uploads: 0,
+      },
     ]);
     // Rule 3: a member by account id; a CLI operator as Vertex, never named.
     expect(
