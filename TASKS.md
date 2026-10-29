@@ -37,6 +37,7 @@ Rules that keep the parallel PRs apart:
 - [x] `platform/data-export` module: request (re-auth, one active, 3 a Damascus day, row, audit and outbox in one transaction), list with `remainingToday`, get, link (hash only, 10 minutes, audited), public file route (`Range`, `206`, `416`, `NOT_FOUND`, rate limit, path redacted from logs); `@SuspendedAllowed()` and `whileClosed` (no request logger exists: the token is in no log or error, tested; a file answer's `206`/`416` through `core/http/file-head.ts`, its media type in OpenAPI through `@FileType`)
 - [x] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated (the dataset declarations against `tableRegistry` stay in `packages/db/test/exports.test.ts`, PR 1)
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
+- [ ] Left for after PR 3 (`apps/worker` is PR 3's while the two run in parallel), from PR 2's review: `apps/worker/src/jobs/sync/clear-revoked-hub-role.job.ts` writes `branch.hub_roles_changed` without `branch_id`, so the branch filter misses it and «على مستوى المطعم» lists it; add `branchId: event.branchId` and an assertion in its test
 
 ## PR 3 — worker (after PR 1, parallel with PR 2)
 

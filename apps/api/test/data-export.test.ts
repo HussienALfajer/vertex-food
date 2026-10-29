@@ -230,15 +230,6 @@ describe('requesting an export (rules 6–9)', () => {
       pinFor(2),
     );
     const session = await setup.device.signIn(manager.id, pinFor(2));
-    for (const [method, path] of [
-      ['post', '/api/tenant/data-exports'],
-      ['get', '/api/tenant/data-exports'],
-    ] as const) {
-      const refused = await setup.device.as(session)[method](path);
-      expect([refused.status, refused.body.code]).toEqual([403, 'FORBIDDEN']);
-    }
-    const anonymous = await client(app).get('/api/tenant/data-exports');
-    expect(anonymous.status).toBe(401);
 
     await owner
       .update(tenants)
@@ -252,6 +243,20 @@ describe('requesting an export (rules 6–9)', () => {
     const requested = await request(setup);
     await markReady(setup.tenantId, requested.id, randomBytes(10));
     await link(setup, requested.id);
+
+    // Every route: a manager is refused, and nobody without a session.
+    const routes = [
+      ['post', '/api/tenant/data-exports'],
+      ['get', '/api/tenant/data-exports'],
+      ['get', `/api/tenant/data-exports/${requested.id}`],
+      ['post', `/api/tenant/data-exports/${requested.id}/link`],
+    ] as const;
+    for (const [method, path] of routes) {
+      const refused = await setup.device.as(session)[method](path);
+      expect([refused.status, refused.body.code], path).toEqual([403, 'FORBIDDEN']);
+      const anonymous = await client(app)[method](path).set('origin', ORIGIN);
+      expect([anonymous.status, anonymous.body.code], path).toEqual([401, 'UNAUTHENTICATED']);
+    }
 
     // Closed: the owner keeps a personal session for 90 days, and the export (S01 rule 9).
     await app
@@ -272,6 +277,9 @@ describe('requesting an export (rules 6–9)', () => {
     const list = await personal('get', '/api/tenant/data-exports').expect(200);
     expect(list.body.items.map((item: DataExport) => item.id)).toEqual([requested.id]);
     await personal('post', `/api/tenant/data-exports/${requested.id}/link`).expect(201);
+    // A new export too: the sign-in entered the password just now (rule 6).
+    const again = await personal('post', '/api/tenant/data-exports').expect(201);
+    expect(again.body.status).toBe('queued');
   });
 });
 

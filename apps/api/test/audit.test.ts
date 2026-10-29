@@ -383,6 +383,8 @@ describe('the platform audit log (rule 18)', () => {
 
     const refused = await asConsoleUser(app, support).get('/api/console/audit');
     expect([refused.status, refused.body.code]).toEqual([403, 'FORBIDDEN']);
+    const anonymous = await client(app).get('/api/console/audit');
+    expect([anonymous.status, anonymous.body.code]).toEqual([401, 'UNAUTHENTICATED']);
     const long = await asConsoleUser(app, admin).get(
       `/api/console/audit?from=${addDays(today(), -400)}&to=${today()}`,
     );
