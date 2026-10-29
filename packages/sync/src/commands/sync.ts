@@ -31,6 +31,7 @@ export const networkCheck = defineCommand({
   payload: networkCheckPayloadSchema,
   resolved: networkCheckResolvedSchema,
   access: { actor: 'member', permission: 'hub.manage', station: false },
+  feature: null,
   resolve: (_payload, context) => ({ receivedAt: context.now.toISOString() }),
   describe: (payload) => ({
     key: 'commands.sync.network_check',

@@ -212,14 +212,12 @@ describe('amendments', () => {
     const base = { agreementId: t.agreementId, number: 1, changes: EMPTY };
     expect(
       await refusal(
-        app
-          .insert(agreementAmendments)
-          .values({
-            ...base,
-            status: 'submitted',
-            authoredByOperator: 's',
-            submittedAt: new Date(),
-          }),
+        app.insert(agreementAmendments).values({
+          ...base,
+          status: 'submitted',
+          authoredByOperator: 's',
+          submittedAt: new Date(),
+        }),
       ),
     ).toMatch(/is a draft/);
     expect(await refusal(app.insert(agreementAmendments).values(base))).toMatch(CHECK);

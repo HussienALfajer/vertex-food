@@ -1,9 +1,14 @@
-import type { CommandEnvelope, CommandSummary, StaffPermission } from '@vertex-food/contracts';
+import type {
+  CommandEnvelope,
+  CommandSummary,
+  FeatureKey,
+  StaffPermission,
+} from '@vertex-food/contracts';
 import type { z } from 'zod';
 
 // The command registry (spec S04 rule 1): every change made on a restaurant PC or a hub client is
-// a command defined here, with its payload schema, its access, whether a station may run it, the
-// hub's `resolve` step and a `describe` step. The server's `execute` step lives in the API module
+// a command defined here, with its payload schema, its access, whether a station may run it, its
+// feature (spec S05), the hub's `resolve` step and a `describe` step. The server's `execute` step lives in the API module
 // that owns the command and receives the verified envelope.
 
 /**
@@ -29,6 +34,12 @@ export interface CommandDefinition<Payload = unknown, Resolved = unknown> {
   payload: z.ZodType<Payload>;
   resolved: z.ZodType<Resolved>;
   access: CommandAccess;
+  /**
+   * The feature of the agreement the command uses (spec S05 rule 23), or null for a platform
+   * command every package has. The hub refuses it while its branch's copy shows the feature off
+   * (rule 24); the server never rejects for it, it records an entitlement exception (rule 25).
+   */
+  feature: FeatureKey | null;
   /** The data only the hub decides (a number, a price row), in its writer lock (rule 5). */
   resolve(payload: Payload, context: ResolveContext): Resolved;
   /** A summary for needs attention and the quarantine, never with customer data. */

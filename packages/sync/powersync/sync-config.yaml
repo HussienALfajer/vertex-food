@@ -22,3 +22,6 @@ streams:
       - SELECT id, branch_id, name, outcome, reason, details, executed_by_device_id, origin_device_id, membership_id, received_at FROM command_log WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
       - SELECT id, command_id, kind, membership_id, created_at FROM attention_items WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
       - SELECT id, item_id, reason, resolved_by_membership_id, resolved_at FROM attention_resolutions WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')
+      # The branch's copy of its resolved entitlements (spec S05 rules 18, 24, 26): feature keys and
+      # limits, never money. The hub checks commands against it; the PC's lease runs from its last sync.
+      - SELECT id, version, features, limits, valid_until, lease_days, updated_at FROM branch_entitlements WHERE tenant_id = auth.parameter('tenant_id') AND branch_id = auth.parameter('branch_id')

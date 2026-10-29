@@ -52,7 +52,11 @@ export const tableRegistry = {
   device_sync_states: { module: 'sync', scope: 'tenant', kind: 'state' },
   devices: { module: 'identity', scope: 'tenant', kind: 'business' },
   entitlement_exceptions: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
-  entitlement_override_revocations: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
+  entitlement_override_revocations: {
+    module: 'entitlements',
+    scope: 'platform',
+    kind: 'append-only',
+  },
   entitlement_overrides: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
   entitlement_states: { module: 'entitlements', scope: 'platform', kind: 'state' },
   files: { module: 'files', scope: 'tenant', kind: 'business' },

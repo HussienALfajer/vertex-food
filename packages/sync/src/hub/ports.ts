@@ -177,4 +177,9 @@ export interface BranchData {
   verifierOf(deviceId: string): VerifyMessage | null;
   /** The branch CA's SHA-256 fingerprint, for the pairing answer (rule 37). */
   caFingerprint(): string;
+  /**
+   * Whether the branch's last synced entitlement copy has `feature` on at `at` (spec S05 rule 24,
+   * `isBranchFeatureEntitled`). Read whatever the lease: the hub never refuses for an expired one.
+   */
+  featureEntitled(feature: string, at: Date): boolean;
 }

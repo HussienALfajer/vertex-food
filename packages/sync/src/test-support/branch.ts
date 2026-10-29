@@ -1,9 +1,11 @@
 import {
+  type BranchEntitledFeature,
   type ConnectivityState,
   type DeviceMember,
   type HubCommand,
   type HubRefusalReason,
   idSchema,
+  isBranchFeatureEntitled,
   numberBlockDates,
   numberBlockRange,
 } from '@vertex-food/contracts';
@@ -144,6 +146,7 @@ const openOrder = defineCommand({
     businessDate: z.string(),
   }),
   access: { actor: 'member', permission: 'hub.manage', station: false },
+  feature: null,
   resolve: (_payload, context: HubResolveContext) => {
     const taken = context.takeNumber('order');
     return { number: taken.number, label: taken.label, businessDate: context.businessDate };
@@ -157,6 +160,7 @@ const addLine = defineCommand({
   payload: z.object({ orderId: idSchema, lineId: idSchema, itemId: z.string(), quantity: z.int() }),
   resolved: z.object({ priceId: z.string(), unitMinor: z.int() }),
   access: { actor: 'member', permission: 'hub.manage', station: false },
+  feature: null,
   resolve: (payload) => {
     const price = menu.get(payload.itemId);
     if (!price) throw new Error('no such item');
@@ -176,6 +180,8 @@ const ticketReady = defineCommand({
   payload: z.object({ ticket: z.string() }),
   resolved: z.object({}),
   access: { actor: 'member', permission: 'hub.manage', station: true },
+  // A station command of a sold feature, for the hub's entitlement check (spec S05 rule 24).
+  feature: 'kitchen_display',
   resolve: () => ({}),
   describe: () => ({ key: 'commands.test.ticket_ready', params: {} }),
 });
@@ -191,6 +197,7 @@ const approvedDiscount = defineCommand({
     approval: 'sync.quarantine.review',
     station: false,
   },
+  feature: null,
   resolve: () => ({}),
   describe: () => ({ key: 'commands.test.approved_discount', params: {} }),
 });
@@ -319,6 +326,8 @@ export class TestBranch {
   /** `number_blocks` as synced: device → date → block index. */
   readonly blocks = new Map<string, number>();
   connectivity: ConnectivityState = 'offline';
+  /** `branch_entitlements.features` as last synced: the test features on by default. */
+  entitledFeatures: BranchEntitledFeature[] = [{ key: 'kitchen_display', until: null }];
   private counter = 0;
 
   readonly data: BranchData;
@@ -342,6 +351,7 @@ export class TestBranch {
       verifierOf: (deviceId) =>
         deviceId === pc1Id || deviceId === pc2Id ? this.keys(deviceId).verify : null,
       caFingerprint: () => 'f'.repeat(64),
+      featureEntitled: (feature, at) => isBranchFeatureEntitled(this.entitledFeatures, feature, at),
     };
     for (const pc of [this.pc1, this.pc2]) {
       const range = numberBlockRange(this.blocks.get(pc.deviceId) ?? 1);
