@@ -405,14 +405,17 @@ describe('access snapshots (ADR 0035)', () => {
     for (const [i, input] of cases.entries()) {
       const id = ids[i] as string;
       const row = await latest(t, id);
-      // The backfill wrote S04's catalog; `agreement.view` (S05) is no command's permission, so
-      // the snapshots taken since S05 hold it and the backfilled ones need not.
+      // The backfill wrote S04's catalog; `agreement.view` (S05), `audit.view` and `data.export`
+      // (S06) are no command's permission, so the snapshots taken since hold them and the
+      // backfilled ones need not.
       expect(row?.permissions, input.roles.join()).toEqual(
         effectivePermissions(
           input.roles as never,
           (input.granted ?? []) as never,
           (input.revoked ?? []) as never,
-        ).filter((permission) => permission !== 'agreement.view'),
+        ).filter(
+          (permission) => !['agreement.view', 'audit.view', 'data.export'].includes(permission),
+        ),
       );
       expect(row?.branchIds).toEqual(input.allBranches ? [] : [t.branchId]);
       expect(row?.effectiveFrom).toBeInstanceOf(Date);

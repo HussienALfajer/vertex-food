@@ -147,6 +147,7 @@ export const staffConsole = {
     'console.agreements.approve': 'اعتماد تعديلات الاتفاقيات أو رفضها',
     'console.entitlements.override': 'منح الميزات أو منعها أو تغيير حدودها استثناءً',
     'console.catalog.manage': 'إدارة الباقات وقوالب الاتفاقيات',
+    'console.audit.read': 'عرض سجل المنصة',
   },
   platformUsers: {
     title: 'مستخدمو اللوحة',

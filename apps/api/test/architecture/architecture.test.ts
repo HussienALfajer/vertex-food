@@ -95,9 +95,11 @@ const CONTRACTS_LAYERS: Record<string, string | null> = {
     'commercial-money.ts',
     'common-passwords.ts',
     'console-identity.ts',
+    'data-export.ts',
     'entitlements.ts',
     'errors.ts',
     'events.ts',
+    'export-csv.ts',
     'files.ts',
     'health-check.ts',
     'hub.ts',
@@ -127,6 +129,7 @@ const SCHEMA_LAYERS: Record<string, string | null> = {
     'audit.ts',
     'columns.ts',
     'commercial.ts',
+    'data-export.ts',
     'entitlements.ts',
     'events.ts',
     'files.ts',
@@ -137,6 +140,21 @@ const SCHEMA_LAYERS: Record<string, string | null> = {
   ]),
   'index.ts': null,
   'registry.ts': null,
+};
+// S06's export datasets: one file per module, with the layer of its schema file; the index
+// (product layer) gathers them, so a food module's dataset never reaches a platform file.
+const EXPORTS_LAYERS: Record<string, string | null> = {
+  ...platform([
+    'access.ts',
+    'audit.ts',
+    'commercial.ts',
+    'dataset.ts',
+    'entitlements.ts',
+    'identity.ts',
+    'sync.ts',
+    'tenancy.ts',
+  ]),
+  'index.ts': 'restaurant',
 };
 const packages = new URL('../../../../packages/', import.meta.url);
 
@@ -179,6 +197,12 @@ describe('the shared packages (ADR 0025)', () => {
     const files = sourceFiles(new URL('db/src/schema/', packages), { tests: false });
     expect(files.has('tenancy.ts')).toBe(true);
     expect(sharedLayerViolations(files, SCHEMA_LAYERS)).toEqual([]);
+  });
+
+  it('keep the platform datasets of packages/db/src/exports free of food files', () => {
+    const files = sourceFiles(new URL('db/src/exports/', packages), { tests: false });
+    expect(files.has('tenancy.ts')).toBe(true);
+    expect(sharedLayerViolations(files, EXPORTS_LAYERS)).toEqual([]);
   });
 });
 

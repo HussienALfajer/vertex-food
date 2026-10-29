@@ -566,7 +566,7 @@ describe('the jobs role on tenants', () => {
     ).toMatch(DENIED);
   });
 
-  it('adds audit entries and events inside its tenant only, and reads no branch', async () => {
+  it('adds audit entries and events inside its tenant only, and reads branches only there', async () => {
     const a = await seedTenant();
     const b = await seedTenant();
     await withTenant(jobs, a.tenantId, async (tx) => {
@@ -596,10 +596,13 @@ describe('the jobs role on tenants', () => {
         ),
       ),
     ).toMatch(RLS_REFUSAL);
-    expect(await refusal(withTenant(jobs, a.tenantId, (tx) => tx.select().from(branches)))).toMatch(
-      DENIED,
+    // The export (spec S06) reads a tenant's branches and log inside that tenant, never outside.
+    const seen = await withTenant(jobs, a.tenantId, (tx) =>
+      tx.select({ tenantId: branches.tenantId }).from(branches),
     );
-    expect(await refusal(jobs.select().from(auditEntries))).toMatch(DENIED);
+    expect(seen).toEqual([{ tenantId: a.tenantId }]);
+    expect(await jobs.select().from(branches)).toEqual([]);
+    expect(await jobs.select().from(auditEntries)).toEqual([]);
   });
 });
 

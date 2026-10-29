@@ -123,7 +123,7 @@ describe('the jobs role on outbox_events', () => {
 });
 
 describe('the jobs role elsewhere', () => {
-  it('never reads the audit log, and adds entries only inside their tenant', async () => {
+  it('reads the audit log and adds entries only inside their tenant (the export, spec S06)', async () => {
     const [tenant, other] = [uuidv7(), uuidv7()];
     const entry = (tenantId: string) => ({
       tenantId,
@@ -132,12 +132,14 @@ describe('the jobs role elsewhere', () => {
       entityType: 'test',
       occurredAt: new Date(),
     });
-    expect(await refusal(jobs.select().from(auditEntries))).toMatch(DENIED);
-    expect(await refusal(withTenant(jobs, tenant, (tx) => tx.select().from(auditEntries)))).toMatch(
-      DENIED,
-    );
     expect(await refusal(jobs.insert(auditEntries).values(entry(tenant)))).toMatch(RLS_REFUSAL);
     await withTenant(jobs, tenant, (tx) => tx.insert(auditEntries).values(entry(tenant)));
+    await withTenant(jobs, other, (tx) => tx.insert(auditEntries).values(entry(other)));
+    expect(await jobs.select().from(auditEntries)).toEqual([]);
+    const own = await withTenant(jobs, tenant, (tx) =>
+      tx.select({ tenantId: auditEntries.tenantId }).from(auditEntries),
+    );
+    expect(own).toEqual([{ tenantId: tenant }]);
     expect(
       await refusal(withTenant(jobs, tenant, (tx) => tx.insert(auditEntries).values(entry(other)))),
     ).toMatch(RLS_REFUSAL);

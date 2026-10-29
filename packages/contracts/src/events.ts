@@ -49,6 +49,8 @@ export const eventCatalog = {
   'agreement.amended.v1': z.object({ tenantId: idSchema, amendmentId: idSchema }),
   /** S05: a recompute changed the tenant's resolved entitlements (rule 18). */
   'entitlements.changed.v1': z.object({ tenantId: idSchema, version: z.int().min(1) }),
+  /** S06: the owner asked for a data export; the worker's `data-export.build` queue builds it. */
+  'data_export.requested.v1': z.object({ tenantId: idSchema, exportId: idSchema }),
 } as const;
 
 export type EventType = keyof typeof eventCatalog;

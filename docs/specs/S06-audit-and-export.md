@@ -96,7 +96,7 @@ Today's declarations:
 | `tenants` (platform, the tenant's own row), `files` | `restaurant.csv`; the logo and cover in `files/` as stored |
 | `branches`, `branch_hours`, `branch_hour_exceptions`, `branch_charges` | `branches.csv`, `branch_hours.csv`, `branch_hour_exceptions.csv`, `branch_charges.csv` |
 | `staff_memberships`, `staff_membership_branches` (+ the members' names and phones from `accounts`) | `staff.csv` (one row per membership: name, phone, roles, branches, granted and revoked permissions, status, dates) |
-| `devices` | `devices.csv` (name, kind, branch, hub role, registered, revoked with reason, last sync from `device_sync_states`) |
+| `devices` | `devices.csv` (name, branch, hub role, registered, revoked with reason, from `device_sync_states` the last contact and the uploads still pending then) |
 | `audit_entries` | `audit_log.csv` |
 | agreement terms (platform, as S05 rule 28 shows them) | `agreement_terms.csv` |
 | `entitlement_states` (platform, the tenant's resolved state at `as_of`) | `entitlements.csv` (feature or limit, on or value, source, until) |
@@ -156,7 +156,7 @@ Today's declarations:
 
 ## Offline behavior and conflicts
 - Online only. Both logs and the export are server data: the PC holds no copy of `audit_entries` and does not stream it. On a PC offline, both screens show «تحتاج هذه الصفحة إلى الإنترنت».
-- Work done offline reaches the log when the PC uploads `audit.record_local_events` (S04) and reaches the export after that. The README and the export screen say so; `devices.csv` gives each PC's last sync.
+- Work done offline reaches the log when the PC uploads `audit.record_local_events` (S04) and reaches the export after that. The README and the export screen say so; `devices.csv` gives each PC's last contact and the uploads it still held then.
 - No sync command, no hub change, no conflict.
 
 ## Order lifecycle
@@ -243,7 +243,7 @@ Tenant audit (`audit_entries`, category `data`): `data_export.requested` (staff,
 7. Two owners request at once: the partial unique index lets one in; the other gets `EXPORT_IN_PROGRESS` with it.
 8. The owner demoted or deactivated while an export runs: it completes; a link needs `data.export` at creation, so they cannot download it.
 9. The tenant suspended or closed mid-export: it completes. After the 90 days of a closed tenant, no route reaches it, and its exports expire as usual.
-10. An export requested while a PC holds unsynced work: not included; the README and the screen say so, and `devices.csv` shows each PC's last sync.
+10. An export requested while a PC holds unsynced work: not included; the README and the screen say so, and `devices.csv` shows each PC's last contact and its pending uploads (a PC back online heartbeats at once while its backlog still uploads).
 11. A brand-new tenant: every file present with headers only, the restaurant row and the owner in `staff.csv`.
 12. A download interrupted on a weak connection: resumed with `Range` while the link lives; after 10 minutes the owner taps «تنزيل» again (a new link, a new audit entry).
 13. An export that expires while a download is in progress: the next range request answers `NOT_FOUND`; the screen shows «انتهت صلاحية الملف».

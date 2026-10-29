@@ -17,13 +17,17 @@ const ROLES = [APP_ROLE, OWNER_ROLE, JOBS_ROLE, QUEUE_ROLE, SYNC_ROLE];
 const QUEUE_SCHEMA = 'pgboss';
 // The only schemas besides PostgreSQL's own: the tables, Drizzle's migration journal, pg-boss.
 const SCHEMAS = ['drizzle', QUEUE_SCHEMA, 'public'];
-// Everything the platform-jobs role may touch (ADR 0004): it reads the listed tables across tenants
-// through policies of its own (tenant tables) or as platform data, adds rows where `insert` is set
-// (inside withTenant, so the tenant_isolation policy bounds them) and updates only the listed
-// columns. Any other grant fails here.
-const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: string[] }> = {
-  // The scheduled-status job's audit entries and events (spec S01).
-  audit_entries: { select: false, insert: true, update: [] },
+// Everything the platform-jobs role may touch (ADR 0004): it reads the listed tables (or only the
+// listed columns) across tenants through policies of its own (tenant tables) or as platform data,
+// adds rows where `insert` is set and deletes where `delete` is set (inside withTenant, so the
+// tenant_isolation policy bounds them) and updates only the listed columns. Any other grant fails
+// here.
+const JOBS_ACCESS: Record<
+  string,
+  { select: boolean | string[]; insert?: boolean; delete?: boolean; update: string[] }
+> = {
+  // The jobs' audit entries and events (spec S01); the export reads the log (spec S06).
+  audit_entries: { select: true, insert: true, update: [] },
   outbox_events: { select: true, insert: true, update: ['dispatched_at', 'updated_at'] },
   // tenancy/apply-scheduled-status (spec S01).
   tenants: {
@@ -65,6 +69,41 @@ const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: s
     select: true,
     update: ['features', 'lease_days', 'limits', 'updated_at', 'valid_until', 'version'],
   },
+  // data-export.build (spec S06 rules 10–12): inside the export's tenant, every exported table,
+  // the names and phones of its members (what the staff list shows), its primary slug and the
+  // names of its branches' cities; its export moved in place and the file's chunks written, and
+  // deleted on a rebuild. data-export/expire (rule 14): the ready exports across tenants (policy
+  // `jobs_expire`), then their chunks inside each tenant.
+  branches: { select: true, update: [] },
+  branch_hours: { select: true, update: [] },
+  branch_hour_exceptions: { select: true, update: [] },
+  branch_charges: { select: true, update: [] },
+  files: { select: true, update: [] },
+  staff_memberships: { select: true, update: [] },
+  staff_membership_branches: { select: true, update: [] },
+  attention_items: { select: true, update: [] },
+  attention_resolutions: { select: true, update: [] },
+  accounts: { select: ['id', 'name_ar', 'phone'], update: [] },
+  tenant_slugs: { select: ['is_primary', 'slug', 'subject_tenant_id'], update: [] },
+  cities: { select: ['id', 'name_ar'], update: [] },
+  agreement_amendments: { select: ['decided_at', 'id', 'number', 'status'], update: [] },
+  data_exports: {
+    select: true,
+    update: [
+      'as_of',
+      'byte_size',
+      'expires_at',
+      'failure',
+      'file_name',
+      'finished_at',
+      'row_counts',
+      'sha256',
+      'started_at',
+      'status',
+      'updated_at',
+    ],
+  },
+  data_export_chunks: { select: true, insert: true, delete: true, update: [] },
 };
 // The tables the sync service replicates to devices (ADR 0022): it reads them whole, bypassing RLS,
 // so each one is listed here by the migration that publishes it (S04, S05). Through SQL it reads nothing
@@ -94,7 +133,19 @@ const APP_DELETES: Record<string, string> = {
 // Partial indexes on a tenant table that do not start with tenant_id, for the jobs role's claims
 // across tenants, on a table listed in JOBS_ACCESS only.
 const CROSS_TENANT_INDEXES: Record<string, string[]> = {
+  data_exports: ['data_exports_expiry_idx'],
   outbox_events: ['outbox_events_pending_idx'],
+};
+// The one read the app role makes outside a tenant (spec S06 rule 16): the public file route
+// finds a download link by the hash of the token in its path, through a policy that shows only
+// the row holding the hash the transaction set, then reads the export inside the link's tenant.
+// Its unique index on the hash is the lookup's, so it does not start with tenant_id.
+const APP_LOOKUPS: Record<string, { policy: string; using: string; index: string }> = {
+  data_export_links: {
+    policy: 'data_export_link_lookup',
+    using: "(token_hash = current_setting('app.export_token_hash'::text, true))",
+    index: 'data_export_links_token_hash_unique',
+  },
 };
 const FORBIDDEN_TYPES = ['timestamp without time zone', 'real', 'double precision', 'money'];
 const TENANT_POLICY = '(tenant_id = current_tenant_id())';
@@ -276,6 +327,19 @@ describe('table registry', () => {
   it('gives the sync role only tables that exist', () => {
     for (const table of SYNC_ACCESS) expect(Object.keys(registry)).toContain(table);
   });
+
+  it('decides the export of every tenant table, with a reason when it is left out (spec S06)', () => {
+    for (const [name, info] of Object.entries(registry)) {
+      if (info.scope !== 'tenant') continue;
+      expect(info.export, name).toBeDefined();
+      if (info.export && 'dataset' in info.export) {
+        expect(info.export.dataset, name).toMatch(/^[a-z][a-z0-9_]*$/);
+      }
+      if (info.export && 'excluded' in info.export) {
+        expect(info.export.excluded.length, name).toBeGreaterThan(10);
+      }
+    }
+  });
 });
 
 describe.each(tables)('$name', (table) => {
@@ -319,7 +383,7 @@ describe.each(tables)('$name', (table) => {
     expect(info).toBeDefined();
     const updated = column(table.name, 'updated_at');
     const archived = column(table.name, 'archived_at');
-    if (info?.kind === 'append-only' || info?.kind === 'replaceable') {
+    if (info?.kind === 'append-only' || info?.kind === 'replaceable' || info?.kind === 'blob') {
       expect(updated).toBeUndefined();
       expect(archived).toBeUndefined();
     } else {
@@ -361,7 +425,7 @@ describe.each(tables)('$name', (table) => {
     expect(privileges).toMatchObject({ truncate: false, trigger: false, references: false });
     // Only a set replaced whole (a branch's weekly hours) and the listed queues are deleted from.
     expect(privileges.delete).toBe(info?.kind === 'replaceable' || table.name in APP_DELETES);
-    if (info?.kind === 'append-only' || info?.kind === 'replaceable') {
+    if (info?.kind === 'append-only' || info?.kind === 'replaceable' || info?.kind === 'blob') {
       expect(privileges.update).toBe(false);
     }
   });
@@ -382,9 +446,17 @@ describe.each(tables)('$name', (table) => {
     const allColumns = columnsOf(table.name)
       .map((c) => c.name)
       .sort();
-    expect(privileges.tableWide).toEqual({ ...NO_TABLE_WIDE_WRITE, insert: !!expected.insert });
+    expect(privileges.tableWide).toEqual({
+      ...NO_TABLE_WIDE_WRITE,
+      insert: !!expected.insert,
+      delete: !!expected.delete,
+    });
     expect(privileges.columns).toEqual({
-      select: expected.select ? allColumns : [],
+      select: Array.isArray(expected.select)
+        ? [...expected.select].sort()
+        : expected.select
+          ? allColumns
+          : [],
       insert: expected.insert ? allColumns : [],
       update: [...expected.update].sort(),
       references: [],
@@ -427,19 +499,33 @@ describe.each(tables.filter((table) => isTenant(table.name)))('tenant table $nam
     ]);
   });
 
-  it('widens access only for the jobs role, on a table listed for it', () => {
+  it('widens access only for the jobs role on a table listed for it, and the listed app lookups', () => {
+    const lookup = APP_LOOKUPS[table.name];
     const others = policies.filter(
       (p) => p.table === table.name && p.permissive === 'PERMISSIVE' && !p.roles.includes('public'),
     );
-    for (const policy of others) expect(policy.roles).toEqual([JOBS_ROLE]);
-    if (others.length > 0) expect(JOBS_ACCESS[table.name]).toBeDefined();
+    for (const policy of others) {
+      if (lookup && policy.roles.includes(APP_ROLE)) {
+        // A read of one row by a secret the transaction holds, never a write.
+        expect(policy).toMatchObject({
+          roles: [APP_ROLE],
+          command: 'SELECT',
+          using: lookup.using,
+          check: null,
+        });
+        continue;
+      }
+      expect(policy.roles).toEqual([JOBS_ROLE]);
+      expect(JOBS_ACCESS[table.name]).toBeDefined();
+    }
   });
 
-  it('starts every secondary index with tenant_id, but the listed cross-tenant claim indexes', () => {
+  it('starts every secondary index with tenant_id, but the listed cross-tenant indexes', () => {
     const exceptions = CROSS_TENANT_INDEXES[table.name] ?? [];
     if (exceptions.length > 0) expect(JOBS_ACCESS[table.name]).toBeDefined();
     for (const index of indexes.filter((i) => i.table === table.name && !i.primary)) {
       if (exceptions.includes(index.name)) expect(index.partial, index.name).toBe(true);
+      else if (APP_LOOKUPS[table.name]?.index === index.name) continue;
       else expect(index.columns[0], index.name).toBe('tenant_id');
     }
   });
@@ -455,6 +541,23 @@ describe.each(tables.filter((table) => registry[table.name]?.kind === 'append-on
       for (const guard of guards) expect(TRIGGER_ENABLED).toContain(guard.enabled);
       const events = guards.reduce((all, t) => all | (t.type & REFUSED_EVENTS), 0);
       expect(events).toBe(REFUSED_EVENTS);
+    });
+  },
+);
+
+describe.each(tables.filter((table) => registry[table.name]?.kind === 'blob'))(
+  'blob table $name',
+  (table) => {
+    it('refuses UPDATE and TRUNCATE by enabled triggers, and lets only the jobs role delete', async () => {
+      const guards = triggers.filter(
+        (t) => t.table === table.name && t.fn === 'refuse_change' && t.type & BEFORE,
+      );
+      for (const guard of guards) expect(TRIGGER_ENABLED).toContain(guard.enabled);
+      const events = guards.reduce((all, t) => all | (t.type & REFUSED_EVENTS), 0);
+      // UPDATE and TRUNCATE; DELETE stays open for the jobs role's grant.
+      expect(events).toBe(16 | 32);
+      expect(JOBS_ACCESS[table.name]?.delete).toBe(true);
+      expect((await appPrivileges(table.name)).delete).toBe(false);
     });
   },
 );

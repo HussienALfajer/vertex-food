@@ -21,7 +21,7 @@ import {
 import { DomainError } from './errors.js';
 
 // The two tables of spec S02 ("Permission catalog and role presets", "Console permissions and
-// presets") and spec S04's and S05's permissions ("Access and entitlements"), written out so a change to either is a visible change to this test.
+// presets") and spec S04's, S05's and S06's permissions ("Access and entitlements"), written out so a change to either is a visible change to this test.
 
 const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRole[] }> = {
   'tenant.view': {
@@ -43,6 +43,9 @@ const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRol
   'sync.quarantine.review': { roles: ['owner'], limit: ['owner'] },
   // S05
   'agreement.view': { roles: ['owner'], limit: ['owner'] },
+  // S06
+  'audit.view': { roles: ['owner'], limit: ['owner'] },
+  'data.export': { roles: ['owner'], limit: ['owner'] },
 };
 
 const branchScoped: StaffPermission[] = [
@@ -70,6 +73,8 @@ const consoleTable: Record<ConsolePermission, ConsoleRole[]> = {
   'console.agreements.approve': ['admin', 'finance'],
   'console.entitlements.override': ['admin', 'finance'],
   'console.catalog.manage': ['admin'],
+  // S06
+  'console.audit.read': ['admin'],
 };
 
 function refusedCode(run: () => void): string | undefined {
@@ -219,6 +224,7 @@ describe('console permissions', () => {
       'console.agreements.approve',
       'console.entitlements.override',
       'console.catalog.manage',
+      'console.audit.read',
     ]);
     expect(effectiveConsolePermissions('dispatch', [], [])).toEqual([]);
   });

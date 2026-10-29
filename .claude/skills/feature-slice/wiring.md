@@ -5,7 +5,7 @@ Walk this list against the diff before a PR closes. Tick only what applies to th
 ## Contracts
 - [ ] New schemas exported from `packages/contracts/src/index.ts`, each API schema with `.meta({ id })`
 - [ ] New error codes added with their Arabic text in `packages/i18n`; no code renamed or removed
-- [ ] New audit actions listed
+- [ ] New audit actions in `auditActionCatalog` (log, category, shown fields) with their sentence and field labels; writers pass `branchId` when the change concerns one branch
 - [ ] State tables (orders, jobs, others) unit-tested for every allowed and refused transition
 - [ ] Money rules (totals, rounding, conversion, terms by date) unit-tested
 
@@ -14,6 +14,7 @@ Walk this list against the diff before a PR closes. Tick only what applies to th
 - [ ] `tenant_id`, forced RLS, `tenant_id`-first indexes, composite tenant foreign keys on tenant tables
 - [ ] Append-only tables refuse `UPDATE`/`DELETE` (triggers and grants)
 - [ ] Unique indexes on command ids, idempotency keys, external references
+- [ ] Every new tenant table declares its `export` (a dataset with its Arabic column descriptions, or the reason it is left out)
 - [ ] Migration generated, SQL reviewed, no drift
 
 ## Sync and hub
@@ -62,3 +63,4 @@ From S01. For a need not listed here, Vertex Shifa's files (read only, through t
 | Branch hub LAN routes, mutual TLS, a branch on loopback addresses in tests (S04) | `apps/restaurant/electron/hub-lan.ts`, `hub-test-kit.ts`, `hub-scenarios.test.ts` |
 | The real sync service in a test (S04) | `apps/api/test/sync-service.test.ts` |
 | A feature or limit a spec sells, and the command's or route's feature (S05) | its layer's `packages/contracts/src/*-features.ts`, assembled in `feature-catalog.ts`; `CommandDefinition.feature` in `packages/sync/src/registry.ts` |
+| A new audit action, or a tenant table's export (S06) | its entry in `auditActionCatalog` (`packages/contracts/src/audit.ts`) with its sentence and field labels in `packages/i18n/src/ar/audit.ts`; the table's `export` in `packages/db/src/schema/registry.ts` and its dataset in `packages/db/src/exports/<module>.ts` with the column descriptions in `packages/i18n/src/ar/data-export.ts` |

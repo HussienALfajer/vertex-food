@@ -90,6 +90,20 @@ function offsetAt(instant: number): number {
   return asUtc - Math.floor(instant / 1000) * 1000;
 }
 
+/**
+ * An instant as ISO 8601 on the Damascus wall clock with its offset, to the second:
+ * `2026-10-29T14:05:00+03:00` (the export's CSV files, spec S06).
+ */
+export function businessIsoInstant(instant: Date | string): string {
+  const at = new Date(instant).getTime();
+  const { date, minutes, seconds } = wallClock(new Date(at));
+  const offset = Math.round(offsetAt(at) / 60_000);
+  const sign = offset < 0 ? '-' : '+';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const clock = `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}:${pad(seconds)}`;
+  return `${date}T${clock}${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+}
+
 /** The instant at which the Damascus wall clock shows `time` on `date`. */
 export function businessInstant(date: LocalDate, time: TimeOfDay): Date {
   const guess = Date.parse(`${date}T00:00:00Z`) + minutesOfDay(time) * 60_000;
