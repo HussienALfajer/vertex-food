@@ -1,4 +1,5 @@
 import { agreement } from './agreement.js';
+import { audit } from './audit.js';
 import { common } from './common.js';
 import { staffConsole } from './console.js';
 import { customer } from './customer.js';
@@ -18,6 +19,7 @@ export const ar = {
   restaurant,
   sync,
   agreement,
+  audit,
   hubClients,
   console: staffConsole,
   web,

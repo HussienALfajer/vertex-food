@@ -1916,9 +1916,65 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked" | "branch.hub_roles_changed" | "branch_ca.created" | "device_certificate.issued" | "quarantine_batch.received" | "quarantine_batch.accepted" | "quarantine_batch.rejected" | "attention_item.resolved" | "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted" | "package.created" | "package.updated" | "package.archived" | "agreement_template.created" | "agreement_template.updated" | "agreement_template.archived" | "amendment.created" | "amendment.updated" | "amendment.submitted" | "amendment.unsubmitted" | "amendment.withdrawn" | "amendment.approved" | "amendment.rejected" | "entitlement_override.created" | "entitlement_override.revoked" | "agreement.amended" | "entitlements.overridden";
+        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked" | "branch.hub_roles_changed" | "branch_ca.created" | "device_certificate.issued" | "quarantine_batch.received" | "quarantine_batch.accepted" | "quarantine_batch.rejected" | "attention_item.resolved" | "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted" | "package.created" | "package.updated" | "package.archived" | "agreement_template.created" | "agreement_template.updated" | "agreement_template.archived" | "amendment.created" | "amendment.updated" | "amendment.submitted" | "amendment.unsubmitted" | "amendment.withdrawn" | "amendment.approved" | "amendment.rejected" | "entitlement_override.created" | "entitlement_override.revoked" | "agreement.amended" | "entitlements.overridden" | "data_export.requested" | "data_export.completed" | "data_export.failed" | "data_export.downloaded" | "data_export.expired";
         /** @enum {string} */
         AuditActorKind: "staff" | "customer" | "driver" | "platform" | "system";
+        /** @enum {string} */
+        AuditCategory: "access" | "devices" | "settings" | "agreement" | "data" | "money" | "menu_prices" | "support";
+        AuditCursor: string;
+        AuditDetail: {
+            field: string;
+            change: boolean;
+            before?: unknown;
+            after?: unknown;
+            value?: unknown;
+        };
+        AuditEntry: {
+            id: components["schemas"]["Id"];
+            action: components["schemas"]["AuditAction"];
+            category: components["schemas"]["AuditCategory"];
+            actor: {
+                kind: components["schemas"]["AuditShownActorKind"];
+                accountId: components["schemas"]["Id"] | null;
+                name: string | null;
+                roles: components["schemas"]["StaffRole"][];
+            };
+            entity: {
+                type: string;
+                id: string | null;
+                name: string | null;
+            };
+            branch: {
+                id: components["schemas"]["Id"];
+                name: string;
+                archived: boolean;
+            } | null;
+            device: {
+                id: components["schemas"]["Id"];
+                name: string | null;
+            } | null;
+            reason: string | null;
+            details: components["schemas"]["AuditDetail"][];
+            recordedOffline: boolean;
+            occurredAt: components["schemas"]["Instant"];
+            createdAt: components["schemas"]["Instant"];
+        };
+        AuditPage: {
+            items: components["schemas"]["AuditEntry"][];
+            nextCursor: components["schemas"]["AuditCursor"] | null;
+        };
+        AuditQuery: {
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
+            category?: components["schemas"]["AuditCategory"] | components["schemas"]["AuditCategory"][];
+            branchId?: components["schemas"]["Id"];
+            /** @enum {string} */
+            tenantWide?: "true" | "false";
+            actorAccountId?: components["schemas"]["Id"];
+            before?: components["schemas"]["AuditCursor"];
+        };
+        /** @enum {string} */
+        AuditShownActorKind: "staff" | "vertex" | "system" | "device" | "customer" | "driver";
         AuthorizeAccountPasswordReset: {
             reason: string;
         };
@@ -2232,7 +2288,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover" | "console.messaging.read" | "console.messaging.manage" | "console.agreements.read" | "console.agreements.draft" | "console.agreements.approve" | "console.entitlements.override" | "console.catalog.manage";
+        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover" | "console.messaging.read" | "console.messaging.manage" | "console.agreements.read" | "console.agreements.draft" | "console.agreements.approve" | "console.entitlements.override" | "console.catalog.manage" | "console.audit.read";
         ConsoleReauth: {
             code: components["schemas"]["TotpCode"];
         };
@@ -2368,6 +2424,45 @@ export interface components {
          * @enum {string}
          */
         CurrencyCode: "USD" | "TRY" | "SYP";
+        DataExport: {
+            id: components["schemas"]["Id"];
+            status: components["schemas"]["DataExportStatus"];
+            /** @constant */
+            formatVersion: 1;
+            requestedBy: {
+                accountId: components["schemas"]["Id"];
+                name: string | null;
+            };
+            requestedAt: components["schemas"]["Instant"];
+            startedAt: components["schemas"]["Instant"] | null;
+            finishedAt: components["schemas"]["Instant"] | null;
+            asOf: components["schemas"]["Instant"] | null;
+            expiresAt: components["schemas"]["Instant"] | null;
+            failure: components["schemas"]["DataExportFailure"] | null;
+            fileName: string | null;
+            byteSize: number | null;
+            rowCounts: {
+                [key: string]: number;
+            } | null;
+        };
+        /** @enum {string} */
+        DataExportFailure: "too_large" | "timed_out" | "server_error";
+        DataExportLink: {
+            url: string;
+            expiresAt: components["schemas"]["Instant"];
+        };
+        DataExportListQuery: {
+            before?: components["schemas"]["Id"];
+        };
+        DataExportPage: {
+            items: components["schemas"]["DataExport"][];
+            nextBefore: components["schemas"]["Id"] | null;
+            remainingToday: number;
+            nextAllowedAt: components["schemas"]["Instant"] | null;
+        };
+        /** @enum {string} */
+        DataExportStatus: "queued" | "running" | "ready" | "failed" | "expired";
+        DataExportToken: string;
         DeactivateStaffMember: {
             reason: string;
         };
@@ -2474,7 +2569,7 @@ export interface components {
             at?: components["schemas"]["Instant"];
         };
         /** @enum {string} */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT" | "PROTOCOL_UNSUPPORTED" | "UPDATE_REQUIRED" | "DEVICE_NOT_HUB_CAPABLE" | "DEVICE_NOT_REVOKED" | "HUB_ROLE_ACTIVE" | "CERTIFICATE_ADDRESS_INVALID" | "ATTENTION_ALREADY_RESOLVED" | "QUARANTINE_ALREADY_DECIDED" | "PAIRING_CLOSED" | "PAIRING_CODE_INVALID" | "PAIRING_LOCKED" | "NOT_HUB" | "ENTITLEMENT_LIMIT_REACHED" | "AGREEMENT_NOT_IN_FORCE" | "AMENDMENT_OPEN" | "SELF_APPROVAL" | "TERM_OVERLAP" | "EFFECTIVE_DATE_PAST" | "FEATURE_DEPENDENCY_MISSING" | "OVERRIDE_OVERLAP" | "ALREADY_REVOKED" | "CODE_TAKEN";
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT" | "PROTOCOL_UNSUPPORTED" | "UPDATE_REQUIRED" | "DEVICE_NOT_HUB_CAPABLE" | "DEVICE_NOT_REVOKED" | "HUB_ROLE_ACTIVE" | "CERTIFICATE_ADDRESS_INVALID" | "ATTENTION_ALREADY_RESOLVED" | "QUARANTINE_ALREADY_DECIDED" | "PAIRING_CLOSED" | "PAIRING_CODE_INVALID" | "PAIRING_LOCKED" | "NOT_HUB" | "ENTITLEMENT_LIMIT_REACHED" | "AGREEMENT_NOT_IN_FORCE" | "AMENDMENT_OPEN" | "SELF_APPROVAL" | "TERM_OVERLAP" | "EFFECTIVE_DATE_PAST" | "FEATURE_DEPENDENCY_MISSING" | "OVERRIDE_OVERLAP" | "ALREADY_REVOKED" | "CODE_TAKEN" | "EXPORT_IN_PROGRESS" | "EXPORT_LIMIT_REACHED" | "EXPORT_NOT_READY";
         ErrorResponse: {
             code: components["schemas"]["ErrorCode"];
             message: string;
@@ -2486,6 +2581,24 @@ export interface components {
             from: components["schemas"]["CurrencyCode"];
             to: components["schemas"]["CurrencyCode"];
             rate: string;
+        };
+        /** @enum {string} */
+        ExportColumnKind: "text" | "integer" | "money" | "instant" | "date" | "boolean" | "list";
+        ExportManifest: {
+            /** @constant */
+            formatVersion: 1;
+            /** Format: uuid */
+            tenantId: string;
+            slug: string;
+            /** Format: date-time */
+            asOf: string;
+            /** Format: date-time */
+            generatedAt: string;
+            files: {
+                path: string;
+                rows: number | null;
+                sha256: string;
+            }[];
         };
         FeatureCatalog: {
             features: components["schemas"]["CatalogFeature"][];
@@ -2951,6 +3064,43 @@ export interface components {
         };
         PhoneNumber: string;
         Pin: string;
+        PlatformAuditEntry: {
+            id: components["schemas"]["Id"];
+            action: components["schemas"]["AuditAction"];
+            actor: {
+                /** @enum {string} */
+                kind: "platform" | "staff" | "system";
+                id: components["schemas"]["Id"] | null;
+                name: string | null;
+            };
+            entityType: string;
+            entityId: string | null;
+            subjectTenant: {
+                id: components["schemas"]["Id"];
+                slug: string;
+                nameAr: string;
+            } | null;
+            requestRoute: string | null;
+            reason: string | null;
+            details: {
+                [key: string]: unknown;
+            } | null;
+            occurredAt: components["schemas"]["Instant"];
+            createdAt: components["schemas"]["Instant"];
+        };
+        PlatformAuditPage: {
+            items: components["schemas"]["PlatformAuditEntry"][];
+            nextCursor: components["schemas"]["AuditCursor"] | null;
+        };
+        PlatformAuditQuery: {
+            from?: components["schemas"]["LocalDate"];
+            to?: components["schemas"]["LocalDate"];
+            actorUserId?: components["schemas"]["Id"];
+            action?: components["schemas"]["AuditAction"];
+            subjectTenantId?: components["schemas"]["Id"];
+            entityId?: components["schemas"]["Id"];
+            before?: components["schemas"]["AuditCursor"];
+        };
         PlatformUser: {
             id: components["schemas"]["Id"];
             phone: string;
@@ -3210,7 +3360,7 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote" | "hub.manage" | "sync.attention.resolve" | "sync.quarantine.review" | "agreement.view";
+        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote" | "hub.manage" | "sync.attention.resolve" | "sync.quarantine.review" | "agreement.view" | "audit.view" | "data.export";
         /** @enum {string} */
         StaffRole: "owner" | "manager" | "cashier" | "waiter" | "kitchen" | "driver";
         /** @enum {string} */

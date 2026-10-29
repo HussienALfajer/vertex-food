@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   businessInstant,
+  businessIsoInstant,
   businessWallClock,
   minutesOfDay,
   timeOfDayFromMinutes,
@@ -58,5 +59,12 @@ describe('Damascus wall clock', () => {
   it('finds the instant of a Damascus date and time', () => {
     expect(businessInstant('2026-10-20', '04:00').toISOString()).toBe('2026-10-20T01:00:00.000Z');
     expect(businessInstant('2026-10-20', '00:00').toISOString()).toBe('2026-10-19T21:00:00.000Z');
+  });
+
+  it('writes an instant on the Damascus clock with its offset, to the second', () => {
+    expect(businessIsoInstant('2026-10-29T11:05:09.999Z')).toBe('2026-10-29T14:05:09+03:00');
+    expect(businessIsoInstant(new Date('2026-12-31T22:30:00.000Z'))).toBe(
+      '2027-01-01T01:30:00+03:00',
+    );
   });
 });

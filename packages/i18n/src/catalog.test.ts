@@ -1,4 +1,7 @@
 import {
+  auditActionCatalog,
+  auditActions,
+  auditCategories,
   commandReasons,
   errorCodes,
   featureKeys,
@@ -40,6 +43,21 @@ describe('Arabic catalog', () => {
     expect(Object.keys(ar.agreement.features).sort()).toEqual([...featureKeys].sort());
     expect(Object.keys(ar.agreement.limits).sort()).toEqual([...limitKeys].sort());
     expect(Object.keys(ar.sync.reasons).sort()).toEqual([...commandReasons].sort());
+  });
+
+  it('has a sentence for every audit action and a label for every shown field (spec S06 rule 1)', () => {
+    expect(Object.keys(ar.audit.actions)).toEqual([...auditActions]);
+    expect(Object.keys(ar.audit.categories).sort()).toEqual([...auditCategories].sort());
+    const labels: Record<string, string> = ar.audit.fields;
+    for (const action of auditActions) {
+      for (const field of auditActionCatalog[action].detailFields) {
+        expect(labels[field], `${action}: ${field}`).toBeDefined();
+      }
+      const placeholders = [...ar.audit.actions[action].matchAll(/\{\{(\w+)\}\}/g)].map(
+        (m) => m[1],
+      );
+      for (const name of placeholders) expect(['actor', 'entity', 'branch'], action).toContain(name);
+    }
   });
 
   it('has a WhatsApp text for every message template, naming exactly its parameters', () => {

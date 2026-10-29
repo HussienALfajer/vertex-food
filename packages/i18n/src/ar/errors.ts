@@ -80,4 +80,8 @@ export const errors = {
   OVERRIDE_OVERLAP: 'يوجد استثناء آخر لهذه الميزة في الفترة نفسها. ألغِه أولًا.',
   ALREADY_REVOKED: 'أُلغي هذا الاستثناء من قبل.',
   CODE_TAKEN: 'هذا الرمز مستخدم من قبل.',
+  // S06
+  EXPORT_IN_PROGRESS: 'يجري تجهيز ملف تصدير الآن. انتظر حتى يكتمل.',
+  EXPORT_LIMIT_REACHED: 'وصلت إلى عدد ملفات التصدير المسموح بها اليوم.',
+  EXPORT_NOT_READY: 'ملف التصدير ليس جاهزًا للتنزيل.',
 } satisfies Record<ErrorCode, string>;

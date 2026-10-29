@@ -531,6 +531,8 @@ export const restaurant = {
       quarantine: { review: 'مراجعة الأوامر المحجوزة' },
     },
     agreement: { view: 'عرض اتفاقية المطعم' },
+    audit: { view: 'عرض سجل العمليات' },
+    data: { export: 'تصدير بيانات المطعم' },
   },
   staff: {
     title: 'فريق العمل',

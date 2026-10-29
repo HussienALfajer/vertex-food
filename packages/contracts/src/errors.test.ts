@@ -102,6 +102,10 @@ describe('error codes', () => {
       OVERRIDE_OVERLAP: 409,
       ALREADY_REVOKED: 409,
       CODE_TAKEN: 409,
+      // S06 audit and export
+      EXPORT_IN_PROGRESS: 409,
+      EXPORT_LIMIT_REACHED: 429,
+      EXPORT_NOT_READY: 409,
     });
   });
 

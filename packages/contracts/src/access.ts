@@ -36,6 +36,9 @@ export const staffPermissions = [
   'sync.quarantine.review',
   // S05 agreements
   'agreement.view',
+  // S06 audit and export
+  'audit.view',
+  'data.export',
 ] as const;
 
 export const staffPermissionSchema = z.enum(staffPermissions).meta({ id: 'StaffPermission' });
@@ -75,6 +78,8 @@ export const permissionCatalog: Record<StaffPermission, PermissionDefinition> = 
   'sync.attention.resolve': { group: 'sync', branchScoped: true, limit: ownerManager },
   'sync.quarantine.review': { group: 'sync', branchScoped: false, limit: ownerOnly },
   'agreement.view': { group: 'tenant', branchScoped: false, limit: ownerOnly },
+  'audit.view': { group: 'tenant', branchScoped: false, limit: ownerOnly },
+  'data.export': { group: 'tenant', branchScoped: false, limit: ownerOnly },
 };
 
 /** What each role holds without adjustments. */
@@ -106,6 +111,9 @@ export const ownerLockedPermissions: readonly StaffPermission[] = [
   'staff.permissions.adjust',
   'devices.manage',
   'backoffice.remote',
+  // The owner's data rights (ADR 0016, spec S06)
+  'audit.view',
+  'data.export',
 ];
 
 /** The roles a manager may assign, and the only roles of the members they manage (rule 7). */
@@ -208,6 +216,8 @@ export const consolePermissions = [
   'console.agreements.approve',
   'console.entitlements.override',
   'console.catalog.manage',
+  // S06 audit
+  'console.audit.read',
 ] as const;
 
 export const consolePermissionSchema = z.enum(consolePermissions).meta({ id: 'ConsolePermission' });
@@ -227,6 +237,7 @@ export const consolePermissionLimits: Record<ConsolePermission, readonly Console
   'console.agreements.approve': ['admin', 'finance'],
   'console.entitlements.override': ['admin', 'finance'],
   'console.catalog.manage': ['admin'],
+  'console.audit.read': ['admin'],
 };
 
 export const consolePresets: Record<ConsoleRole, readonly ConsolePermission[]> = {
