@@ -1,4 +1,4 @@
-import type { Job } from 'pg-boss';
+import type { Job, QueueOptions } from 'pg-boss';
 
 /**
  * What the outbox dispatcher hands to pg-boss for one outbox event; the job's id is the event's id.
@@ -16,9 +16,16 @@ export interface QueueJob {
   readonly queue: string;
   /** The outbox event types the dispatcher delivers to this queue. */
   readonly events: readonly string[];
+  /** The queue's retry, expiry and heartbeat settings; pg-boss's defaults otherwise. */
+  readonly options?: QueueOptions;
   /**
    * Handles a batch of jobs; throwing fails them for a retry with backoff. Idempotent: a job may
    * run again after a crash or a retry (ADR 0001).
    */
   work(jobs: Job<OutboxJobData>[]): Promise<void>;
+  /**
+   * Handles the jobs whose every attempt failed, a crash or a lost heartbeat included: pg-boss
+   * copies each into the queue's dead-letter queue, `<queue>.failed`, worked here. Idempotent too.
+   */
+  failed?(jobs: Job<OutboxJobData>[]): Promise<void>;
 }

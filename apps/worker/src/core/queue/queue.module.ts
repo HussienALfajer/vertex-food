@@ -42,7 +42,8 @@ export const JOBS_ROLE_GRANTS = `
 /**
  * pg-boss (ADR 0002), run as the queue role in its own schema, never as the jobs role. At start it
  * installs or migrates its tables, grants the jobs role its hand-off, then creates each scheduled
- * job's queue and schedule, and each event job's queue and subscriptions, and works them. It stops
+ * job's queue and schedule, and each event job's queue (with its settings and dead-letter queue)
+ * and subscriptions, and works them. It stops
  * gracefully on shutdown. Adapted from Vertex Shifa's queue module.
  */
 @Global()
@@ -102,7 +103,16 @@ export class QueueModule implements OnModuleInit, OnApplicationShutdown {
       });
     }
     for (const job of this.events) {
-      await this.boss.createQueue(job.queue);
+      const failed = job.failed?.bind(job);
+      const deadLetter = `${job.queue}.failed`;
+      if (failed) {
+        await this.boss.createQueue(deadLetter);
+        await this.boss.work<OutboxJobData>(deadLetter, (jobs) => failed(jobs));
+      }
+      await this.boss.createQueue(job.queue, {
+        ...job.options,
+        ...(failed ? { deadLetter } : {}),
+      });
       for (const event of job.events) await this.boss.subscribe(event, job.queue);
       await this.boss.work<OutboxJobData>(job.queue, (jobs) => job.work(jobs));
     }
