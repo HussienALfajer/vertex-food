@@ -92,7 +92,9 @@ function client(transport: HubClientTransport, store = new MemoryOutbox()) {
     transport,
     store,
     now: clock,
-    onRefused: (cmd, reason) => refused.push(`${cmd.id}:${reason}`),
+    onRefused: (cmd, reason) => {
+      refused.push(`${cmd.id}:${reason}`);
+    },
   });
   return { c, store, refused };
 }

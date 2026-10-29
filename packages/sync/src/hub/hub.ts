@@ -103,8 +103,11 @@ export type BranchHubConfig = {
   configuredRole: HubRole;
   /** The other hub-capable PC of the branch (at most one in V1). */
   peerDeviceIds: readonly string[];
-  /** The LAN addresses of both hub-capable PCs, for hub clients (rule 30). */
-  peerAddresses: readonly string[];
+  /**
+   * The LAN addresses of both hub-capable PCs, for hub clients (rule 30), read when a client pairs:
+   * a PC whose address changed keeps its hub.
+   */
+  peerAddresses: () => readonly string[];
   appVersion: string;
   /** This PC's LAN protocol; a test sets another to check a mismatch (edge case 11). */
   protocol?: number;
@@ -201,6 +204,8 @@ export class BranchHub implements PeerHandlers {
   private lastRejoinTryMs = 0;
   private liveClients = 0;
   private started = false;
+  /** Set by `stop()`: this instance never writes again. */
+  private stopped = false;
   private rejoinInFlight = false;
   private rejoinFailures = 0;
   private catchingUp = false;
@@ -226,7 +231,7 @@ export class BranchHub implements PeerHandlers {
       random: ports.random,
       members: ports.members,
       branch: ports.branch,
-      peerAddresses: () => config.peerAddresses,
+      peerAddresses: config.peerAddresses,
       isHub: () => this.isServing(),
       appendLocal: (body) => this.appendLocal(body),
       changed: () => this.changed(),
@@ -280,6 +285,20 @@ export class BranchHub implements PeerHandlers {
     this.started = true;
     if (this.state.rejoining && this.state.hubDeviceId) this.resumeRejoin(this.state.hubDeviceId);
     this.changed();
+  }
+
+  /**
+   * Stops this instance before the runtime builds another on the same store (its role or its peer
+   * changed online), so two writers never share a journal: it waits for the work under its writer
+   * lock, then serves nothing and writes nothing more. Work in flight outside the lock (a
+   * heartbeat, a rejoin waiting for the lock) fails at its next write.
+   */
+  async stop(): Promise<void> {
+    await this.lock.run(async () => {
+      this.stopped = true;
+      this.started = false;
+    });
+    this.listeners.clear();
   }
 
   /** Called by the runtime every `hubPolicy.heartbeatMs`: heartbeats on the hub, the watchdog on the standby. */
@@ -1455,6 +1474,7 @@ export class BranchHub implements PeerHandlers {
 
   /** Saves the hub state with the other writes of one transaction, then keeps it in memory. */
   private async write(next: HubState, work?: (tx: HubTransaction) => Promise<void>): Promise<void> {
+    if (this.stopped) throw new Error('This hub was stopped');
     await this.ports.store.transaction(async (tx) => {
       if (work) await work(tx);
       await tx.saveState(next);

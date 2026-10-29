@@ -92,7 +92,7 @@ Rules that keep the parallel PRs apart:
 - From S04 PR 5, for PR 7 or S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
 - From S04 PR 5, for PR 7: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the outbox it kept under PC 1's origin (Q17's pages)
 - From S04 PR 5: S02's offline events (wrong PINs, local lockouts, approvals, re-enables) are not yet written to `local_events`; only the hub's events are, and they now reach the audit through `audit.record_local_events`
-- From S04 PR 5, with the installer (Q1): the hub listens on 7443 and 7080 on every interface, so Windows asks to allow the app on private networks at its first start as hub; the installer should add the firewall rules
+- From S04 PR 5, with the installer (Q1): the hub listens on 7443, 7444 and 7080 on every interface, so Windows asks to allow the app on private networks at its first start as hub; the installer should add the firewall rules
 
 - From S04 PR 4's review: an update whose installer did not start, or left the same version in place (elevation refused), is not tried again by that version; the next release is. Whether a failed install is retried, and how often, is the owner's call (with the deploy skeleton, Q1)
 - From S04 PR 4: the Windows installer (Q1) must unpack the native modules from the asar archive (`better-sqlite3-multiple-ciphers`' prebuild, `@powersync/node`'s core DLL) and set `UPDATE_FEED_URL` for the packaged app; the update installer's signature is checked there too

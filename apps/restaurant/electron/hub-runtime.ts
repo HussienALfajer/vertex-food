@@ -9,6 +9,7 @@ import {
   HUB_CA_HTTP_PORT,
   HUB_HTTPS_PORT,
   type HubCommand,
+  type HubRefusalReason,
   hubCommandSchema,
   hubPolicy,
   type LiveRole,
@@ -32,6 +33,7 @@ import { ed25519Signer, ed25519Verifier } from '@vertex-food/sync/node';
 import type { BranchNetworkView, BranchPc, HubView, OpenedPairing } from './bridge.js';
 import type { Registration } from './device-store.js';
 import {
+  HUB_PC_PORT,
   HubLanServer,
   type HubServerAddress,
   type HubTls,
@@ -295,6 +297,7 @@ export class HubRuntime {
     for (const timer of this.timers) clearInterval(timer);
     this.timers = [];
     await this.run(async () => {
+      await this.hub?.stop();
       await this.server?.stop();
       this.server = null;
       this.serverCertificate = null;
@@ -340,6 +343,8 @@ export class HubRuntime {
       if (this.stopped) return;
       this.snapshot = await readSnapshot(this.deps.local.reads, this.deps.registration, this.now());
       await this.follow();
+      // A pairing or PC revoked since its live stream opened loses it (rules 34, 42).
+      await this.server?.recheckLive().catch(() => undefined);
       if (this.deps.online()) await this.hub?.rejoinAfterServerSync().catch(() => undefined);
       this.noticeRole();
     });
@@ -377,17 +382,33 @@ export class HubRuntime {
     this.ensureClient(db);
   }
 
+  /** The hub-capable PCs' addresses, in a stable order, read when a phone pairs (rule 30). */
+  private peerAddresses(): string[] {
+    return this.hubPcs()
+      .flatMap((pc) => pc.addresses)
+      .sort();
+  }
+
+  /**
+   * Runs the hub of this PC's role and peer. A change of either builds a new instance, only after
+   * the old one stopped (`BranchHub.stop`): two instances on one journal would be two writers.
+   * An address change rebuilds nothing; the hub reads them as it needs them.
+   */
   private async ensureHub(db: PowerSyncDatabase, role: 'hub' | 'standby'): Promise<void> {
     const peers = this.hubPcs().filter((pc) => pc.deviceId !== this.deviceId);
     const config = {
       deviceId: this.deviceId,
       configuredRole: role,
       peerDeviceIds: peers.map((pc) => pc.deviceId).sort(),
-      peerAddresses: this.hubPcs().flatMap((pc) => pc.addresses),
       appVersion: this.deps.appVersion,
     };
     const key = JSON.stringify(config);
     if (this.hub && key === this.hubKey) return;
+    const old = this.hub;
+    this.hub = null;
+    this.hubKey = null;
+    this.server?.closeLiveStreams();
+    await old?.stop();
     const store = new LocalHubStore(db, this.deviceId);
     // A PC given a role again after it retired (rule 38) follows the hub as a standby.
     const saved = await store.loadState();
@@ -402,9 +423,10 @@ export class HubRuntime {
         }),
       );
     }
-    const hub = new BranchHub(config, this.ports(store));
-    this.server?.closeLiveStreams();
-    this.hub = null;
+    const hub = new BranchHub(
+      { ...config, peerAddresses: () => this.peerAddresses() },
+      this.ports(store),
+    );
     await hub.start();
     hub.onChange(() => this.deps.onChange());
     this.hub = hub;
@@ -421,6 +443,7 @@ export class HubRuntime {
     if (!hub) return;
     if (retire && hub.liveRole() === 'hub') return;
     if (retire) await hub.retire().catch(() => undefined);
+    await hub.stop();
     this.hub = null;
     this.hubKey = null;
     await this.server?.stop();
@@ -461,7 +484,14 @@ export class HubRuntime {
   }
 
   private listenAddress(): HubServerAddress {
-    return this.deps.listen ?? { host: '0.0.0.0', port: HUB_HTTPS_PORT, caPort: HUB_CA_HTTP_PORT };
+    return (
+      this.deps.listen ?? {
+        host: '0.0.0.0',
+        port: HUB_HTTPS_PORT,
+        pcPort: HUB_PC_PORT,
+        caPort: HUB_CA_HTTP_PORT,
+      }
+    );
   }
 
   private origin(address: string): string {
@@ -475,7 +505,7 @@ export class HubRuntime {
     if (this.client && key === this.clientKey) return;
     const transport = lanHubClient({
       tls: () => this.tls(),
-      port: this.listenAddress().port,
+      port: this.listenAddress().pcPort,
       deviceId: this.deviceId,
       ownAddresses: () => this.self()?.addresses ?? [],
       ownHub: () => this.hub,
@@ -486,6 +516,7 @@ export class HubRuntime {
       transport,
       store: new LocalOutbox(db),
       now: () => this.now(),
+      onRefused: (command, reason) => this.recordRefusal(db, command, reason),
     });
     this.clientKey = key;
   }
@@ -529,7 +560,7 @@ export class HubRuntime {
       },
       peers: lanPeers({
         tls: () => this.tls(),
-        port: this.listenAddress().port,
+        port: this.listenAddress().pcPort,
         addressesOf: (deviceId) =>
           this.snapshot.pcs.find((pc) => pc.deviceId === deviceId)?.addresses ?? [],
       }),
@@ -540,6 +571,39 @@ export class HubRuntime {
   }
 
   // --- The PC's own commands ---------------------------------------------------------------------
+
+  /**
+   * A hub refused one of this PC's commands before journaling it (rule 6): its `command_results`
+   * row says so with the reason, for needs attention, before it leaves the outbox (rule 31). The
+   * audit events a refused `audit.record_local_events` carried wait for the next one.
+   */
+  private async recordRefusal(
+    db: PowerSyncDatabase,
+    command: HubCommand,
+    reason: HubRefusalReason,
+  ): Promise<void> {
+    const now = this.now().toISOString();
+    await db.writeTransaction(async (tx) => {
+      await tx.execute(
+        `INSERT OR REPLACE INTO command_results (id, name, membership_id, payload, resolved,
+           outcome, reason, details, made_at, answered_at)
+         VALUES (?, ?, ?, ?, NULL, 'refused', ?, NULL, ?, ?)`,
+        [
+          command.id,
+          command.name,
+          command.actor?.kind === 'member' ? command.actor.membershipId : null,
+          JSON.stringify(command.payload),
+          reason,
+          command.deviceTime,
+          now,
+        ],
+      );
+      await tx.execute('UPDATE local_events SET command_id = NULL WHERE command_id = ?', [
+        command.id,
+      ]);
+    });
+    this.deps.onChange();
+  }
 
   /**
    * Sends what waits in the outbox, at most once per tick. A version this PC answered itself

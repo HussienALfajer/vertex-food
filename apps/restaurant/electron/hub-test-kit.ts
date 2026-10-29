@@ -169,6 +169,7 @@ export class LoopbackBranch {
   private constructor(
     readonly ca: TestCa,
     readonly port: number,
+    readonly pcPort: number,
     readonly caPort: number,
   ) {
     mkdirSync(this.pages, { recursive: true });
@@ -176,7 +177,12 @@ export class LoopbackBranch {
   }
 
   static async create(): Promise<LoopbackBranch> {
-    return new LoopbackBranch(await createBranchCa(), await freePort(), await freePort());
+    return new LoopbackBranch(
+      await createBranchCa(),
+      await freePort(),
+      await freePort(),
+      await freePort(),
+    );
   }
 
   async addPc(role: TestPcRole, address: string): Promise<TestPc> {
@@ -263,7 +269,7 @@ export class LoopbackBranch {
       online: () => false,
       appVersion: '1.0.0',
       pagesDirectory: this.pages,
-      listen: { host: pc.address, port: this.port, caPort: this.caPort },
+      listen: { host: pc.address, port: this.port, pcPort: this.pcPort, caPort: this.caPort },
       onChange: () => undefined,
       onRoleChange: () => undefined,
       ...extra,
@@ -287,6 +293,11 @@ export class LoopbackBranch {
 
   url(pc: TestPc, path: string): string {
     return `https://${pc.address}:${this.port}${path}`;
+  }
+
+  /** The PCs' port, mutual TLS only. */
+  pcUrl(pc: TestPc, path: string): string {
+    return `https://${pc.address}:${this.pcPort}${path}`;
   }
 }
 

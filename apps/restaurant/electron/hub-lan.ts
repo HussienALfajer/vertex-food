@@ -42,15 +42,21 @@ import type { ZodType, z } from 'zod';
 import { contentSecurityPolicy, resolvePageFile } from './app-protocol.js';
 
 // The branch hub's LAN server and its clients (spec S04 rules 21–37, ADR 0022, 0035): HTTPS with
-// the PC certificate of `pc-certificate.ts`, issued by the branch CA. Hub clients (phones and
-// screens) authenticate with their pairing token and PIN session; PCs with mutual TLS: a
-// certificate of the branch CA naming an active PC of the branch (`/hub/*` for client PCs, and
-// `/peer/*` only for the other hub-capable PC). A certificate of another CA, or of a revoked PC, is
-// refused as soon as the synced device list shows it (rule 42). Nothing here logs a request: the
-// pairing QR's fragment, tokens and command payloads never reach a log (ADR 0016).
+// the PC certificate of `pc-certificate.ts`, issued by the branch CA, on two ports. Hub clients
+// (phones and screens) use 7443 and authenticate with their pairing token and PIN session; the
+// port never asks for a client certificate, which would make a phone's browser offer a
+// certificate picker. PCs use 7444, mutual TLS only: the handshake fails without a certificate of
+// the branch CA, and the certificate must name an active PC of the branch (`/hub/*` for client
+// PCs, `/peer/*` only for the other hub-capable PC). A revoked PC is refused, and its or a revoked
+// pairing's live stream closed, as soon as the synced device list or the pairing shows it (rules
+// 34, 42). Nothing here logs a request: the pairing QR's fragment, tokens and command payloads
+// never reach a log (ADR 0016).
 
 /** The PC's TLS material, PEM: its key and certificate, and the branch CA it trusts. */
 export type HubTls = { key: string; cert: string; ca: string };
+
+/** The PCs' port: mutual TLS with the branch CA's certificates only. */
+export const HUB_PC_PORT = 7444;
 
 /** Hub API bodies are small; peer pages carry up to 500 journal entries. */
 const HUB_BODY_BYTES = 256 * 1024;
@@ -173,7 +179,11 @@ export type HubServerDeps = {
   pagesDirectory: string | null;
 };
 
-export type HubServerAddress = { host: string; port: number; caPort: number };
+/** The phones' HTTPS port (7443), the PCs' (7444) and the CA download's (7080). */
+export type HubServerAddress = { host: string; port: number; pcPort: number; caPort: number };
+
+/** Who opened a live stream: checked again before every snapshot (rules 34, 42). */
+type LiveStream = { pairingId: string | null; deviceId: string | null };
 
 type PeerRoute = {
   schema: ZodType<{ from: string }>;
@@ -204,14 +214,15 @@ const peerRoutes: Readonly<Record<string, PeerRoute>> = {
 };
 
 /**
- * The hub's HTTPS server on port 7443 and, beside it, the plain-HTTP port 7080 that answers only
- * `/ca.crt`, only while pairing is open (rule 37). Requests are served whichever role the PC
- * holds: a standby answers its peer and tells clients it is not the hub.
+ * The hub's HTTPS servers, for phones on 7443 and for PCs on 7444, and the plain-HTTP port 7080
+ * that answers only `/ca.crt`, only while pairing is open (rule 37). Requests are served whichever
+ * role the PC holds: a standby answers its peer and tells clients it is not the hub.
  */
 export class HubLanServer {
-  private secure: Server | null = null;
+  private pages: Server | null = null;
+  private pcs: Server | null = null;
   private plain: PlainServer | null = null;
-  private readonly live = new Map<ServerResponse, { client: boolean }>();
+  private readonly live = new Map<ServerResponse, LiveStream>();
   private detachLive: (() => void) | null = null;
   private liveTimer: ReturnType<typeof setTimeout> | null = null;
   private keepAlive: ReturnType<typeof setInterval> | null = null;
@@ -219,42 +230,51 @@ export class HubLanServer {
   constructor(private readonly deps: HubServerDeps) {}
 
   async start(tls: HubTls, address: HubServerAddress): Promise<void> {
-    const secure = createServer(
-      {
-        ...tls,
-        // Browsers present no certificate; PCs do, and each route decides what it needs.
-        requestCert: true,
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2',
-      },
-      (req, res) => void this.handle(req, res),
+    const pages = createServer({ ...tls, minVersion: 'TLSv1.2' }, (req, res) => {
+      void this.handle(req, res, false);
+    });
+    const pcs = createServer(
+      { ...tls, requestCert: true, rejectUnauthorized: true, minVersion: 'TLSv1.2' },
+      (req, res) => void this.handle(req, res, true),
     );
     const plain = createPlainServer((req, res) => this.handleCa(req, res));
-    await listen(secure, address.host, address.port);
+    const started: (Server | PlainServer)[] = [];
     try {
-      await listen(plain, address.host, address.caPort);
+      for (const [server, port] of [
+        [pages, address.port],
+        [pcs, address.pcPort],
+        [plain, address.caPort],
+      ] as const) {
+        await listen(server, address.host, port);
+        started.push(server);
+      }
     } catch (error) {
-      await close(secure);
+      await Promise.all(started.map(close));
       throw error;
     }
-    this.secure = secure;
+    this.pages = pages;
+    this.pcs = pcs;
     this.plain = plain;
     this.keepAlive = setInterval(() => {
-      for (const res of this.live.keys()) res.write(': keepalive\n\n');
+      void this.recheckLive().then(() => {
+        for (const res of this.live.keys()) res.write(': keepalive\n\n');
+      });
     }, LIVE_KEEPALIVE_MS);
   }
 
   /** A new certificate (an address changed, a renewal): new connections use it. */
   updateTls(tls: HubTls): void {
-    this.secure?.setSecureContext({ ...tls });
+    this.pages?.setSecureContext({ ...tls });
+    this.pcs?.setSecureContext({ ...tls });
   }
 
   async stop(): Promise<void> {
     this.closeLiveStreams();
     if (this.keepAlive) clearInterval(this.keepAlive);
     this.keepAlive = null;
-    const servers = [this.secure, this.plain];
-    this.secure = null;
+    const servers = [this.pages, this.pcs, this.plain];
+    this.pages = null;
+    this.pcs = null;
     this.plain = null;
     await Promise.all(servers.map((server) => (server ? close(server) : undefined)));
   }
@@ -284,7 +304,10 @@ export class HubLanServer {
     res.end(ca);
   }
 
-  /** The device id of an active PC that presented a certificate of the branch CA, else null. */
+  /**
+   * The device id of an active PC that presented a certificate of the branch CA, else null. Only
+   * the PCs' port asks for one.
+   */
   private pcOf(req: IncomingMessage): string | null {
     const socket = req.socket as TLSSocket;
     if (!socket.authorized) return null;
@@ -301,16 +324,20 @@ export class HubLanServer {
     res.setHeader('access-control-allow-methods', 'GET, POST, DELETE');
   }
 
-  private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async handle(req: IncomingMessage, res: ServerResponse, pcPort: boolean) {
     try {
       const path = new URL(req.url ?? '/', 'https://hub.invalid').pathname;
+      if (pcPort) {
+        if (path.startsWith('/peer/')) return await this.peer(req, res, path);
+        if (path.startsWith('/hub/')) return await this.pcApi(req, res, path);
+        throw new HttpError(404, 'NOT_FOUND');
+      }
       this.cors(req, res);
       if (req.method === 'OPTIONS') {
         res.writeHead(204, { 'content-length': 0 });
         res.end();
         return;
       }
-      if (path.startsWith('/peer/')) return await this.peer(req, res, path);
       if (path.startsWith('/hub/')) return await this.hubApi(req, res, path);
       return await this.page(req, res, path);
     } catch (error) {
@@ -340,6 +367,43 @@ export class HubLanServer {
     return token ? hub.pairing.authenticate(token) : null;
   }
 
+  /** `/hub/*` for a client PC, on the PCs' port (rule 30): hello, its commands, the live state. */
+  private async pcApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
+    const pc = this.pcOf(req);
+    if (!pc) throw new HttpError(403, 'FORBIDDEN');
+    const hub = this.requireHub();
+    const source: CommandSource = { kind: 'pc', deviceId: pc };
+    if (await this.common(req, res, path, hub, source, { pairingId: null, deviceId: pc })) return;
+    throw new HttpError(404, 'NOT_FOUND');
+  }
+
+  /** The routes a paired client and a client PC share; false when `path` is not one of them. */
+  private async common(
+    req: IncomingMessage,
+    res: ServerResponse,
+    path: string,
+    hub: BranchHub,
+    source: CommandSource | (() => Promise<CommandSource>),
+    stream: LiveStream,
+  ): Promise<boolean> {
+    switch (`${req.method} ${path}`) {
+      case 'GET /hub/hello':
+        sendJson(res, 200, hub.hello());
+        return true;
+      case 'GET /hub/live':
+        this.openLive(req, res, hub, stream);
+        return true;
+      case 'POST /hub/commands': {
+        const command = parse(hubCommandSchema, await readBody(req, HUB_BODY_BYTES));
+        const from = typeof source === 'function' ? await source() : source;
+        const answer = await hub.submit(command, from);
+        sendJson(res, answer.status === 'not_hub' ? 409 : 200, answer);
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async hubApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
     const hub = this.requireHub();
     const route = `${req.method} ${path}`;
@@ -348,28 +412,12 @@ export class HubLanServer {
       sendJson(res, 200, await hub.pairing.pair(code, remoteAddress(req)));
       return;
     }
-    const pc = this.pcOf(req);
-    const pairing = pc ? null : await this.pairingOf(req, hub);
-    if (!pc && !pairing) throw new HttpError(401, 'UNAUTHENTICATED');
-    switch (route) {
-      case 'GET /hub/hello':
-        sendJson(res, 200, hub.hello());
-        return;
-      case 'GET /hub/live':
-        this.openLive(req, res, hub, pc === null);
-        return;
-      case 'POST /hub/commands': {
-        const command = parse(hubCommandSchema, await readBody(req, HUB_BODY_BYTES));
-        const source: CommandSource = pc
-          ? { kind: 'pc', deviceId: pc }
-          : await hub.sourceOfPairing(pairing as PairingRecord, sessionToken(req));
-        const answer = await hub.submit(command, source);
-        sendJson(res, answer.status === 'not_hub' ? 409 : 200, answer);
-        return;
-      }
-    }
+    const pairing = await this.pairingOf(req, hub);
+    if (!pairing) throw new HttpError(401, 'UNAUTHENTICATED');
+    const source = () => hub.sourceOfPairing(pairing, sessionToken(req));
+    const stream = { pairingId: pairing.id, deviceId: null };
+    if (await this.common(req, res, path, hub, source, stream)) return;
     // Member sessions belong to personal pairings only (rule 35).
-    if (!pairing) throw new HttpError(403, 'FORBIDDEN');
     switch (route) {
       case 'GET /hub/members':
         sendJson(res, 200, hub.pairing.membersFor(pairing));
@@ -391,13 +439,13 @@ export class HubLanServer {
   }
 
   /** Rule 32: the full snapshot over server-sent events, again after every change. */
-  private openLive(req: IncomingMessage, res: ServerResponse, hub: BranchHub, client: boolean) {
+  private openLive(req: IncomingMessage, res: ServerResponse, hub: BranchHub, stream: LiveStream) {
     res.writeHead(200, {
       'content-type': 'text/event-stream; charset=utf-8',
       'cache-control': 'no-store',
       connection: 'keep-alive',
     });
-    this.live.set(res, { client });
+    this.live.set(res, stream);
     if (!this.detachLive) this.detachLive = hub.onChange(() => this.scheduleLive());
     this.countLive(hub);
     void this.sendLive([res], hub);
@@ -407,10 +455,33 @@ export class HubLanServer {
     });
   }
 
+  /** Hub clients on the live stream, for the equal-epoch tie-break (rule 28); PCs do not count. */
   private countLive(hub: BranchHub): void {
     let clients = 0;
-    for (const { client } of this.live.values()) if (client) clients += 1;
+    for (const { pairingId } of this.live.values()) if (pairingId) clients += 1;
     hub.setLiveClients(clients);
+  }
+
+  /**
+   * Closes the streams of a pairing revoked or expired, or of a PC revoked, since they opened
+   * (rules 34, 42): before every snapshot, at every keepalive, and when the runtime reads the
+   * synced device list again.
+   */
+  async recheckLive(): Promise<void> {
+    const hub = this.deps.hub();
+    if (!hub || this.live.size === 0) return;
+    const pairings = new Set((await hub.pairing.list()).map((pairing) => pairing.id));
+    let closed = false;
+    for (const [res, stream] of [...this.live]) {
+      const allowed = stream.pairingId
+        ? pairings.has(stream.pairingId)
+        : stream.deviceId !== null && this.deps.isActivePc(stream.deviceId);
+      if (allowed) continue;
+      this.live.delete(res);
+      res.end();
+      closed = true;
+    }
+    if (closed) this.countLive(hub);
   }
 
   private scheduleLive(): void {
@@ -426,6 +497,7 @@ export class HubLanServer {
     if (streams.length === 0) return;
     let text: string;
     try {
+      await this.recheckLive();
       text = `data: ${JSON.stringify(await hub.liveSnapshot())}\n\n`;
     } catch {
       return;
@@ -543,7 +615,7 @@ function lanCall(input: {
 export type LanOptions = {
   /** The PC's TLS material; null until its certificate arrived. */
   tls: () => HubTls | null;
-  /** The HTTPS port every PC listens on (7443; tests use another). */
+  /** The PCs' port every hub-capable PC listens on (7444; tests use another). */
   port: number;
 };
 

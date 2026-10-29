@@ -778,7 +778,11 @@ describe('review findings of PR 2', () => {
     expect(await phone.client.counts()).toMatchObject({ unmirrored: 2 });
   });
 
-  it('catches a standby up that misses more than one batch of entries', async () => {
+  // Over 600 signed commands each: CPU-bound, so more time than the default when every
+  // package's tests run at once (`pnpm test`).
+  it('catches a standby up that misses more than one batch of entries', {
+    timeout: 20_000,
+  }, async () => {
     branch.pc2.powerOff();
     for (let i = 1; i <= 620; i++) await cashier(branch.pc1, branch.networkCheck(i));
     await branch.pc2.start();
@@ -788,7 +792,7 @@ describe('review findings of PR 2', () => {
     expect(branch.pc2.store.lineageIds()).toHaveLength(620);
   });
 
-  it('rejoins over several pages of the hub’s journal', async () => {
+  it('rejoins over several pages of the hub’s journal', { timeout: 20_000 }, async () => {
     branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
     await branch.run(3500);
     for (let i = 1; i <= 600; i++) await cashier(branch.pc2, branch.networkCheck(i));
@@ -869,5 +873,27 @@ describe('review findings of PR 2', () => {
       .filter((e) => !e.ownLineage)
       .map((e) => e.seq);
     expect(new Set(seqs).size).toBe(seqs.length);
+  });
+});
+
+describe('a hub stopped for a rebuild', () => {
+  it('finishes its locked work, then answers not_hub and writes nothing more', async () => {
+    const old = branch.pc1.running;
+    const source = { kind: 'pc' as const, deviceId: branch.pc1.deviceId };
+    const actor = {
+      kind: 'member' as const,
+      membershipId: MEMBERS.manager,
+      sessionKind: 'pc' as const,
+    };
+    const before = { ...branch.networkCheck(1), actor };
+    // Queued on the writer lock before `stop`: it runs to its commit first.
+    const running = old.submit(before, source);
+    await old.stop();
+    expect(await running).toMatchObject({ status: 'ok' });
+    expect(await branch.pc1.store.entry(before.id)).not.toBeNull();
+    const after = { ...branch.networkCheck(2), actor };
+    expect(await old.submit(after, source)).toMatchObject({ status: 'not_hub' });
+    await old.tick();
+    expect(await branch.pc1.store.entry(after.id)).toBeNull();
   });
 });

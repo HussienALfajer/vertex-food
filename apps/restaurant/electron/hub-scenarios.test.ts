@@ -18,6 +18,8 @@ import {
   phoneCall,
   phoneTransport,
   type TestPc,
+  testMembers,
+  WAITER,
 } from './hub-test-kit.js';
 import { uuidv7 } from './uuid.js';
 
@@ -126,6 +128,30 @@ function firstSnapshot(pc: TestPc, token: string): Promise<unknown> {
   });
 }
 
+/** A live stream left open: `opened` at its first snapshot, `ended` when the hub closes it. */
+function liveStream(pc: TestPc, token: string): { opened: Promise<void>; ended: Promise<void> } {
+  let open: () => void = () => undefined;
+  let end: () => void = () => undefined;
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const ended = new Promise<void>((resolve) => {
+    end = resolve;
+  });
+  const req = request(
+    branch.url(pc, '/hub/live'),
+    { ca: branch.ca.certificate, agent: false, headers: { authorization: `Bearer ${token}` } },
+    (res) => {
+      res.on('data', () => open());
+      res.on('end', () => end());
+      res.on('close', () => end());
+    },
+  );
+  req.on('error', () => end());
+  req.end();
+  return { opened, ended };
+}
+
 function plainGet(url: string): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     get(url, (res) => {
@@ -215,12 +241,12 @@ describe('the branch hub on the real ports', { timeout: 30_000 }, () => {
     const pc3 = await branch.addPc(null, '127.0.0.23');
     await branch.start(pc1);
     const ca = branch.ca.certificate;
-    const state = (cert: { key: string; cert: string }, from: string) =>
-      phoneCall(branch.url(pc1, '/peer/state'), {
+    const state = (cert: { key: string; cert: string } | undefined, from: string) =>
+      phoneCall(branch.pcUrl(pc1, '/peer/state'), {
         ca,
         method: 'POST',
         body: { protocol: 1, from, epoch: 0 },
-        cert,
+        ...(cert ? { cert } : {}),
       });
     const asPc = (pc: TestPc) => ({
       key: pc.certificate.privateKey,
@@ -232,12 +258,28 @@ describe('the branch hub on the real ports', { timeout: 30_000 }, () => {
     expect((await state(asPc(pc2), pc3.deviceId)).status).toBe(403);
     // A client PC reaches the hub's API, never its peer routes.
     expect((await state(asPc(pc3), pc3.deviceId)).status).toBe(403);
-    const hello = await phoneCall(branch.url(pc1, '/hub/hello'), { ca, cert: asPc(pc3) });
+    const hello = await phoneCall(branch.pcUrl(pc1, '/hub/hello'), { ca, cert: asPc(pc3) });
     expect(hello).toMatchObject({ status: 200, body: { deviceId: pc1.deviceId, role: 'hub' } });
-    // A certificate naming the standby, from another CA.
+    // The PCs' port takes no handshake without a certificate of the branch CA: none, or one of
+    // another CA naming the standby.
+    await expect(state(undefined, pc2.deviceId)).rejects.toThrow();
     const rogue = await issuePcCertificate(await createBranchCa(), pc2.deviceId, [pc2.address]);
-    const forged = await state({ key: rogue.privateKey, cert: rogue.certificate }, pc2.deviceId);
-    expect(forged.status).toBe(403);
+    await expect(
+      state({ key: rogue.privateKey, cert: rogue.certificate }, pc2.deviceId),
+    ).rejects.toThrow();
+    // The phones' port asks for no certificate and serves no peer route; a PC is unknown there.
+    const peerOnPhonePort = await phoneCall(branch.url(pc1, '/peer/state'), {
+      ca,
+      method: 'POST',
+      body: { protocol: 1, from: pc2.deviceId, epoch: 0 },
+      cert: asPc(pc2),
+    });
+    expect(peerOnPhonePort.status).toBe(404);
+    const helloOnPhonePort = await phoneCall(branch.url(pc1, '/hub/hello'), {
+      ca,
+      cert: asPc(pc3),
+    });
+    expect(helloOnPhonePort.status).toBe(401);
     // Revoked: refused as soon as the synced device list says so (rule 42).
     await branch.revoke(pc2);
     expect((await state(asPc(pc2), pc2.deviceId)).status).toBe(403);
@@ -345,5 +387,47 @@ describe('the branch hub on the real ports', { timeout: 30_000 }, () => {
     await eventually('the client PC followed the new hub', async () =>
       (await journalIds(pc2)).includes(next),
     );
+  });
+
+  it("closes a revoked pairing's live stream, and records a refused command of a client PC", async () => {
+    branch = await LoopbackBranch.create();
+    const pc1 = await branch.addPc('hub', '127.0.0.51');
+    const pc3 = await branch.addPc(null, '127.0.0.53');
+    await branch.start(pc1);
+    const { pair } = await pairPhone(pc1);
+    const live = liveStream(pc1, pair.token);
+    await live.opened;
+    // Rule 34: a stolen phone's pairing revoked; its open stream ends at once.
+    await runtime(pc1).revokePairing(pair.pairingId);
+    await live.ended;
+    const after = await phoneCall(branch.url(pc1, '/hub/hello'), {
+      ca: branch.ca.certificate,
+      headers: { authorization: `Bearer ${pair.token}` },
+    });
+    expect(after.status).toBe(401);
+
+    // The client PC's list still grants the waiter `hub.manage`; the hub's does not (rule 6).
+    const stale = testMembers.map((m) =>
+      m.membershipId === WAITER ? { ...m, permissions: ['hub.manage' as const] } : m,
+    );
+    await branch.start(pc3, {
+      device: {
+        members: () => stale,
+        clock: () => null,
+        checkPin: async () => 'invalid',
+        sessionMember: () => WAITER,
+        afterOfflineWindow: () => false,
+      },
+    });
+    const id = await runtime(pc3).sendNetworkCheck({ run: uuidv7(), sequence: 1 });
+    const result = async () =>
+      pc3.local?.reads.getOptional<{ outcome: string; reason: string }>(
+        'SELECT outcome, reason FROM command_results WHERE id = ?',
+        [id],
+      );
+    await eventually('the refusal recorded', async () => (await result())?.outcome === 'refused');
+    expect(await result()).toEqual({ outcome: 'refused', reason: 'permission_missing' });
+    expect((await runtime(pc3).view([])).outbox.sending).toBe(0);
+    expect(await journalIds(pc1)).not.toContain(id);
   });
 });
