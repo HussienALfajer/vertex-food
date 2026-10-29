@@ -111,6 +111,21 @@ function findMember(record: Registered, membershipId: string): DeviceMember | un
 }
 
 /**
+ * A member's PIN typed on this PC for an action that opens no session (spec S04 rule 27: making
+ * the standby the hub), with the lockout of rule 25.
+ */
+export async function checkPinLocally(
+  record: Registered,
+  membershipId: string,
+  pin: string,
+  verify: VerifyPin,
+): Promise<LocalOutcome> {
+  const member = findMember(record, membershipId);
+  if (!member) return { record, ok: false, code: 'MEMBERSHIP_INACTIVE' };
+  return verifyCounted(record, member, pin, verify);
+}
+
+/**
  * A PIN session opened offline (rules 25, 30, 31), checked in the main process against the
  * verifier in the member list. After the window only members who opened a session on this PC
  * before it closed may sign in.
