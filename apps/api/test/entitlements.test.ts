@@ -317,7 +317,7 @@ describe('a suspended tenant (rule 22)', () => {
       .expect(204);
   });
 
-  it('marks only staff writes exempt, the ones S02 rule 36 and S05 rule 22 name', () => {
+  it('marks only staff writes exempt, the ones S02 rule 36, S05 rule 22 and S06 name', () => {
     const exempt = listRoutes(app)
       .filter((route) => route.suspendedAllowed)
       .map((route) => `${route.method} ${route.path}`)
@@ -329,6 +329,8 @@ describe('a suspended tenant (rule 22)', () => {
       'POST /api/sessions/current/end',
       'POST /api/sessions/current/reauth',
       'POST /api/staff/:id/deactivate',
+      'POST /api/tenant/data-exports',
+      'POST /api/tenant/data-exports/:id/link',
       'PUT /api/me/password',
       'PUT /api/me/pin',
       'PUT /api/staff/:id/pin',

@@ -86,12 +86,19 @@ function requestOf(route: Route) {
   };
 }
 
-/** The success answer: nothing (204), a file's bytes, or JSON of the route's schema. */
+/**
+ * The success answer: nothing (204), a file's bytes (of the route's declared type, else the
+ * stored images'), or JSON of the route's schema.
+ */
 function successOf(route: Route) {
   if (route.responseSchema === noContentSchema) return { description: 'No content' };
   if (route.responseSchema === fileBytesSchema) {
     const binary = { schema: { type: 'string', format: 'binary' } };
-    return { description: 'OK', content: { 'image/png': binary, 'image/webp': binary } };
+    const types = route.contentType ? [route.contentType] : ['image/png', 'image/webp'];
+    return {
+      description: 'OK',
+      content: Object.fromEntries(types.map((type) => [type, binary])),
+    };
   }
   return {
     description: route.status === 201 ? 'Created' : 'OK',

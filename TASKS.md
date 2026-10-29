@@ -34,8 +34,8 @@ Rules that keep the parallel PRs apart:
 
 - [x] `audit()` takes `branchId`; the writers of a branch's settings, devices, hub events and branch-scoped membership changes pass it (a member limited to exactly one branch; PC sessions and re-auth on a PC; `audit.record_local_events` the command's branch)
 - [x] `GET /api/tenant/audit` (rules 2–5: filters, cursor, actor shown without Vertex names or ids, offline mark, resolved names) and `GET /api/console/audit` (rule 18) (module `platform/audit`; `test/audit.test.ts`)
-- [ ] `platform/data-export` module: request (re-auth, one active, 3 a Damascus day, row, audit and outbox in one transaction), list with `remainingToday`, get, link (hash only, 10 minutes, audited), public file route (`Range`, `206`, `416`, `NOT_FOUND`, rate limit, path redacted from logs); `@SuspendedAllowed()` and `whileClosed`
-- [ ] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated
+- [x] `platform/data-export` module: request (re-auth, one active, 3 a Damascus day, row, audit and outbox in one transaction), list with `remainingToday`, get, link (hash only, 10 minutes, audited), public file route (`Range`, `206`, `416`, `NOT_FOUND`, rate limit, path redacted from logs); `@SuspendedAllowed()` and `whileClosed` (no request logger exists: the token is in no log or error, tested; a file answer's `206`/`416` through `core/http/file-head.ts`, its media type in OpenAPI through `@FileType`)
+- [x] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated (the dataset declarations against `tableRegistry` stay in `packages/db/test/exports.test.ts`, PR 1)
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
 ## PR 3 — worker (after PR 1, parallel with PR 2)
