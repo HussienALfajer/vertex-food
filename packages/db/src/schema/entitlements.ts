@@ -124,9 +124,7 @@ export const entitlementStates = pgTable(
     idIsUuidV7('entitlement_states', t.id),
     unique('entitlement_states_tenant_unique').on(t.subjectTenantId),
     // entitlements/apply-boundaries reads the due states every minute (rule 19).
-    index('entitlement_states_due_idx')
-      .on(t.validUntil)
-      .where(sql`${t.validUntil} is not null`),
+    index('entitlement_states_due_idx').on(t.validUntil).where(sql`${t.validUntil} is not null`),
     check('entitlement_states_version', sql`${t.version} >= 1`),
     check(
       'entitlement_states_resolved',
