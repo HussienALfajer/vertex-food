@@ -3,7 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { authenticationStep } from './core/access/authentication.js';
 import { SESSION_VERIFIER, type SessionVerifier } from './core/access/session-verifier.js';
 import type { Config } from './core/config/config.js';
-import { listRoutes } from './core/routes.js';
+import { declarationViolations, listRoutes } from './core/routes.js';
 
 /** Every route lives under `/api` (ADR 0020). */
 export const API_PREFIX = 'api';
@@ -29,8 +29,11 @@ export function configureApp(app: INestApplication, config: Config): INestApplic
     allowedHeaders: ['content-type', 'authorization', 'x-device-token', 'x-sign-in-ticket'],
     maxAge: 600,
   });
+  const routes = listRoutes(app);
+  const violations = declarationViolations(routes);
+  if (violations.length > 0) throw new Error(`Route declarations:\n${violations.join('\n')}`);
   app.use(
-    authenticationStep(listRoutes(app), app.get<SessionVerifier>(SESSION_VERIFIER), {
+    authenticationStep(routes, app.get<SessionVerifier>(SESSION_VERIFIER), {
       staff: config.corsOrigins,
       console: config.consoleOrigins,
     }),

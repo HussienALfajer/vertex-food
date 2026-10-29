@@ -64,7 +64,9 @@ import {
   MEMBER_CREDENTIALS,
   type MemberCredentials,
   STAFF_ACCOUNTS,
+  STAFF_LIMIT,
   type StaffAccounts,
+  type StaffLimit,
 } from './ports.js';
 
 const HOUR_MS = 3_600_000;
@@ -88,6 +90,7 @@ export class StaffService implements TenantOwners, TenantMembers {
     @Inject(DATABASE) private readonly db: Database,
     @Inject(STAFF_ACCOUNTS) private readonly accounts: StaffAccounts,
     @Inject(MEMBER_CREDENTIALS) private readonly credentials: MemberCredentials,
+    @Inject(STAFF_LIMIT) private readonly limit: StaffLimit,
   ) {}
 
   catalog(actor: StaffActor): AccessCatalog {
@@ -165,12 +168,13 @@ export class StaffService implements TenantOwners, TenantMembers {
         },
       );
       await this.assertBranchesActive(tx, input.branchScope);
-      // S05: the staff limit of the agreement is checked here (`NOT_ENTITLED`).
       const accountId = await this.accounts.findOrCreate(tx, input.phone, actor);
       const existing = await readMembership(tx, { accountId }, { lock: 'update' });
       if (existing?.status === 'active') {
         throw new DomainError('ALREADY_MEMBER', 'The phone is already a member here');
       }
+      // S05 rule 21: the agreement's staff limit, counted under the entitlement state's lock.
+      await this.limit.assertMemberFits(tx, actor.tenantId);
       const values = {
         roles: input.roles,
         allBranches: input.branchScope.allBranches,
@@ -340,7 +344,8 @@ export class StaffService implements TenantOwners, TenantMembers {
       if (member.status !== 'deactivated') {
         throw new DomainError('INVALID_STATUS_TRANSITION', 'The member is active');
       }
-      // S05: the staff limit of the agreement is checked here (`NOT_ENTITLED`).
+      // S05 rule 21: the agreement's staff limit, counted under the entitlement state's lock.
+      await this.limit.assertMemberFits(tx, actor.tenantId);
       await tx
         .update(staffMemberships)
         .set({

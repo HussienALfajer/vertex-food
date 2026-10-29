@@ -1,5 +1,8 @@
+import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import {
+  agreementTemplateInputSchema,
+  amendmentDraftChangesSchema,
   archiveBranchSchema,
   authorizeAccountPasswordResetSchema,
   changeAccountPhoneSchema,
@@ -10,8 +13,13 @@ import {
   createPlatformUserSchema,
   createTenantSchema,
   DomainError,
+  entitlementsQuerySchema,
   idSchema,
   listConsoleTenantsQuerySchema,
+  overrideInputSchema,
+  packageInputSchema,
+  rejectAmendmentSchema,
+  revokeOverrideSchema,
   setTenantSlugSchema,
   tenantStatusRequestSchema,
 } from '@vertex-food/contracts';
@@ -19,6 +27,8 @@ import type { Database } from '@vertex-food/db';
 import { z } from 'zod';
 import type { SystemActor } from '../core/access/actor.js';
 import type { AreasService } from '../modules/platform/areas/index.js';
+import type { CommercialService } from '../modules/platform/commercial/index.js';
+import type { EntitlementsService } from '../modules/platform/entitlements/index.js';
 import type {
   ConsoleAccountsService,
   PlatformUsersService,
@@ -38,7 +48,18 @@ export const USAGE = `Usage (Vertex staff, on the server with the API's .env); e
   platform-user:create --phone <phone> --name <name> --role <admin|sales|dispatch|finance|support>
   platform-user:reset <platform-user-id>
   account:authorize-password-reset --phone <phone> --reason <text>
-  account:change-phone --phone <old phone> --new-phone <new phone> --reason <text>`;
+  account:change-phone --phone <old phone> --new-phone <new phone> --reason <text>
+  catalog:show
+  package:create --file <package.json>
+  template:create --file <template.json> [--package <package code>]
+  agreement:show --tenant <tenant-id>
+  amendment:draft --tenant <tenant-id> [--template <template code>] [--file <amendment.json>]
+  amendment:submit --id <amendment-id>
+  amendment:approve --id <amendment-id>
+  amendment:reject --id <amendment-id> --reason <text>
+  override:create --tenant <tenant-id> --file <override.json>
+  override:revoke --id <override-id> --reason <text>
+  entitlements:show --tenant <tenant-id> [--at <instant>]`;
 
 const options = {
   operator: { type: 'string' },
@@ -60,9 +81,31 @@ const options = {
   'new-phone': { type: 'string' },
   name: { type: 'string' },
   role: { type: 'string' },
+  file: { type: 'string' },
+  package: { type: 'string' },
+  tenant: { type: 'string' },
+  template: { type: 'string' },
+  id: { type: 'string' },
+  at: { type: 'string' },
 } as const;
 
 const operatorSchema = z.string().trim().min(2).max(100);
+
+/** `amendment:draft --file`: the draft's changes and note (with `--template`, the note only). */
+const amendmentFileSchema = z.object({
+  changes: amendmentDraftChangesSchema.optional(),
+  note: z.string().trim().max(1000).optional(),
+});
+
+/** A JSON file the operator wrote, checked by the same schema as the console route's body. */
+async function jsonFile(path: string | undefined): Promise<unknown> {
+  if (!path) throw new DomainError('VALIDATION_FAILED', 'A --file is needed');
+  try {
+    return JSON.parse(await readFile(path, 'utf8'));
+  } catch {
+    throw new DomainError('VALIDATION_FAILED', `${path} is not a readable JSON file`);
+  }
+}
 
 /** `<code>=<Arabic name>`, as `--branch main=الفرع الرئيسي`. */
 function branchOption(value: string) {
@@ -79,13 +122,15 @@ export type Services = {
   areas: AreasService;
   platformUsers: PlatformUsersService;
   accounts: ConsoleAccountsService;
+  commercial: CommercialService;
+  entitlements: EntitlementsService;
   /** The owner connection, for areas only: the app role cannot write them. */
   owner: () => Database;
 };
 
 /**
- * The tenancy, platform user and owner recovery commands for Vertex staff until the console screens
- * (S22, specs S01 and S02). Each calls the
+ * The tenancy, platform user, owner recovery, agreement and entitlement commands for Vertex staff
+ * until the console screens (S22, specs S01, S02 and S05). Each calls the
  * same service as its console route, as the `system` actor with the operator's name, so every
  * change is audited. Answers the process exit code: 0 done, 1 refused, 2 misused. Adapted from
  * Vertex Shifa's `tenant-commands.ts`.
@@ -105,7 +150,7 @@ export async function runCommand(
   const { values, positionals } = parsed;
   const [command, first, second, ...extra] = positionals;
   const print = (value: unknown) => output.out(JSON.stringify(value, null, 2));
-  const { tenancy, areas, platformUsers, accounts } = services;
+  const { tenancy, areas, platformUsers, accounts, commercial, entitlements } = services;
   try {
     if (extra.length > 0 || !command) {
       output.err(USAGE);
@@ -258,6 +303,93 @@ export async function runCommand(
         });
         const id = await accounts.lookupId(phone);
         print(await accounts.changePhone(actor, id, change.phone, change.reason));
+        return 0;
+      }
+      // Spec S05: the catalog, presets, agreements, amendments and overrides. Four eyes hold here
+      // too: an amendment is approved by another operator than its author (rule 11).
+      case 'catalog:show':
+        print(commercial.catalog());
+        return 0;
+      case 'package:create': {
+        const actor = operator();
+        print(
+          await commercial.createPackage(
+            actor,
+            packageInputSchema.parse(await jsonFile(values.file)),
+          ),
+        );
+        return 0;
+      }
+      case 'template:create': {
+        const actor = operator();
+        const file = (await jsonFile(values.file)) as Record<string, unknown>;
+        const packageId = values.package
+          ? await commercial.packageIdByCode(values.package)
+          : file.packageId;
+        print(
+          await commercial.createTemplate(
+            actor,
+            agreementTemplateInputSchema.parse({ ...file, packageId }),
+          ),
+        );
+        return 0;
+      }
+      case 'agreement:show':
+        print(await commercial.consoleAgreement(idSchema.parse(values.tenant)));
+        return 0;
+      case 'amendment:draft': {
+        const actor = operator();
+        const tenantId = idSchema.parse(values.tenant);
+        const file = values.file ? amendmentFileSchema.parse(await jsonFile(values.file)) : {};
+        const templateId = values.template
+          ? await commercial.templateIdByCode(values.template)
+          : undefined;
+        print(
+          await commercial.createAmendment(actor, tenantId, {
+            templateId,
+            changes: templateId ? undefined : file.changes,
+            note: file.note,
+          }),
+        );
+        return 0;
+      }
+      case 'amendment:submit':
+      case 'amendment:approve': {
+        const actor = operator();
+        const id = idSchema.parse(values.id);
+        const { updatedAt } = await commercial.readAmendment(id);
+        print(
+          command === 'amendment:submit'
+            ? await commercial.submitAmendment(actor, id, updatedAt)
+            : await commercial.approveAmendment(actor, id, updatedAt),
+        );
+        return 0;
+      }
+      case 'amendment:reject': {
+        const actor = operator();
+        const id = idSchema.parse(values.id);
+        const { updatedAt } = await commercial.readAmendment(id);
+        const input = rejectAmendmentSchema.parse({ reason: values.reason, updatedAt });
+        print(await commercial.rejectAmendment(actor, id, input));
+        return 0;
+      }
+      case 'override:create': {
+        const actor = operator();
+        const tenantId = idSchema.parse(values.tenant);
+        const input = overrideInputSchema.parse(await jsonFile(values.file));
+        print(await entitlements.createOverride(actor, tenantId, input));
+        return 0;
+      }
+      case 'override:revoke': {
+        const actor = operator();
+        const id = idSchema.parse(values.id);
+        const { reason } = revokeOverrideSchema.parse({ reason: values.reason });
+        print(await entitlements.revokeOverride(actor, id, reason));
+        return 0;
+      }
+      case 'entitlements:show': {
+        const { at } = entitlementsQuerySchema.parse({ at: values.at });
+        print(await entitlements.forConsole(idSchema.parse(values.tenant), at));
         return 0;
       }
     }

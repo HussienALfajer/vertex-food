@@ -36,7 +36,7 @@ import {
   updateTenantSchema,
 } from '@vertex-food/contracts';
 import type { z } from 'zod';
-import { NoFeature, StaffRoute } from '../../../core/access/access.decorators.js';
+import { NoFeature, StaffRoute, SuspendedAllowed } from '../../../core/access/access.decorators.js';
 import { CurrentStaff, type StaffActor } from '../../../core/access/actor.js';
 import { imageUpload, type Upload, uploadedBytes } from '../../../core/uploads/image-upload.js';
 import { RejectedUpload } from '../../../core/uploads/rejected-upload.js';
@@ -219,6 +219,7 @@ export class MapsController {
 
   @Post('resolve-link')
   @HttpCode(200)
+  @SuspendedAllowed()
   @StaffRoute('tenant.view')
   @SerializeOptions({ schema: coordinatesSchema })
   resolve(

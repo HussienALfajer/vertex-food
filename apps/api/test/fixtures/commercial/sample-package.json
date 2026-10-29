@@ -1,0 +1,7 @@
+{
+  "code": "sample_pos",
+  "nameAr": "باقة نقطة البيع التجريبية",
+  "nameLatin": "Sample POS",
+  "features": ["pos", "kitchen_display", "waiter_app"],
+  "limits": { "branches": 2, "devices": 3, "staff": 15 }
+}

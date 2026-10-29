@@ -12,5 +12,7 @@ export {
   MEMBER_CREDENTIALS,
   type MemberCredentials,
   STAFF_ACCOUNTS,
+  STAFF_LIMIT,
   type StaffAccounts,
+  type StaffLimit,
 } from './ports.js';

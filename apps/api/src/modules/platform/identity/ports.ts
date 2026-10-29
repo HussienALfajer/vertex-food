@@ -14,3 +14,14 @@ export interface BranchPcs {
 }
 
 export const BRANCH_PCS = Symbol('BranchPcs');
+
+/** The agreement's `devices` limit (owned by entitlements, spec S05 rule 21). */
+export interface DeviceLimit {
+  /**
+   * Another registered PC fits the limit, counted under the lock of the tenant's entitlement
+   * state (`ENTITLEMENT_LIMIT_REACHED`).
+   */
+  assertPcFits(tx: Transaction, tenantId: string): Promise<void>;
+}
+
+export const DEVICE_LIMIT = Symbol('DeviceLimit');

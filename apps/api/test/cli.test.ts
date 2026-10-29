@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { runCommand, USAGE } from '../src/cli/commands.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
+import { CommercialService } from '../src/modules/platform/commercial/index.js';
+import { EntitlementsService } from '../src/modules/platform/entitlements/index.js';
 import {
   ConsoleAccountsService,
   PlatformUsersService,
@@ -37,6 +39,8 @@ async function run(...argv: string[]) {
       areas: app.get(AreasService),
       platformUsers: app.get(PlatformUsersService),
       accounts: app.get(ConsoleAccountsService),
+      commercial: app.get(CommercialService),
+      entitlements: app.get(EntitlementsService),
       owner: () => owner,
     },
     { out: (text) => out.push(text), err: (text) => err.push(text) },

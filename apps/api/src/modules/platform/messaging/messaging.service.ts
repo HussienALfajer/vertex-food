@@ -28,6 +28,7 @@ import { and, asc, desc, eq, isNull, ne, sql } from 'drizzle-orm';
 import type { PlatformActor } from '../../../core/access/actor.js';
 import { auditPlatform } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
+import { databaseNow } from '../../../core/database/database-now.js';
 import { isUniqueViolation } from '../../../core/database/unique-violation.js';
 import {
   NO_USAGE,
@@ -345,11 +346,6 @@ export class MessagingService {
       ),
     };
   }
-}
-
-async function databaseNow(tx: Transaction): Promise<Date> {
-  const result = await tx.execute<{ now: Date }>(sql`select now() as now`);
-  return new Date(result.rows[0]?.now as Date);
 }
 
 async function sessionById(tx: Transaction, id: string): Promise<WhatsAppSessionRow> {

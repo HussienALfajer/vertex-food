@@ -10,7 +10,13 @@ import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum.js';
 import { CLASS_SERIALIZER_OPTIONS } from '@nestjs/common/serializer/class-serializer.constants.js';
 import { ModulesContainer } from '@nestjs/core';
 import { API_PREFIX } from '../app.js';
-import { ACCESS, type Access, ENTITLEMENT, type Entitlement } from './access/access.decorators.js';
+import {
+  ACCESS,
+  type Access,
+  ENTITLEMENT,
+  type Entitlement,
+  SUSPENDED_ALLOWED,
+} from './access/access.decorators.js';
 
 /** One HTTP route of the application with what it declares. Copied from Vertex Shifa. */
 export type Route = {
@@ -23,6 +29,8 @@ export type Route = {
   path: string;
   access: Access | undefined;
   entitlement: Entitlement | undefined;
+  /** `@SuspendedAllowed()`: a staff write a suspended tenant still makes (spec S05 rule 22). */
+  suspendedAllowed: boolean;
   /** From `@SerializeOptions({ schema })`: what the route answers. */
   responseSchema: unknown;
   /** Takes `@Res()` or `@Next()`, which answer outside the response serializer. */
@@ -132,6 +140,7 @@ export function listRoutes(app: INestApplication): Route[] {
               path: join(API_PREFIX, modulePath, base, own),
               access: declared(ACCESS, handler, controller),
               entitlement: declared(ENTITLEMENT, handler, controller),
+              suspendedAllowed: Reflect.getMetadata(SUSPENDED_ALLOWED, handler) === true,
               responseSchema: options?.schema,
               rawResponse,
               request: requestOf(params),
@@ -142,4 +151,25 @@ export function listRoutes(app: INestApplication): Route[] {
     }
   }
   return routes;
+}
+
+const WRITES = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Declarations that cannot hold, checked when the application starts (spec S05 rules 20, 22): a
+ * feature on a route without a tenant session (console, public, ticket, customer, driver), and
+ * `@SuspendedAllowed()` on anything but a staff write.
+ */
+export function declarationViolations(routes: Route[]): string[] {
+  const violations: string[] = [];
+  for (const route of routes) {
+    const kind = route.access?.kind;
+    if (route.entitlement?.kind === 'feature' && kind !== 'staff' && kind !== 'device') {
+      violations.push(`${route.name}: only staff and device routes can require a feature`);
+    }
+    if (route.suspendedAllowed && (kind !== 'staff' || !WRITES.has(route.method))) {
+      violations.push(`${route.name}: @SuspendedAllowed() marks staff writes only`);
+    }
+  }
+  return violations;
 }

@@ -83,9 +83,11 @@ import { encodeImage, FilesService } from '../files/index.js';
 import type { MapLinkResolver } from './map-link-resolver.js';
 import {
   TENANT_DEVICES,
+  TENANT_ENTITLEMENTS,
   TENANT_MEMBERS,
   TENANT_OWNERS,
   type TenantDevices,
+  type TenantEntitlements,
   type TenantMembers,
   type TenantOwners,
 } from './ports.js';
@@ -134,6 +136,7 @@ export class TenancyService {
     @Inject(TENANT_OWNERS) private readonly owners: TenantOwners,
     @Inject(TENANT_DEVICES) private readonly devices: TenantDevices,
     @Inject(TENANT_MEMBERS) private readonly members: TenantMembers,
+    @Inject(TENANT_ENTITLEMENTS) private readonly entitlements: TenantEntitlements,
   ) {}
 
   // The restaurant's tenant.
@@ -742,8 +745,11 @@ export class TenancyService {
         details: { slug: input.slug },
       });
       await emit(tx, tenantId, 'tenant.created.v1', { tenantId });
+      // The first branches precede any agreement: no limit applies to them (S05 rule 21).
       for (const branch of input.branches) {
-        await this.insertBranch(tx, operator, tenantId, input.defaultCurrency, branch, null);
+        await this.insertBranch(tx, operator, tenantId, input.defaultCurrency, branch, null, {
+          limit: false,
+        });
       }
       await this.owners.addFirstOwner(tx, tenantId, input.owner, operator);
       return this.consoleDetail(tx, row, now);
@@ -848,6 +854,10 @@ export class TenancyService {
         await emit(tx, tenantId, 'tenant.status_scheduled.v1', { tenantId, status: plan.status });
         return this.consoleDetail(tx, updated, now);
       }
+      // S05 rule 9: a tenant is activated only with an agreement in force.
+      if (plan.status === 'active') {
+        await this.entitlements.assertAgreementInForce(tx, tenantId, now);
+      }
       const updated = await this.writeStatus(tx, row, plan.status, plan.reason, now);
       await audit(tx, tenantId, operator, {
         action: 'tenant.status_changed',
@@ -877,7 +887,9 @@ export class TenancyService {
       if (effectiveStatus(statusState(row), new Date()) === 'closed') {
         throw new DomainError('TENANT_CLOSED', 'The tenant is closed');
       }
-      return this.insertBranch(tx, operator, tenantId, row.defaultCurrency, input, null);
+      return this.insertBranch(tx, operator, tenantId, row.defaultCurrency, input, null, {
+        limit: true,
+      });
     });
   }
 
@@ -1025,7 +1037,9 @@ export class TenancyService {
     tenantCurrency: string,
     input: CreateBranch,
     note: string | null,
+    options: { limit: boolean },
   ): Promise<Branch> {
+    if (options.limit) await this.entitlements.assertBranchFits(tx, tenantId);
     const defaultCurrency = input.defaultCurrency ?? tenantCurrency;
     const inserted = await tx
       .insert(branches)
@@ -1057,6 +1071,7 @@ export class TenancyService {
       details: { code: row.code },
     });
     await emit(tx, tenantId, 'branch.created.v1', { tenantId, branchId: row.id });
+    await this.entitlements.branchCreated(tx, tenantId, row.id);
     return toBranch(row);
   }
 

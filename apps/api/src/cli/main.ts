@@ -4,6 +4,8 @@ import { createDatabase, type Database, describeForLog } from '@vertex-food/db';
 import { AppModule } from '../app.module.js';
 import { loadConfig } from '../core/config/config.js';
 import { AreasService } from '../modules/platform/areas/index.js';
+import { CommercialService } from '../modules/platform/commercial/index.js';
+import { EntitlementsService } from '../modules/platform/entitlements/index.js';
 import {
   ConsoleAccountsService,
   PlatformUsersService,
@@ -29,6 +31,8 @@ try {
         areas: app.get(AreasService),
         platformUsers: app.get(PlatformUsersService),
         accounts: app.get(ConsoleAccountsService),
+        commercial: app.get(CommercialService),
+        entitlements: app.get(EntitlementsService),
         owner: () => {
           const url = process.env.DATABASE_OWNER_URL;
           if (!url) throw new Error('DATABASE_OWNER_URL is not set');

@@ -27,12 +27,13 @@ import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { requirePermission, type StaffActor } from '../../../core/access/actor.js';
 import { audit } from '../../../core/audit/audit.js';
 import { DATABASE } from '../../../core/database/database.module.js';
+import { databaseNow } from '../../../core/database/database-now.js';
 import { DeviceProofs } from '../identity/index.js';
 import { CommandPipeline } from './command-pipeline.js';
 import { COMMAND_REGISTRY } from './executors.js';
 import { addToQuarantine, quarantineBatch } from './quarantine-store.js';
 import { commandSummary, toQuarantineBatch } from './sync.views.js';
-import { databaseNow, lock } from './sync-locks.js';
+import { lock } from './sync-locks.js';
 
 const notFound = () => new DomainError('NOT_FOUND', 'No such quarantine batch');
 
