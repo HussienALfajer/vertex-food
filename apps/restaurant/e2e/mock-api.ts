@@ -42,6 +42,7 @@ import {
   validateWeeklyHours,
   type WeeklyPeriod,
 } from '@vertex-food/contracts';
+import { type MockSync, mockSync, syncRoute } from './mock-sync.js';
 
 /**
  * An in-memory stand-in for the API. It answers the restaurant routes of `apps/api/openapi.json`,
@@ -107,6 +108,8 @@ export type MockApi = {
   reauthenticated: boolean;
   /** The password `POST /api/sessions/current/reauth` and `PUT /api/me/password` accept. */
   sessionPassword: string;
+  /** Needs attention, the quarantine and the branch's sync status (spec S04, `mock-sync.ts`). */
+  sync: MockSync;
 };
 
 /**
@@ -367,6 +370,7 @@ export async function mockApi(
     staff?: StaffMember[];
     devices?: Device[];
     personalDevices?: PersonalDevice[];
+    sync?: Partial<MockSync>;
   },
 ): Promise<MockApi> {
   const files = new Map<string, StoredFile>();
@@ -401,6 +405,7 @@ export async function mockApi(
     personalDevices: seed.personalDevices ?? [],
     reauthenticated: false,
     sessionPassword: 'synthetic-pass-1',
+    sync: mockSync(seed.sync),
   };
   // Challenges and tickets of the sign-in steps, by id: the phone they belong to.
   const challenges = new Map<string, string>();
@@ -794,6 +799,20 @@ export async function mockApi(
         return route.fulfill({ json: state.devices[index] });
       }
     }
+
+    // Spec S04's routes, before the branch routes that would take `/api/branches/:id/…`.
+    const synced = syncRoute(state.sync, {
+      route,
+      path,
+      method,
+      url,
+      body,
+      caller,
+      now,
+      refuse,
+      reauth,
+    });
+    if (synced) return synced;
 
     if (path === '/api/tenant') {
       if (method === 'GET') return route.fulfill({ json: tenantView(at) });

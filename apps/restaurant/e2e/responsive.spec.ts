@@ -8,6 +8,7 @@ import {
   me,
   mockApi,
   staffMember,
+  syntheticId,
   tenant,
 } from './mock-api.js';
 import {
@@ -204,6 +205,93 @@ for (const viewport of viewports) {
         )
         .toBe('none');
       await laidOut(page, testInfo, 'approval');
+    });
+
+    test('lays out the sync chip, its sheet and the sync screens of a PC', async ({
+      page,
+    }, testInfo) => {
+      const restaurant = active();
+      const only = completeBranch();
+      const owner = team.owner();
+      const api = await mockApi(page, {
+        tenant: restaurant,
+        branches: [only],
+        hours: { [only.id]: everyDay('10:00', '23:00') },
+        me: null,
+      });
+      api.deviceMe = me(restaurant, {
+        sessionKind: 'device',
+        membershipId: owner.membershipId,
+        branchIds: [only.id],
+      });
+      api.sync.quarantine.push({
+        batch: {
+          id: syntheticId(),
+          branchId: only.id,
+          deviceId: syntheticId(),
+          deviceName: 'الكاشير القديم',
+          reason: 'device_revoked',
+          membershipId: null,
+          commandCount: 1,
+          createdAt: '2026-10-28T20:00:00.000Z',
+          decision: null,
+        },
+        commands: [
+          {
+            commandId: syntheticId(),
+            name: 'sync.network_check',
+            summary: { key: 'commands.sync.network_check', params: { sequence: 1 } },
+            deviceTime: '2026-10-28T19:30:00.000Z',
+            hubEpoch: 2,
+            hubSeq: 1,
+            alreadyExecuted: false,
+          },
+        ],
+      });
+      const seed = fakeDevice(restaurant.id, {
+        branch: { id: only.id, nameAr: only.nameAr, idleLockMinutes: 30 },
+        members: [owner, team.manager(), team.cashier()],
+        sessionMemberId: owner.membershipId,
+      });
+      if (seed.sync) {
+        seed.sync.view.sync.pendingUploads = 37;
+        seed.sync.view.sync.connected = false;
+        seed.sync.view.updateReady = { version: '1.4.0' };
+      }
+      await installFakeDevice(page, seed);
+      await page.goto('/');
+      await expect(page.locator('[data-slot="sync-chip"]')).toBeVisible();
+      await laidOut(page, testInfo, 'sync-home');
+      await page.locator('[data-slot="sync-chip"]').click();
+      await expect(page.getByRole('dialog', { name: 'حالة المزامنة' })).toBeVisible();
+      await expect
+        .poll(() =>
+          page.evaluate(
+            "getComputedStyle(document.querySelector('[data-slot=dialog-content]')).scale",
+          ),
+        )
+        .toBe('none');
+      await laidOut(page, testInfo, 'sync-sheet');
+      await page.getByRole('button', { name: 'إغلاق', exact: true }).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      await navigate(page, wide, 'شبكة الفرع');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('شبكة الفرع');
+      await page.getByLabel('الاسم').fill('هاتف الصالة');
+      await page.getByRole('button', { name: 'افتح الإقران' }).click();
+      await expect(page.locator('[data-slot="pairing-code"]')).toBeVisible();
+      await laidOut(page, testInfo, 'branch-network');
+
+      await navigate(page, wide, 'يحتاج انتباهًا');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('يحتاج انتباهًا');
+      await laidOut(page, testInfo, 'attention');
+
+      await navigate(page, wide, 'الحجر');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('الحجر');
+      await laidOut(page, testInfo, 'quarantine');
+      await page.getByRole('link', { name: 'اعرض الأوامر' }).click();
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('دفعة من «الكاشير القديم»');
+      await laidOut(page, testInfo, 'quarantine-batch');
     });
 
     test('lays out the welcome and sign-in of a browser', async ({ page }, testInfo) => {

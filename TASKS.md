@@ -76,9 +76,9 @@ Rules that keep the parallel PRs apart:
 
 ## PR 6 `feat/s04-restaurant-sync-screens` — restaurant screens (after PR 5, parallel with PR 7)
 
-- [ ] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; the corrupt-database notice («قاعدة البيانات المحلية تالفة: اتصل بدعم Vertex») when the device status has `localDatabase: 'corrupt'` (PR 4); i18n
-- [ ] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; the corrupt-database notice («قاعدة البيانات المحلية تالفة: اتصل بدعم Vertex») when the device status has `localDatabase: 'corrupt'` (PR 4); i18n
+- [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report (`pnpm verify` green; the web shell's screenshot capture failed once under load and passed alone; reviewer: five findings, four fixed, the synced attention list offline recorded as a follow-up; fix-only round clean)
 
 ## PR 7 `feat/s04-hub-clients` — hub client pages (after PR 5, parallel with PR 6)
 
@@ -88,6 +88,9 @@ Rules that keep the parallel PRs apart:
 
 ## Follow-ups (not this spec)
 
+- From S04 PR 6: offline, needs attention lists only this PC's own `command_results`; the synced `attention_items` and `attention_resolutions` (the list as last synced, other PCs' and phones' items) need a `SyncBridge` read filtered by member in the main process (rule 47)
+- From S04 PR 6: on a client PC (no hub role) `SyncBridge.results()` reads only `command_results`, which client PCs may not write; a network check's outcome may stay «بانتظار الرفع» there until `results()` joins the synced `command_log` (rule 11). Not confirmed at run time
+- From S04 PR 6, owner's call: choosing the hub and standby is offered only on a PC; the API also accepts it from a browser session
 - From S04 PR 5, before S09: publish `number_blocks` to the sync service (or exchange blocks at heartbeats), so a hub re-checks a forwarded or re-sent number against the other PC's block (rule 26); until then such a command is resolved again by the hub
 - From S04 PR 5, for S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows; PR 7's pages count only the unanswered ones as «قيد الإرسال»); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
 - From S04 PR 5, with Q17: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the pairing and the outbox it kept under PC 1's origin; PR 7's pages follow a failover without a reload (CORS), but a reload there shows the certificate guide again

@@ -7,7 +7,10 @@ import {
   ClockIcon,
   HouseIcon,
   MonitorIcon,
+  NetworkIcon,
+  ShieldAlertIcon,
   StoreIcon,
+  TriangleAlertIcon,
   UserRoundIcon,
   UsersIcon,
 } from 'lucide-react';
@@ -54,7 +57,7 @@ function RestaurantNav({
   access: StaffAccess;
   onNavigate: () => void;
 }) {
-  const { t } = useTranslation('restaurant');
+  const { t } = useTranslation(['restaurant', 'sync']);
   const [only] = branches ?? [];
   return (
     <>
@@ -100,6 +103,22 @@ function RestaurantNav({
         <Link to="/settings/devices" onClick={onNavigate} className={sidebarLinkClassName}>
           <MonitorIcon aria-hidden />
           {t('nav.devices')}
+        </Link>
+      )}
+      {can(access, 'hub.manage') && (
+        <Link to="/settings/branch-network" onClick={onNavigate} className={sidebarLinkClassName}>
+          <NetworkIcon aria-hidden />
+          {t('sync:nav.branchNetwork')}
+        </Link>
+      )}
+      <Link to="/attention" onClick={onNavigate} className={sidebarLinkClassName}>
+        <TriangleAlertIcon aria-hidden />
+        {t('sync:nav.attention')}
+      </Link>
+      {can(access, 'sync.quarantine.review') && (
+        <Link to="/settings/quarantine" onClick={onNavigate} className={sidebarLinkClassName}>
+          <ShieldAlertIcon aria-hidden />
+          {t('sync:nav.quarantine')}
         </Link>
       )}
       <Link to="/me" onClick={onNavigate} className={sidebarLinkClassName}>
