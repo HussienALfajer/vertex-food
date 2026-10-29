@@ -19,5 +19,6 @@ export type {
   DeviceBridge,
   DeviceMemberView,
   DeviceStatus,
+  LimitReached,
   LockReason,
 } from '../../electron/bridge';

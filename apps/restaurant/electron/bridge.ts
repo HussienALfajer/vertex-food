@@ -4,6 +4,7 @@ import {
   deviceNameSchema,
   type HubPairing,
   idSchema,
+  limitKeySchema,
   mobilePhoneNumberSchema,
   type NetworkCheckRecord,
   type OpenPairing,
@@ -79,8 +80,19 @@ export type DeviceStatus =
       session: DeviceSessionView | null;
     };
 
-/** An action's outcome: the code of a refusal, as the API's or the local check's. */
-export type BridgeResult = { ok: true } | { ok: false; code: string };
+/**
+ * What a refusal at one of the agreement's limits names (spec S05 rule 21): the limit and its
+ * value, for «وصلت إلى حد الأجهزة (3)». Keys and a count only.
+ */
+export const limitReachedSchema = z.object({ limit: limitKeySchema, value: z.int().min(0) });
+
+export type LimitReached = z.infer<typeof limitReachedSchema>;
+
+/**
+ * An action's outcome: the code of a refusal, as the API's or the local check's, with the limit of
+ * an `ENTITLEMENT_LIMIT_REACHED`.
+ */
+export type BridgeResult = { ok: true } | { ok: false; code: string; limit?: LimitReached };
 
 export const registerInputSchema = z.object({
   ticket: z.string().min(1).max(4000),

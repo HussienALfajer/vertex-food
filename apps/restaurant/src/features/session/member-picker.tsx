@@ -6,10 +6,14 @@ import { ApiError, type ApiErrorCode } from '../../lib/api';
 import type { BridgeResult, DeviceMemberView } from '../../lib/device';
 import { useErrorText } from '../../lib/error-text';
 
-/** The Arabic text of a refusal from the main process, by its code like the API's. */
+/**
+ * The Arabic text of a refusal from the main process, by its code like the API's; a refusal at one
+ * of the agreement's limits names it (spec S05 screen 3).
+ */
 export function useBridgeErrorText(): (result: BridgeResult) => string | null {
   const errorText = useErrorText();
-  return (result) => (result.ok ? null : errorText(new ApiError(result.code as ApiErrorCode)));
+  return (result) =>
+    result.ok ? null : errorText(new ApiError(result.code as ApiErrorCode, result.limit));
 }
 
 /** A member's roles as small badges. */

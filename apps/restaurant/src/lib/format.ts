@@ -15,6 +15,12 @@ const time = new Intl.DateTimeFormat(formatLocale, {
   timeZone: displayTimeZone,
 });
 
+/** The day of an instant in Damascus, without the time: a term's start of day (spec S05). */
+const day = new Intl.DateTimeFormat(formatLocale, {
+  dateStyle: 'full',
+  timeZone: displayTimeZone,
+});
+
 /** A calendar date has no time zone: it is formatted as the same day in UTC. */
 const date = new Intl.DateTimeFormat(formatLocale, { dateStyle: 'full', timeZone: 'UTC' });
 
@@ -31,4 +37,9 @@ export function formatTime(iso: string): string {
 /** A calendar date (`2026-10-20`), in Arabic with Latin digits. */
 export function formatDate(localDate: string): string {
   return date.format(new Date(`${localDate}T00:00:00Z`));
+}
+
+/** The Damascus day of an instant from the API (`2026-11-01T00:00:00+03:00`), without its time. */
+export function formatDay(iso: string): string {
+  return day.format(new Date(iso));
 }

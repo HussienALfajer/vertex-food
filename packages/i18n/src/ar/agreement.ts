@@ -35,6 +35,7 @@ export const agreement = {
   },
   page: {
     title: 'اتفاقيتي',
+    nav: 'اتفاقيتي',
     description: 'ما تشمله اتفاقية مطعمك مع Vertex: الميزات والحدود والرسوم.',
     retry: 'إعادة المحاولة',
     offline: 'تحتاج هذه الصفحة إلى الإنترنت',
@@ -57,6 +58,8 @@ export const agreement = {
     until: 'حتى {{date}}',
     inForce: 'سارية',
     scheduled: 'مجدولة',
+    lastSynced: 'آخر مزامنة {{date}}',
+    neverSynced: 'لم تصل الميزات إلى هذا الجهاز بعد.',
   },
   charges: {
     subscription: 'الاشتراك',
@@ -73,6 +76,8 @@ export const agreement = {
     perTenant: 'للمطعم',
     percent: '{{percent}}٪ من قيمة الأصناف',
     fixed: '{{amount}} لكل طلب',
+    amount: '{{amount}} {{currency}}',
+    deliveryShare: '{{percent}}٪ من رسم التوصيل في طلبات أسطول Vertex',
     channels: { marketplace: 'تطبيق Vertex Food', web: 'صفحة المطعم' },
     waives: {
       subscription: 'إعفاء من الاشتراك',

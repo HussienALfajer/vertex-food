@@ -47,13 +47,15 @@ Rules that keep the parallel PRs apart:
 - [x] Tests on the real local database and a hub scenario (refused `not_entitled`, accepted after a newer row) (`branch-entitlements.test.ts`, `sync-ipc.test.ts`, `hub-scenarios.test.ts`: before a first sync, a row without the feature, a removal whose time has come, then a newer row)
 - [x] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: the restaurant E2E suite green (238), lint fixed (import order); the restaurant, API and console files that hit the 5 s timeout under the full run on this 4-core cloud machine passed when rerun alone; reviewer: no blocking finding)
 
-## PR 4 `feat/s05-restaurant-agreement-screens` — restaurant screens (after PR 2 and PR 3)
+## PR 4 `claude/determined-sagan-ih2ysp` — restaurant screens (after PR 2 and PR 3)
 
-- [ ] «اتفاقيتي» (`/settings/agreement`, owner only), the removal and lease banners, hidden navigation and the «غير مشمولة» message, the limit refusal in PC registration and staff add; i18n
-- [ ] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (owner, manager, offline, banners, limit refusals)
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] «اتفاقيتي» (`/settings/agreement`, owner only), the removal and lease banners, hidden navigation and the «غير مشمولة» message, the limit refusal in PC registration and staff add; i18n (`features/agreement/`: `agreement-view.ts` with unit tests, the screen online and offline from the PC's copy, `EntitlementBanners` on a PC for owners and managers; `useErrorText` names the limit of `ENTITLEMENT_LIMIT_REACHED`, and the bridge's registration refusal carries `{ limit, value }`; no S01–S04 screen sells a feature, so there is nothing to hide yet: `NOT_ENTITLED` and `not_entitled` already read «غير مشمولة» through `errors` and `sync`, and the hiding arrives with the first screen of a feature, follow-up below)
+- [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (owner, manager, offline, banners, limit refusals) (`e2e/agreement.spec.ts`; «اتفاقيتي» and the banners added to `responsive.spec.ts`)
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report (`pnpm verify`: lint, typecheck, build and every E2E suite green (restaurant 256); the API, console and restaurant test files that hit the 5 s timeout under the full run on this 4-core cloud machine, and one API sign-in under the same load, passed when rerun alone; reviewer: one finding fixed (the offline page listed a feature past its removal time, which the hub already refuses), the fix-only round clean; the second `pnpm verify` green but two 5 s timeouts, `apps/api/test/sync-commands.test.ts` and `apps/restaurant/electron/local-store.test.ts`, both untouched here and green alone)
 
 ## Follow-ups (not this spec)
+
+- From S05 PR 4, for S09, S11, S12: the first screen that sells a feature (POS `pos`, kitchen display `kitchen_display`, waiter app `waiter_app`) hides its navigation when the feature is off (the PC's copy through `useBranchEntitlements`, the API's `GET /api/tenant/entitlements` in a browser) and shows `agreement:refused.feature` on its deep link (spec S05 screen 3)
 
 - From S04 PR 6: offline, needs attention lists only this PC's own `command_results`; the synced `attention_items` and `attention_resolutions` (the list as last synced, other PCs' and phones' items) need a `SyncBridge` read filtered by member in the main process (rule 47)
 - From S04 PR 6: on a client PC (no hub role) `SyncBridge.results()` reads only `command_results`, which client PCs may not write; a network check's outcome may stay «بانتظار الرفع» there until `results()` joins the synced `command_log` (rule 11). Not confirmed at run time

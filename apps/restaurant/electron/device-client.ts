@@ -20,12 +20,19 @@ import {
   uploadCommandsResultSchema,
 } from '@vertex-food/contracts';
 import type { z } from 'zod';
+import { type LimitReached, limitReachedSchema } from './bridge.js';
 
-/** The API's refusal by its code; `NETWORK_ERROR` when it could not be reached at all. */
+/**
+ * The API's refusal by its code; `NETWORK_ERROR` when it could not be reached at all. A refusal at
+ * one of the agreement's limits keeps the limit and its value (spec S05 rule 21).
+ */
 export class DeviceApiError extends Error {
   override readonly name = 'DeviceApiError';
 
-  constructor(readonly code: string) {
+  constructor(
+    readonly code: string,
+    readonly limit?: LimitReached,
+  ) {
     super(code);
   }
 }
@@ -87,7 +94,15 @@ export class DeviceClient {
     const json: unknown = response.status === 204 ? null : await response.json().catch(() => null);
     if (!response.ok) {
       const refusal = errorResponseSchema.safeParse(json);
-      throw new DeviceApiError(refusal.success ? refusal.data.code : 'INTERNAL_ERROR');
+      if (!refusal.success) throw new DeviceApiError('INTERNAL_ERROR');
+      const limit =
+        refusal.data.code === 'ENTITLEMENT_LIMIT_REACHED'
+          ? limitReachedSchema.safeParse(refusal.data.details)
+          : undefined;
+      throw new DeviceApiError(
+        refusal.data.code,
+        limit?.success ? { limit: limit.data.limit, value: limit.data.value } : undefined,
+      );
     }
     if (!schema) return undefined as z.output<T>;
     const parsed = schema.safeParse(json);

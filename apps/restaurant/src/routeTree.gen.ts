@@ -17,6 +17,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as SettingsAgreementRouteImport } from './routes/settings/agreement'
 import { Route as SettingsBranchNetworkRouteImport } from './routes/settings/branch-network'
 import { Route as SettingsDevicesRouteImport } from './routes/settings/devices'
 import { Route as SettingsRestaurantRouteImport } from './routes/settings/restaurant'
@@ -67,6 +68,11 @@ const SignInRoute = SignInRouteImport.update({
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
   path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsAgreementRoute = SettingsAgreementRouteImport.update({
+  id: '/settings/agreement',
+  path: '/settings/agreement',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsBranchNetworkRoute = SettingsBranchNetworkRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/agreement': typeof SettingsAgreementRoute
   '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/agreement': typeof SettingsAgreementRoute
   '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/agreement': typeof SettingsAgreementRoute
   '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/agreement'
     | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/agreement'
     | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/agreement'
     | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
   WelcomeRoute: typeof WelcomeRoute
+  SettingsAgreementRoute: typeof SettingsAgreementRoute
   SettingsBranchNetworkRoute: typeof SettingsBranchNetworkRoute
   SettingsDevicesRoute: typeof SettingsDevicesRoute
   SettingsRestaurantRoute: typeof SettingsRestaurantRoute
@@ -336,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/welcome'
       fullPath: '/welcome'
       preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/agreement': {
+      id: '/settings/agreement'
+      path: '/settings/agreement'
+      fullPath: '/settings/agreement'
+      preLoaderRoute: typeof SettingsAgreementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/branch-network': {
@@ -427,6 +447,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,
   WelcomeRoute: WelcomeRoute,
+  SettingsAgreementRoute: SettingsAgreementRoute,
   SettingsBranchNetworkRoute: SettingsBranchNetworkRoute,
   SettingsDevicesRoute: SettingsDevicesRoute,
   SettingsRestaurantRoute: SettingsRestaurantRoute,

@@ -7,6 +7,7 @@ import {
   everyDay,
   me,
   mockApi,
+  sampleAgreement,
   staffMember,
   syntheticId,
   tenant,
@@ -59,6 +60,9 @@ for (const viewport of viewports) {
         tenant: active({ branchCount: 2 }),
         branches: [souq, campus],
         hours: { [souq.id]: everyDay('10:00', '23:00') },
+        agreement: sampleAgreement({
+          amendments: [{ number: 1, approvedAt: '2026-10-20T09:00:00.000Z' }],
+        }),
       });
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('مرحبًا بك في فيرتكس فود');
@@ -97,6 +101,10 @@ for (const viewport of viewports) {
       await page.getByText('مغلق طوال اليوم').click();
 
       await laidOut(page, testInfo, 'hours-exception');
+
+      await navigate(page, wide, 'اتفاقيتي');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('اتفاقيتي');
+      await laidOut(page, testInfo, 'agreement');
     });
 
     test('lays out every step of the onboarding wizard', async ({ page }, testInfo) => {
@@ -254,6 +262,20 @@ for (const viewport of viewports) {
         sessionMemberId: owner.membershipId,
       });
       if (seed.sync) {
+        // Spec S05's banners above the screens: a removal two days ahead and the expired lease.
+        seed.sync.entitlements = {
+          copy: {
+            version: 4,
+            features: [
+              { key: 'pos', until: null },
+              { key: 'waiter_app', until: new Date(Date.now() + 172_800_000).toISOString() },
+            ],
+            limits: { devices: 3 },
+            updatedAt: '2026-10-29T07:42:00.000Z',
+          },
+          lastSyncedAt: '2026-10-29T07:42:00.000Z',
+          leaseExpired: true,
+        };
         seed.sync.view.sync.pendingUploads = 37;
         seed.sync.view.sync.connected = false;
         seed.sync.view.updateReady = { version: '1.4.0' };
