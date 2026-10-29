@@ -11,21 +11,15 @@ import { CircleCheckIcon, WifiOffIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryStates } from '../../components/query-states';
-import { deviceBridge, type DeviceBridge } from '../../lib/device';
+import { type DeviceBridge, deviceBridge } from '../../lib/device';
 import { formatDateTime } from '../../lib/format';
 import { useOnline } from '../../lib/online';
 import { can, useStaffAccess } from '../../lib/staff-access';
-import { type CommandResultView, syncBridge, type SyncBridge } from '../../lib/sync';
+import { type CommandResultView, type SyncBridge, syncBridge } from '../../lib/sync';
 import { deviceStatusQuery, useMe } from '../session/queries';
 import { branchesQuery } from '../tenancy/queries';
 import { attentionQuery, resolveAttention, syncResultsQuery, useSyncChanges } from './queries';
-import {
-  ChoiceField,
-  Detail,
-  ReasonDialog,
-  useCommandSummary,
-  useMemberNames,
-} from './sync-parts';
+import { ChoiceField, Detail, ReasonDialog, useCommandSummary, useMemberNames } from './sync-parts';
 import { localAttention } from './sync-state';
 
 type Status = 'open' | 'closed' | 'all';
@@ -165,17 +159,13 @@ function AttentionRow({ item, canClose }: { item: AttentionItem; canClose: boole
     <li>
       <Card className="gap-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-bold wrap-anywhere">
-            {summary(command.summary, command.name)}
-          </span>
+          <span className="font-bold wrap-anywhere">{summary(command.summary, command.name)}</span>
           <Badge tone={item.resolution ? 'neutral' : 'warning'}>
             {t(`attentionKinds.${item.kind}`)}
           </Badge>
         </div>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-          <Detail label={t('attention.at')}>
-            {formatDateTime(item.createdAt)}
-          </Detail>
+          <Detail label={t('attention.at')}>{formatDateTime(item.createdAt)}</Detail>
           <Detail label={t('attention.madeBy')}>{memberName(item.membershipId)}</Detail>
           <Detail label={t('attention.outcome')}>{t(`outcomes.${command.outcome}`)}</Detail>
           {command.reason && (
@@ -189,7 +179,12 @@ function AttentionRow({ item, canClose }: { item: AttentionItem; canClose: boole
         )}
         {canClose && !item.resolution && (
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="secondary" disabled={!online} onClick={() => setClosing(true)}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!online}
+              onClick={() => setClosing(true)}
+            >
               {t('attention.close')}
             </Button>
             {!online && <span className="text-sm text-muted-foreground">{t('needsOnline')}</span>}

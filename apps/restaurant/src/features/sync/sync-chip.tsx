@@ -11,13 +11,13 @@ import {
   DialogTitle,
 } from '@vertex-food/ui';
 import {
-  TriangleAlertIcon,
   CircleArrowUpIcon,
   CircleCheckIcon,
   CloudOffIcon,
+  CloudUploadIcon,
   type LucideIcon,
   RefreshCwIcon,
-  CloudUploadIcon,
+  TriangleAlertIcon,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,7 +93,6 @@ export function SyncChip({
   /** The session has an access token: the attention count can be read. */
   online: boolean;
 }) {
-  const { t } = useTranslation('sync');
   const status = useSyncStatus(bridge);
   const openAttention = useOpenAttention(branchId, online);
   const chipText = useChipText();
@@ -216,7 +215,6 @@ function SyncSheet({
             <Button
               variant="secondary"
               render={<Link to="/settings/branch-network" />}
-             
               onClick={close}
             >
               {t('nav.branchNetwork')}

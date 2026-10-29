@@ -28,7 +28,10 @@ import { deviceStatusQuery, useMe } from '../session/queries';
 import { isReauthCancelled } from '../session/reauth';
 
 /** A command's summary from its `describe` (an i18n key of `sync` and its parameters). */
-export function useCommandSummary(): (summary: CommandSummary | null, name: string | null) => string {
+export function useCommandSummary(): (
+  summary: CommandSummary | null,
+  name: string | null,
+) => string {
   const { t, i18n } = useTranslation('sync');
   // The key comes from the command's definition, so it is not one TypeScript knows.
   const text = t as unknown as (key: string, params?: Record<string, unknown>) => string;

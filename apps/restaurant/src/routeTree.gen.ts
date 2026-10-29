@@ -10,15 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AttentionRouteImport } from './routes/attention'
 import { Route as LockRouteImport } from './routes/lock'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as SettingsBranchNetworkRouteImport } from './routes/settings/branch-network'
 import { Route as SettingsDevicesRouteImport } from './routes/settings/devices'
 import { Route as SettingsRestaurantRouteImport } from './routes/settings/restaurant'
 import { Route as SettingsBranchesIndexRouteImport } from './routes/settings/branches/index'
+import { Route as SettingsQuarantineIndexRouteImport } from './routes/settings/quarantine/index'
+import { Route as SettingsQuarantineBatchIdRouteImport } from './routes/settings/quarantine/$batchId'
 import { Route as SettingsStaffIndexRouteImport } from './routes/settings/staff/index'
 import { Route as SettingsStaffMemberIdRouteImport } from './routes/settings/staff/$memberId'
 import { Route as SettingsStaffNewRouteImport } from './routes/settings/staff/new'
@@ -28,6 +32,11 @@ import { Route as SettingsBranchesBranchIdHoursRouteImport } from './routes/sett
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttentionRoute = AttentionRouteImport.update({
+  id: '/attention',
+  path: '/attention',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LockRoute = LockRouteImport.update({
@@ -60,6 +69,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsBranchNetworkRoute = SettingsBranchNetworkRouteImport.update({
+  id: '/settings/branch-network',
+  path: '/settings/branch-network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsDevicesRoute = SettingsDevicesRouteImport.update({
   id: '/settings/devices',
   path: '/settings/devices',
@@ -75,6 +89,17 @@ const SettingsBranchesIndexRoute = SettingsBranchesIndexRouteImport.update({
   path: '/settings/branches/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsQuarantineIndexRoute = SettingsQuarantineIndexRouteImport.update({
+  id: '/settings/quarantine/',
+  path: '/settings/quarantine/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsQuarantineBatchIdRoute =
+  SettingsQuarantineBatchIdRouteImport.update({
+    id: '/settings/quarantine/$batchId',
+    path: '/settings/quarantine/$batchId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const SettingsStaffIndexRoute = SettingsStaffIndexRouteImport.update({
   id: '/settings/staff/',
   path: '/settings/staff/',
@@ -105,34 +130,42 @@ const SettingsBranchesBranchIdHoursRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/attention': typeof AttentionRoute
   '/lock': typeof LockRoute
   '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/quarantine/$batchId': typeof SettingsQuarantineBatchIdRoute
   '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
   '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/quarantine/': typeof SettingsQuarantineIndexRoute
   '/settings/staff/': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/attention': typeof AttentionRoute
   '/lock': typeof LockRoute
   '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/quarantine/$batchId': typeof SettingsQuarantineBatchIdRoute
   '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
   '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches': typeof SettingsBranchesIndexRoute
+  '/settings/quarantine': typeof SettingsQuarantineIndexRoute
   '/settings/staff': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId': typeof SettingsBranchesBranchIdIndexRoute
@@ -140,17 +173,21 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/attention': typeof AttentionRoute
   '/lock': typeof LockRoute
   '/me': typeof MeRoute
   '/register': typeof RegisterRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
   '/welcome': typeof WelcomeRoute
+  '/settings/branch-network': typeof SettingsBranchNetworkRoute
   '/settings/devices': typeof SettingsDevicesRoute
   '/settings/restaurant': typeof SettingsRestaurantRoute
+  '/settings/quarantine/$batchId': typeof SettingsQuarantineBatchIdRoute
   '/settings/staff/$memberId': typeof SettingsStaffMemberIdRoute
   '/settings/staff/new': typeof SettingsStaffNewRoute
   '/settings/branches/': typeof SettingsBranchesIndexRoute
+  '/settings/quarantine/': typeof SettingsQuarantineIndexRoute
   '/settings/staff/': typeof SettingsStaffIndexRoute
   '/settings/branches/$branchId/hours': typeof SettingsBranchesBranchIdHoursRoute
   '/settings/branches/$branchId/': typeof SettingsBranchesBranchIdIndexRoute
@@ -159,51 +196,63 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/attention'
     | '/lock'
     | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/quarantine/$batchId'
     | '/settings/staff/$memberId'
     | '/settings/staff/new'
     | '/settings/branches/'
+    | '/settings/quarantine/'
     | '/settings/staff/'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/attention'
     | '/lock'
     | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/quarantine/$batchId'
     | '/settings/staff/$memberId'
     | '/settings/staff/new'
     | '/settings/branches'
+    | '/settings/quarantine'
     | '/settings/staff'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId'
   id:
     | '__root__'
     | '/'
+    | '/attention'
     | '/lock'
     | '/me'
     | '/register'
     | '/setup'
     | '/sign-in'
     | '/welcome'
+    | '/settings/branch-network'
     | '/settings/devices'
     | '/settings/restaurant'
+    | '/settings/quarantine/$batchId'
     | '/settings/staff/$memberId'
     | '/settings/staff/new'
     | '/settings/branches/'
+    | '/settings/quarantine/'
     | '/settings/staff/'
     | '/settings/branches/$branchId/hours'
     | '/settings/branches/$branchId/'
@@ -211,17 +260,21 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AttentionRoute: typeof AttentionRoute
   LockRoute: typeof LockRoute
   MeRoute: typeof MeRoute
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
   WelcomeRoute: typeof WelcomeRoute
+  SettingsBranchNetworkRoute: typeof SettingsBranchNetworkRoute
   SettingsDevicesRoute: typeof SettingsDevicesRoute
   SettingsRestaurantRoute: typeof SettingsRestaurantRoute
+  SettingsQuarantineBatchIdRoute: typeof SettingsQuarantineBatchIdRoute
   SettingsStaffMemberIdRoute: typeof SettingsStaffMemberIdRoute
   SettingsStaffNewRoute: typeof SettingsStaffNewRoute
   SettingsBranchesIndexRoute: typeof SettingsBranchesIndexRoute
+  SettingsQuarantineIndexRoute: typeof SettingsQuarantineIndexRoute
   SettingsStaffIndexRoute: typeof SettingsStaffIndexRoute
   SettingsBranchesBranchIdHoursRoute: typeof SettingsBranchesBranchIdHoursRoute
   SettingsBranchesBranchIdIndexRoute: typeof SettingsBranchesBranchIdIndexRoute
@@ -234,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attention': {
+      id: '/attention'
+      path: '/attention'
+      fullPath: '/attention'
+      preLoaderRoute: typeof AttentionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lock': {
@@ -278,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/branch-network': {
+      id: '/settings/branch-network'
+      path: '/settings/branch-network'
+      fullPath: '/settings/branch-network'
+      preLoaderRoute: typeof SettingsBranchNetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/devices': {
       id: '/settings/devices'
       path: '/settings/devices'
@@ -297,6 +364,20 @@ declare module '@tanstack/react-router' {
       path: '/settings/branches'
       fullPath: '/settings/branches/'
       preLoaderRoute: typeof SettingsBranchesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/quarantine/': {
+      id: '/settings/quarantine/'
+      path: '/settings/quarantine'
+      fullPath: '/settings/quarantine/'
+      preLoaderRoute: typeof SettingsQuarantineIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/quarantine/$batchId': {
+      id: '/settings/quarantine/$batchId'
+      path: '/settings/quarantine/$batchId'
+      fullPath: '/settings/quarantine/$batchId'
+      preLoaderRoute: typeof SettingsQuarantineBatchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/staff/': {
@@ -339,17 +420,21 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AttentionRoute: AttentionRoute,
   LockRoute: LockRoute,
   MeRoute: MeRoute,
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,
   WelcomeRoute: WelcomeRoute,
+  SettingsBranchNetworkRoute: SettingsBranchNetworkRoute,
   SettingsDevicesRoute: SettingsDevicesRoute,
   SettingsRestaurantRoute: SettingsRestaurantRoute,
+  SettingsQuarantineBatchIdRoute: SettingsQuarantineBatchIdRoute,
   SettingsStaffMemberIdRoute: SettingsStaffMemberIdRoute,
   SettingsStaffNewRoute: SettingsStaffNewRoute,
   SettingsBranchesIndexRoute: SettingsBranchesIndexRoute,
+  SettingsQuarantineIndexRoute: SettingsQuarantineIndexRoute,
   SettingsStaffIndexRoute: SettingsStaffIndexRoute,
   SettingsBranchesBranchIdHoursRoute: SettingsBranchesBranchIdHoursRoute,
   SettingsBranchesBranchIdIndexRoute: SettingsBranchesBranchIdIndexRoute,

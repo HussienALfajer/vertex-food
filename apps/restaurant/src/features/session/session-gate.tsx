@@ -153,23 +153,20 @@ function DeviceSession({
               <SyncChip bridge={syncBridge} branchId={status.branch.id} online={session.online} />
             )}
             <Button
-            type="button"
-            variant="secondary"
-            aria-label={t('switchMember')}
-            onClick={() => void bridge.lock('locked')}
-          >
-            <LockIcon aria-hidden />
-            {/* The icon alone on a phone, so the product name keeps its room. */}
-            <span className="max-sm:sr-only">{t('switchMember')}</span>
-          </Button>
+              type="button"
+              variant="secondary"
+              aria-label={t('switchMember')}
+              onClick={() => void bridge.lock('locked')}
+            >
+              <LockIcon aria-hidden />
+              {/* The icon alone on a phone, so the product name keeps its room. */}
+              <span className="max-sm:sr-only">{t('switchMember')}</span>
+            </Button>
           </>
         }
         notices={
           <>
-            <SyncNotices
-              bridge={syncBridge}
-              corruptDatabase={status.localDatabase === 'corrupt'}
-            />
+            <SyncNotices bridge={syncBridge} corruptDatabase={status.localDatabase === 'corrupt'} />
             <WindowWarning window={status.window} />
             {!session.online && online && (
               // Opened offline: no access token, so the online screens wait for a new PIN entry.

@@ -1,11 +1,11 @@
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  type AttentionItem,
-  type AttentionKind,
-  type BranchSyncStatus,
-  type QuarantineBatch,
-  type QuarantineBatchDetail,
-  type SetHubRoles,
+import type {
+  AttentionItem,
+  AttentionKind,
+  BranchSyncStatus,
+  QuarantineBatch,
+  QuarantineBatchDetail,
+  SetHubRoles,
 } from '@vertex-food/contracts';
 import { useEffect } from 'react';
 import { api, body, unwrap } from '../../lib/api';

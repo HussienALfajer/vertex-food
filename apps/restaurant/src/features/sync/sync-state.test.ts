@@ -93,7 +93,11 @@ describe('roleBadge', () => {
   });
 
   it('is a client PC once synced without a hub role', () => {
-    expect(roleBadge(view())).toEqual({ role: 'client', standbyNotInSync: false, noStandby: false });
+    expect(roleBadge(view())).toEqual({
+      role: 'client',
+      standbyNotInSync: false,
+      noStandby: false,
+    });
   });
 
   it('warns on a hub whose standby is out of sync, and informs on one without a standby', () => {
@@ -138,7 +142,10 @@ describe('localAttention', () => {
   ];
 
   it('keeps the adjusted and rejected commands, of one member or all', () => {
-    expect(localAttention(results, null).map((item) => item.id)).toEqual(['adjusted-a', 'rejected-b']);
+    expect(localAttention(results, null).map((item) => item.id)).toEqual([
+      'adjusted-a',
+      'rejected-b',
+    ]);
     expect(localAttention(results, 'a').map((item) => item.id)).toEqual(['adjusted-a']);
   });
 });

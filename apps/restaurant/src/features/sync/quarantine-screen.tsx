@@ -64,10 +64,7 @@ export function QuarantineScreen() {
                       variant="secondary"
                       className="self-start"
                       render={
-                        <Link
-                          to="/settings/quarantine/$batchId"
-                          params={{ batchId: batch.id }}
-                        />
+                        <Link to="/settings/quarantine/$batchId" params={{ batchId: batch.id }} />
                       }
                     >
                       {t('quarantine.open')}
@@ -126,11 +123,7 @@ export function QuarantineBatchScreen({ batchId }: { batchId: string }) {
   if (apiErrorCode(detail.error) === 'NOT_FOUND') return <NotFoundState />;
   return (
     <section className="flex w-full max-w-3xl flex-col gap-6">
-      <Button
-        variant="ghost"
-        className="self-start"
-        render={<Link to="/settings/quarantine" />}
-      >
+      <Button variant="ghost" className="self-start" render={<Link to="/settings/quarantine" />}>
         {t('quarantine.back')}
       </Button>
       <QueryStates queries={[detail]}>
