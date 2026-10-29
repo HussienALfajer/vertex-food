@@ -28,7 +28,8 @@ const bridge: DeviceBridge = {
 
 electron.contextBridge.exposeInMainWorld('vertexDevice', bridge);
 
-// Spec S04: the sync status, the branch network and this PC's results (`syncChannels`).
+// Spec S04: the sync status, the branch network and this PC's results; S05: the branch's
+// entitlements (`syncChannels`).
 const sync: SyncBridge = {
   status: () => electron.ipcRenderer.invoke('sync:status'),
   network: () => electron.ipcRenderer.invoke('sync:network'),
@@ -39,6 +40,7 @@ const sync: SyncBridge = {
   promote: (input) => electron.ipcRenderer.invoke('sync:promote', input),
   sendNetworkCheck: (input) => electron.ipcRenderer.invoke('sync:send-network-check', input),
   results: () => electron.ipcRenderer.invoke('sync:results'),
+  entitlements: () => electron.ipcRenderer.invoke('sync:entitlements'),
   onChange: (listener) => {
     const handler = () => listener();
     electron.ipcRenderer.on('sync:changed', handler);

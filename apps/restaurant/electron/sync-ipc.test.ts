@@ -100,4 +100,40 @@ describe('sync IPC handlers', () => {
       },
     ]);
   });
+
+  it("answers the branch's entitlements with the lease from the last checkpoint", async () => {
+    expect(
+      await syncHandlers(new SyncControl({ updateReady: () => null, lanAddresses: () => [] }))[
+        syncChannels.entitlements
+      ]?.(undefined),
+    ).toBeNull();
+    const result = new SyncControl({
+      updateReady: () => null,
+      lanAddresses: () => [],
+      now: () => new Date('2026-10-29T09:00:00.000Z'),
+    });
+    result.parts = {
+      sync: { view: async () => ({ lastSyncedAt: '2026-10-21T08:00:00.000Z' }) },
+      hub: {},
+      reads: {
+        getAll: async () => [],
+        getOptional: async () => ({
+          version: 2,
+          features: '[{"key":"pos","until":null}]',
+          limits: '{"devices":3}',
+          updated_at: '2026-10-21 08:00:00Z',
+        }),
+      },
+    } as unknown as SyncParts;
+    expect(await syncHandlers(result)[syncChannels.entitlements]?.(undefined)).toEqual({
+      copy: {
+        version: 2,
+        features: [{ key: 'pos', until: null }],
+        limits: { devices: 3 },
+        updatedAt: '2026-10-21T08:00:00.000Z',
+      },
+      lastSyncedAt: '2026-10-21T08:00:00.000Z',
+      leaseExpired: true,
+    });
+  });
 });

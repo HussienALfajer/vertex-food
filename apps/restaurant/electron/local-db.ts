@@ -57,6 +57,16 @@ export const localSchema = new Schema({
     resolved_by_membership_id: text,
     resolved_at: text,
   }),
+  // The branch's resolved entitlements (spec S05 rules 18, 24, 26): keys and limits as JSON text,
+  // never money. The hub checks commands against it (`branch-entitlements.ts`).
+  branch_entitlements: new Table({
+    version: int,
+    features: text,
+    limits: text,
+    valid_until: text,
+    lease_days: int,
+    updated_at: text,
+  }),
   // The upload queue (ADR 0021 of Vertex Shifa): one row per signed command, never stored locally,
   // only queued; `envelope` is its JSON, `mirrored` whether the standby held it (rule 5).
   commands: new Table({ envelope: text, mirrored: int }, { insertOnly: true }),

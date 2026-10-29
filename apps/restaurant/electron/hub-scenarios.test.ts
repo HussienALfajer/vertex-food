@@ -7,8 +7,16 @@ import {
   hubPairResultSchema,
   hubSessionSchema,
 } from '@vertex-food/contracts';
-import { HubClient, type OutboxItem, type OutboxStore } from '@vertex-food/sync';
+import {
+  commandRegistry,
+  createCommandRegistry,
+  defineCommand,
+  HubClient,
+  type OutboxItem,
+  type OutboxStore,
+} from '@vertex-food/sync';
 import { afterEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
   createBranchCa,
   eventually,
@@ -73,6 +81,49 @@ function networkCheck(sequence: number, run: string): HubCommand {
     payload: { sentAt: now, sequence, run },
     deviceTime: now,
   };
+}
+
+/** A waiter's command of a sold feature, for the hub's entitlement check (spec S05 rule 24). */
+const tableNote = defineCommand({
+  name: 'test.table_note',
+  version: 1,
+  payload: z.object({ table: z.string() }),
+  resolved: z.object({}),
+  access: { actor: 'member', permission: 'hub.manage', station: false },
+  feature: 'waiter_app',
+  resolve: () => ({}),
+  describe: () => ({ key: 'commands.test.table_note', params: {} }),
+});
+
+const featureRegistry = createCommandRegistry([...commandRegistry.definitions(), tableNote]);
+
+function note(table: string): HubCommand {
+  return {
+    id: uuidv7(),
+    name: 'test.table_note',
+    version: 1,
+    payload: { table },
+    deviceTime: new Date().toISOString(),
+  };
+}
+
+/** A checkpoint brings the branch's `branch_entitlements` row (spec S05 rule 18). */
+async function syncEntitlements(
+  pc: TestPc,
+  version: number,
+  features: { key: string; until: string | null }[],
+): Promise<void> {
+  const db = pc.local?.db;
+  if (!db) throw new Error('The PC is off');
+  await db.writeTransaction(async (tx) => {
+    await tx.execute('DELETE FROM branch_entitlements');
+    await tx.execute(
+      `INSERT INTO branch_entitlements (id, version, features, limits, valid_until, lease_days,
+         updated_at) VALUES (?, ?, ?, '{}', NULL, 7, ?)`,
+      [uuidv7(), version, JSON.stringify(features), new Date().toISOString().replace('T', ' ')],
+    );
+  });
+  await runtime(pc).refresh();
 }
 
 /** Opens pairing on `hub`, pairs a phone and signs the manager in on it. */
@@ -429,5 +480,51 @@ describe('the branch hub on the real ports', { timeout: 30_000 }, () => {
     expect(await result()).toEqual({ outcome: 'refused', reason: 'permission_missing' });
     expect((await runtime(pc3).view([])).outbox.sending).toBe(0);
     expect(await journalIds(pc1)).not.toContain(id);
+  });
+
+  it("refuses a command of a feature the branch's row lacks, and accepts it after a newer row", async () => {
+    branch = await LoopbackBranch.create();
+    const pc1 = await branch.addPc('hub', '127.0.0.61');
+    await branch.start(pc1, { registry: featureRegistry });
+    // Spec S05 rule 24: before a first sync the hub knows no feature, so it refuses.
+    const { pair, session } = await pairPhone(pc1);
+    const refused: string[] = [];
+    const phone = new HubClient({
+      peers: pair.peers,
+      transport: phoneTransport(branch, { token: pair.token, session }),
+      store: new MemoryOutbox(),
+      now: () => new Date(),
+      onRefused: (command, reason) => {
+        refused.push(`${command.id}:${reason}`);
+      },
+    });
+    const first = note('5');
+    await phone.send(first);
+    expect(refused).toEqual([`${first.id}:not_entitled`]);
+
+    // The copy without the waiter app: still refused, and nothing is journaled.
+    await syncEntitlements(pc1, 1, [{ key: 'pos', until: null }]);
+    const second = note('6');
+    await phone.send(second);
+    expect(refused).toEqual([`${first.id}:not_entitled`, `${second.id}:not_entitled`]);
+    // A removal whose time has come counts as off at the hub's clock.
+    const past = new Date(Date.now() - 60_000).toISOString();
+    await syncEntitlements(pc1, 2, [{ key: 'waiter_app', until: past }]);
+    const third = note('7');
+    await phone.send(third);
+    expect(refused).toHaveLength(3);
+    expect(await journalIds(pc1)).toEqual([]);
+
+    // A newer row with the feature, a removal scheduled later: the next command passes.
+    const later = new Date(Date.now() + 86_400_000).toISOString();
+    await syncEntitlements(pc1, 3, [
+      { key: 'pos', until: null },
+      { key: 'waiter_app', until: later },
+    ]);
+    const fourth = note('8');
+    await phone.send(fourth);
+    expect(refused).toHaveLength(3);
+    expect(await phone.counts()).toEqual({ sending: 0, unmirrored: 1 });
+    expect(await journalIds(pc1)).toEqual([fourth.id]);
   });
 });
