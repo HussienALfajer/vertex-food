@@ -32,7 +32,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
   - PR 5 (restaurant hub server) done: the hub of `packages/sync` on the PC (`apps/restaurant/electron/`: its storage in the encrypted database, the HTTPS LAN server with `/hub/*`, `/peer/*` by mutual TLS and the CA download while pairing is open, the role machine with the client-PC mode, the PC's own outbox and its offline audit events), wired into the sync client's heartbeat and the renderer's `window.vertexSync`; the hub client pages' build served by the hub; the hub's scenarios on the real ports and in Electron's runtime, and the sync service on a real PostgreSQL in CI
   - PR 6 (restaurant sync screens) done: the sync chip and its sheet, the branch network screen (pairing, roles, promotion by PIN), needs attention, the quarantine review with re-auth, update notices and the corrupt-database notice; E2E with the fake device in RTL at every width
   - PR 7 (hub client pages) done: `apps/restaurant/hub-clients/` with the certificate guide, pairing from the QR fragment or a code (the CA fingerprint checked), the member picker and PIN pad, the network check (test, stress run, «قيد الإرسال») on `HubClient` with its outbox in IndexedDB, the live stream, "reconnecting" and failover to the standby; E2E against a mock branch of two PCs
-- [ ] S05 Entitlements and agreements core: F04 · F05 (resolver, enforcement, effective-dated terms; console screens in S22)
+- [~] S05 Entitlements and agreements core: F04 · F05 (resolver, enforcement, effective-dated terms; console screens in S22; spec: `docs/specs/S05-entitlements-and-agreements-core.md`, ADR 0036)
 - [ ] S06 Audit and export: F09
 - [ ] Production deploy of Phase 1 (internal test tenants only)
 

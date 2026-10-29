@@ -126,6 +126,12 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | الاستحقاق | entitlement | What a tenant may use, derived from its agreement and overrides |
 | الاستثناء | override | A manual grant, limit or trial with a reason and expiry |
 | الميزة الخاصة | private feature | A catalog feature granted to one tenant |
+| تعديل الاتفاقية | amendment | A set of term additions and endings, drafted by sales and approved by someone else; the only way an agreement changes (ADR 0036) |
+| الحدّ | limit | A catalog entry counting something a tenant may add (branches, PCs, staff, catalog items, custom field definitions) |
+| القيمة المرجعية | list value | A template's value for a term; a different value carries a reason |
+| مهلة الاستحقاقات | entitlement lease | The 7 days a PC trusts its copy of its branch's entitlements after its last sync |
+| استخدام خارج الاستحقاق | entitlement exception | A command the server accepted although its feature was off at its time, recorded for Vertex |
+| فرع فعّال | active branch | A non-archived branch, counted per day for terms charged per branch |
 | الدفتر المالي | ledger | Append-only double-entry records between restaurants, drivers and Vertex |
 | كشف الحساب | statement | A restaurant's monthly charges, commissions, collections and balance |
 | الهوية البصرية | branding | A tenant's logo, cover, accent color and font |
