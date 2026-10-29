@@ -10,7 +10,7 @@ import {
 import { accounts, type Database } from '@vertex-food/db';
 import { eq } from 'drizzle-orm';
 import request from 'supertest';
-import { vi } from 'vitest';
+import { inject, vi } from 'vitest';
 import type { SystemActor } from '../src/core/access/actor.js';
 import { type FakeOtpSender, OTP_SENDER } from '../src/modules/platform/identity/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
@@ -23,16 +23,21 @@ export const OPERATOR: SystemActor = { kind: 'system', name: 'test operator' };
 export const PASSWORD = 'cedar-lamp-river-42';
 export const ORIGIN = 'app://restaurant';
 
-let phoneCount = 0;
+let lastStamp = -1;
 /**
- * A synthetic Syrian mobile number, unique in the run. Its last six digits start with 1, so they
- * are never one of the PINs of `pinFor` (48…), which the API refuses as the phone's tail.
+ * A synthetic Syrian mobile number, unique in the run: two digits name the Vitest worker slot (no
+ * two files that run at once share one), five count hundredths of a second since the run's
+ * database was made, raised by one when a file asks twice within one (a later file in the slot
+ * starts later). The clock and a per-file count alone let two files that started together draw
+ * the same phone under load, and the second sign-in was refused. Its last six digits start with 1,
+ * so they are never one of the PINs of `pinFor` (48…), which the API refuses as the phone's tail.
  */
 export function newPhone(): string {
-  phoneCount += 1;
-  const clock = String(Date.now() % 100_000).padStart(5, '0');
-  const count = String(phoneCount % 100).padStart(2, '0');
-  return `+9639${clock.slice(0, 2)}1${clock.slice(2)}${count}`;
+  const runStart = Number(/food_test_(\d+)_/.exec(inject('databaseUrl'))?.[1] ?? 0);
+  lastStamp = Math.max(lastStamp + 1, Math.floor((Date.now() - runStart) / 10));
+  const stamp = String(lastStamp % 100_000).padStart(5, '0');
+  const slot = String(Number(process.env.VITEST_POOL_ID ?? 1) % 100).padStart(2, '0');
+  return `+9639${slot}1${stamp}`;
 }
 
 /** A six-digit PIN that is not trivial and not the phone's tail. */

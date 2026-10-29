@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { platform, release } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -15,18 +15,20 @@ import {
   readConnectOrigins,
   resolveAppFile,
 } from './app-protocol.js';
-import { deviceChannels } from './bridge.js';
+import { deviceChannels, syncChannels } from './bridge.js';
 import { DeviceClient } from './device-client.js';
 import { deviceHandlers } from './device-ipc.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
 import { DeviceStore, type Registration } from './device-store.js';
+import { HubRuntime } from './hub-runtime.js';
 import { generateDatabaseKey } from './local-db.js';
 import { LocalStore } from './local-store.js';
 import { devServerUrl, isAllowedNavigation } from './navigation.js';
-import { CertificateStore, privateLanAddresses } from './pc-certificate.js';
+import { CachedCertificates, CertificateStore, privateLanAddresses } from './pc-certificate.js';
 import { pendingCounts } from './pending-work.js';
 import { uploadQuarantine } from './quarantine-upload.js';
+import { SyncControl, syncHandlers } from './sync-ipc.js';
 import { SyncService } from './sync-service.js';
 import { UpdateGate } from './update-gate.js';
 import { windowOptions } from './window-options.js';
@@ -36,6 +38,8 @@ import { windowOptions } from './window-options.js';
 // through the preload's IPC API (`bridge.ts`). It opens one locked-down window on the renderer.
 
 const rendererDir = fileURLToPath(new URL('../renderer/', import.meta.url));
+// The hub client pages the LAN server serves (screens 6–9), built beside the renderer.
+const hubClientsDir = fileURLToPath(new URL('../hub-clients/', import.meta.url));
 const preloadPath = fileURLToPath(new URL('./preload.cjs', import.meta.url));
 const devServer = devServerUrl(process.argv, app.isPackaged);
 const rendererOrigin = devServer ?? APP_ORIGIN;
@@ -81,6 +85,33 @@ function notifyWindows(): void {
   }
 }
 
+/** Sync and hub changes come in bursts (an upload, a stress run): one notice per 200 ms. */
+let syncNotice: ReturnType<typeof setTimeout> | null = null;
+function notifySync(): void {
+  if (syncNotice) return;
+  syncNotice = setTimeout(() => {
+    syncNotice = null;
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send(syncChannels.changed);
+    }
+  }, 200);
+}
+
+/** The API answered a heartbeat lately: the PC is online (spec S04 rule 29). */
+const ONLINE_WITHIN_MS = 45_000;
+
+function handle(handlers: Record<string, (input: unknown) => Promise<unknown>>): void {
+  for (const [channel, handler] of Object.entries(handlers)) {
+    ipcMain.handle(channel, (event, input: unknown) => {
+      // Only the app's own page may call: never a frame from anywhere else.
+      if (!isAllowedNavigation(event.senderFrame?.url ?? '', rendererOrigin)) {
+        throw new Error('Refused');
+      }
+      return handler(input);
+    });
+  }
+}
+
 /** Rule 46: the feed's HTTPS URL, from the environment until the deploy skeleton (Q1) sets it. */
 function updateFeedUrl(): string | null {
   const value = process.env.UPDATE_FEED_URL;
@@ -117,7 +148,9 @@ function runInstaller(file: string): Promise<boolean> {
 async function startDeviceService(): Promise<'started' | 'updating'> {
   // Development on the Vite server may run before any build: the variable's own origin then.
   const client = new DeviceClient(builtConnectOrigins()[0] ?? connectOrigins(process.env)[0] ?? '');
-  const certificates = new CertificateStore(join(userData(), 'certificate.bin'), safeStorage);
+  const certificates = new CachedCertificates(
+    new CertificateStore(join(userData(), 'certificate.bin'), safeStorage),
+  );
   const updates = new UpdateGate({
     feedUrl: updateFeedUrl(),
     appVersion: app.getVersion(),
@@ -127,12 +160,22 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
   });
   let device: DeviceService | null = null;
   let sync: SyncService | null = null;
+  let hub: HubRuntime | null = null;
+  const control = new SyncControl({
+    updateReady: () => {
+      const ready = updates.ready();
+      return ready ? { version: ready.version } : null;
+    },
+    lanAddresses: () => privateLanAddresses(),
+  });
   // The database a start opened, held until the update gate has decided.
   const atStart: { registration: Registration; local: LocalStore }[] = [];
   const startSync = (registration: Registration, local: LocalStore) => {
     const service = device;
     if (!service) return;
-    sync = new SyncService({
+    const verifyPin = (pin: string, verifier: string) =>
+      argon2Verify({ password: pin, hash: verifier });
+    const syncService: SyncService = new SyncService({
       registration,
       local: local.opened,
       client,
@@ -144,9 +187,31 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
       appVersion: app.getVersion(),
       lanAddresses: () => privateLanAddresses(),
       certificates,
-      onChange: notifyWindows,
+      live: async () => runtime.live(),
+      onChange: notifySync,
     });
-    sync.start();
+    // The hub runs beside the sync client (ADR 0022): its live role goes into each heartbeat.
+    const runtime: HubRuntime = new HubRuntime({
+      registration,
+      local: local.opened,
+      device: service,
+      verifyPin,
+      certificate: () => certificates.read(),
+      connectivity: () => syncService.status().connectivity,
+      online: () => {
+        const last = syncService.status().lastHeartbeatAt;
+        return last !== null && Date.now() - Date.parse(last) < ONLINE_WITHIN_MS;
+      },
+      appVersion: app.getVersion(),
+      pagesDirectory: existsSync(join(hubClientsDir, 'index.html')) ? hubClientsDir : null,
+      onChange: notifySync,
+      onRoleChange: () => void syncService.roleChanged().catch(() => undefined),
+    });
+    sync = syncService;
+    hub = runtime;
+    control.parts = { sync: syncService, hub: runtime, reads: local.opened.reads };
+    syncService.start();
+    void runtime.start().catch(() => undefined);
   };
   device = await DeviceService.open({
     store: new DeviceStore(join(userData(), 'device.bin'), safeStorage),
@@ -166,6 +231,9 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
     // with the database the device service deletes next.
     quarantine: async (registration, data) => {
       if (!(data instanceof LocalStore)) throw new Error('Unknown local data');
+      control.parts = null;
+      await hub?.stop();
+      hub = null;
       await sync?.stop();
       sync = null;
       await uploadQuarantine({
@@ -196,15 +264,8 @@ async function startDeviceService(): Promise<'started' | 'updating'> {
   if (opened) startSync(opened.registration, opened.local);
   updates.start();
   const service = device;
-  for (const [channel, handler] of Object.entries(deviceHandlers(service))) {
-    ipcMain.handle(channel, (event, input: unknown) => {
-      // Only the app's own page may call: never a frame from anywhere else.
-      if (!isAllowedNavigation(event.senderFrame?.url ?? '', rendererOrigin)) {
-        throw new Error('Refused');
-      }
-      return handler(input);
-    });
-  }
+  handle(deviceHandlers(service));
+  handle(syncHandlers(control));
   void service.refresh();
   setInterval(() => void service.refresh(), memberListRefreshSeconds * 1000);
   return 'started';

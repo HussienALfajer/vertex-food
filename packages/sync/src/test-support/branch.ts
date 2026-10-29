@@ -267,7 +267,7 @@ export class TestPc {
         deviceId: this.deviceId,
         configuredRole: this.role,
         peerDeviceIds: [this.peer().deviceId],
-        peerAddresses: [branch.pc1.address, branch.pc2.address],
+        peerAddresses: () => [branch.pc1.address, branch.pc2.address],
         appVersion: '1.0.0',
         ...(this.protocol ? { protocol: this.protocol } : {}),
       },
@@ -414,7 +414,9 @@ export class TestBranch {
       transport: phone.transport,
       store: phone.outbox,
       now: () => this.clock.now(),
-      onRefused: (command, reason) => phone.refused.push({ id: command.id, reason }),
+      onRefused: (command, reason) => {
+        phone.refused.push({ id: command.id, reason });
+      },
     });
     if (kind === 'personal') {
       const pairing = await hub.running.pairing.authenticate(paired.token);

@@ -48,8 +48,11 @@ export type HubClientOptions = {
   transport: HubClientTransport;
   store: OutboxStore;
   now: () => Date;
-  /** A refused command left the outbox: the page shows why. */
-  onRefused?: (command: HubCommand, reason: HubRefusalReason) => void;
+  /**
+   * A command was refused: the page shows why. It runs before the command leaves the outbox, so
+   * what it records survives a cut; a refusal it fails to record is sent again.
+   */
+  onRefused?: (command: HubCommand, reason: HubRefusalReason) => void | Promise<void>;
   /**
    * The member of the page's PIN session, on a shared phone. A command names its maker in
    * `actor` and is sent only in that member's session; the others wait (rule 35).
@@ -173,8 +176,8 @@ export class HubClient {
         return false;
       }
       if (answer.status === 'refused') {
+        await this.options.onRefused?.(item.command, answer.reason);
         await this.options.store.delete(item.command.id);
-        this.options.onRefused?.(item.command, answer.reason);
         continue;
       }
       if (answer.mirrored) {

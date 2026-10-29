@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { DeviceMember, MemberList, SessionTokens } from '@vertex-food/contracts';
 import { describe, expect, it, vi } from 'vitest';
-import { deviceChannels } from './bridge.js';
+import { deviceChannels, syncChannels } from './bridge.js';
 import { type DeviceApi, DeviceApiError } from './device-client.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
@@ -740,5 +740,7 @@ describe('preload', () => {
     const preload = readFileSync(new URL('./preload.cts', import.meta.url), 'utf8');
     const named = [...preload.matchAll(/'(device:[a-z-]+)'/g)].map((match) => match[1]);
     expect(new Set(named)).toEqual(new Set(Object.values(deviceChannels)));
+    const sync = [...preload.matchAll(/'(sync:[a-z-]+)'/g)].map((match) => match[1]);
+    expect(new Set(sync)).toEqual(new Set(Object.values(syncChannels)));
   });
 });

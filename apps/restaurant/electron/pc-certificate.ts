@@ -42,6 +42,31 @@ export class CertificateStore extends SealedFile<PcCertificate> {
   }
 }
 
+/**
+ * The certificate as the hub reads it at every peer call: unsealed once and kept in memory, and
+ * replaced with each write.
+ */
+export class CachedCertificates {
+  private cached: PcCertificate | null | undefined;
+
+  constructor(private readonly store: CertificateStore) {}
+
+  read(): PcCertificate | null {
+    if (this.cached === undefined) this.cached = this.store.read();
+    return this.cached;
+  }
+
+  write(certificate: PcCertificate): void {
+    this.store.write(certificate);
+    this.cached = certificate;
+  }
+
+  remove(): void {
+    this.store.remove();
+    this.cached = null;
+  }
+}
+
 /** The PC's private IPv4 addresses (RFC 1918), sorted, at most 8 (`lanAddressesSchema`). */
 export function privateLanAddresses(
   interfaces: NodeJS.Dict<NetworkInterfaceInfo[]> = networkInterfaces(),

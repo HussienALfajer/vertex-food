@@ -79,16 +79,20 @@ export const localSchema = new Schema({
       seq: int,
       epoch: int,
       kind: text,
+      /** A command's registry name, null for a local entry (the live snapshot's network checks). */
+      name: text,
       /** The journal body as JSON: a command's signed envelope, or a local entry. */
       body: text,
       payload_hash: text,
+      /** `<series>/<business date>/<number>` of the number a command used (rules 18, 26). */
+      number_used: text,
       mirrored: int,
       mirrored_at: text,
       committed_at: text,
       own_lineage: int,
       forwarded_at: text,
     },
-    { localOnly: true, indexes: { by_seq: ['seq'] } },
+    { localOnly: true, indexes: { by_seq: ['seq'], by_number: ['number_used'] } },
   ),
   hub_pairings: new Table(
     {
@@ -101,6 +105,20 @@ export const localSchema = new Schema({
     },
     { localOnly: true },
   ),
+  // PIN sessions on personal pairings (rule 35), copied to the standby as journal entries.
+  hub_sessions: new Table(
+    {
+      pairing_id: text,
+      membership_id: text,
+      token_hash: text,
+      started_at: text,
+      last_input_at: text,
+      ended_at: text,
+    },
+    { localOnly: true },
+  ),
+  // PINs disabled by 5 wrong PINs on a hub client (rule 35), id = membership id.
+  hub_pin_locks: new Table({ at: text }, { localOnly: true }),
   // id = `<series>:<business date>`.
   number_blocks_local: new Table(
     { series: text, business_date: text, first_number: int, last_number: int, last_used: int },
@@ -143,9 +161,17 @@ export const localSchema = new Schema({
     },
     { localOnly: true },
   ),
-  // Offline audit events waiting for `audit.record_local_events`.
+  // Offline audit events waiting for `audit.record_local_events`; `command_id` is the command that
+  // carries them once one was made, re-sent with the same id until a hub answers it.
   local_events: new Table(
-    { action: text, at: text, membership_id: text, pairing_id: text, details: text },
+    {
+      action: text,
+      at: text,
+      membership_id: text,
+      pairing_id: text,
+      details: text,
+      command_id: text,
+    },
     { localOnly: true },
   ),
 });

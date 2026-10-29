@@ -85,10 +85,18 @@ export function resolveAppFile(rootDir: string, requestUrl: string): string | nu
     return null;
   }
   if (url.protocol !== `${APP_SCHEME}:` || url.host !== APP_HOST) return null;
+  return resolvePageFile(rootDir, url.pathname);
+}
 
+/**
+ * The file under `rootDir` for a URL path (still percent-encoded), or `null` when it would leave
+ * `rootDir`; a path without an extension is a client route and gets `index.html`. The renderer's
+ * scheme and the hub's LAN server (the hub client pages) both serve their build through it.
+ */
+export function resolvePageFile(rootDir: string, encodedPath: string): string | null {
   let pathname: string;
   try {
-    pathname = decodeURIComponent(url.pathname);
+    pathname = decodeURIComponent(encodedPath);
   } catch {
     return null;
   }

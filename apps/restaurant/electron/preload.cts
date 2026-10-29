@@ -1,6 +1,6 @@
 import electron = require('electron');
 
-import type { DeviceBridge } from './bridge.js' with { 'resolution-mode': 'import' };
+import type { DeviceBridge, SyncBridge } from './bridge.js' with { 'resolution-mode': 'import' };
 
 // The renderer's only way into the main process (spec S02 rule 29): a sandboxed preload, so it
 // is CommonJS and requires nothing but `electron`. The channel names are `deviceChannels` in
@@ -27,3 +27,25 @@ const bridge: DeviceBridge = {
 };
 
 electron.contextBridge.exposeInMainWorld('vertexDevice', bridge);
+
+// Spec S04: the sync status, the branch network and this PC's results (`syncChannels`).
+const sync: SyncBridge = {
+  status: () => electron.ipcRenderer.invoke('sync:status'),
+  network: () => electron.ipcRenderer.invoke('sync:network'),
+  openPairing: (input) => electron.ipcRenderer.invoke('sync:open-pairing', input),
+  closePairing: () => electron.ipcRenderer.invoke('sync:close-pairing'),
+  revokePairing: (pairingId) => electron.ipcRenderer.invoke('sync:revoke-pairing', pairingId),
+  promotionPreview: () => electron.ipcRenderer.invoke('sync:promotion-preview'),
+  promote: (input) => electron.ipcRenderer.invoke('sync:promote', input),
+  sendNetworkCheck: (input) => electron.ipcRenderer.invoke('sync:send-network-check', input),
+  results: () => electron.ipcRenderer.invoke('sync:results'),
+  onChange: (listener) => {
+    const handler = () => listener();
+    electron.ipcRenderer.on('sync:changed', handler);
+    return () => {
+      electron.ipcRenderer.removeListener('sync:changed', handler);
+    };
+  },
+};
+
+electron.contextBridge.exposeInMainWorld('vertexSync', sync);

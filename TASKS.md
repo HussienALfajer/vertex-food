@@ -14,7 +14,7 @@ PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each P
 | 4 restaurant local database | 3 | 2 | high | `apps/restaurant/electron/`, `apps/restaurant/package.json` |
 | 5 restaurant hub server | 2, 4 | — | xhigh | — |
 | 6 restaurant sync screens | 5 | 7 | medium | `apps/restaurant/src/`, `apps/restaurant/e2e/`, i18n `sync.ts` |
-| 7 hub client pages | 5 | 6 | high | `apps/restaurant/hub-clients/` (its pages and E2E), i18n `hub-clients.ts` |
+| 7 hub client pages | 5 | 6 | high | `apps/restaurant/hub-clients/` (its pages), `apps/restaurant/e2e/hub-clients/` (its E2E), i18n `hub-clients.ts` |
 
 Rules that keep the parallel PRs apart:
 - Shared packages (`contracts`, `db`, `packages/sync`'s foundation, the error texts) change in PR 1 only; a later PR that needs a change there stops and says so instead of editing them in parallel.
@@ -67,12 +67,12 @@ Rules that keep the parallel PRs apart:
 
 ## PR 5 `feat/s04-restaurant-hub` — restaurant hub server (after PR 2 and PR 4)
 
-- [ ] `packages/sync` ports on the local database; the HTTPS LAN server on 7443 (`/hub/*`, `/peer/*` with mutual TLS refusing another CA or a revoked PC), the CA download on 7080 while pairing is open; hub role machine and client-PC mode; serving the hub client build
-- [ ] Bridge for the renderer: sync status (`SyncService.status()`), branch network, pairing, revoke, promote by PIN, network checks, local results
-- [ ] From PR 4: `SyncService` takes the hub's `live` state (role, epoch, standby in sync) and calls `roleChanged()` after a role change; the hub's ports use the local-only tables of `electron/local-db.ts` and the certificate of `pc-certificate.ts`; the hub signs with `DeviceService.clock()` (offset, highest seen time)
-- [ ] Hub client skeleton for PR 7: `hub-clients/` Vite build and `apps/restaurant` scripts, its Playwright project, one placeholder page served by the hub; the dependencies of PR 6 and PR 7 (the QR generator)
-- [ ] Sync scenarios against a real PostgreSQL and PowerSync, in Node and Electron main; CI setup (`wal_level=logical`, PowerSync service)
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps 1–8 in the report
+- [x] `packages/sync` ports on the local database; the HTTPS LAN server on 7443 (`/hub/*`, `/peer/*` with mutual TLS refusing another CA or a revoked PC), the CA download on 7080 while pairing is open; hub role machine and client-PC mode; serving the hub client build (`hub-store.ts`, `hub-lan.ts`, `hub-runtime.ts`; real-port scenarios in `hub-scenarios.test.ts`: pairing over HTTPS, mutual TLS refusals, power-cut failover and rejoin, a client PC, promotion by PIN, offline audit events sent as `audit.record_local_events`)
+- [x] Bridge for the renderer: sync status (`SyncService.status()`), branch network, pairing, revoke, promote by PIN, network checks, local results (`window.vertexSync`: `SyncBridge` and `syncChannels` in `bridge.ts`, handlers in `sync-ipc.ts`; PR 6's screens and fake device use it)
+- [x] From PR 4: `SyncService` takes the hub's `live` state (role, epoch, standby in sync) and calls `roleChanged()` after a role change; the hub's ports use the local-only tables of `electron/local-db.ts` and the certificate of `pc-certificate.ts`; the hub signs with `DeviceService.clock()` (offset, highest seen time)
+- [x] Hub client skeleton for PR 7: `hub-clients/` Vite build and `apps/restaurant` scripts, its Playwright project, one placeholder page served by the hub; the dependencies of PR 6 and PR 7 (the QR generator) (`vite.hub-clients.config.ts` builds `dist/hub-clients/`, which the hub serves; `pnpm --filter @vertex-food/restaurant dev:hub-clients` on 5278, preview 4278; Playwright projects `hub-clients-light`/`-dark` over `e2e/hub-clients/`; `uqr` for the QR codes; `@vertex-food/sync` for the pages' outbox)
+- [x] Sync scenarios against a real PostgreSQL and PowerSync, in Node and Electron main; CI setup (`wal_level=logical`, PowerSync service) (`apps/api/test/sync-service.test.ts`: the pinned PowerSync image on the run's database, PCs of two branches and another tenant uploading interleaved commands, each PC's streams over PowerSync's HTTP protocol, run with `SYNC_SCENARIOS=1`; the hub's real-port scenarios and the encrypted database's tests again in Electron's own runtime, `pnpm test:electron`; CI's test job turns on logical WAL, pulls the image and runs both. The protocol's full scenario list stays in memory in `packages/sync`)
+- [x] Docs, checks (`pnpm verify` green; `pnpm test:electron` green; the sync service scenario green against a throwaway PostgreSQL with logical WAL), reviewer (three findings fixed: a hub rebuilt beside the old instance, now stopped first and rebuilt only on a role or peer change; a revoked pairing's or PC's live stream closed at once; refused commands recorded and their audit events kept; with its unverified Android note, phones moved to a port that asks for no certificate and PCs to 7444 with mutual TLS only; the full check also found two load-sensitive tests, fixed: unique test phones across workers, own timeouts for the 600-command scenarios; first fix-only round resolved all, with two notes fixed; second round clean), PR with auto-merge and Auto-fix, acceptance steps 1–8 in the report
 
 ## PR 6 `feat/s04-restaurant-sync-screens` — restaurant screens (after PR 5, parallel with PR 7)
 
@@ -87,6 +87,12 @@ Rules that keep the parallel PRs apart:
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
+
+- From S04 PR 5, before S09: publish `number_blocks` to the sync service (or exchange blocks at heartbeats), so a hub re-checks a forwarded or re-sent number against the other PC's block (rule 26); until then such a command is resolved again by the hub
+- From S04 PR 5, for PR 7 or S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
+- From S04 PR 5, for PR 7: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the outbox it kept under PC 1's origin (Q17's pages)
+- From S04 PR 5: S02's offline events (wrong PINs, local lockouts, approvals, re-enables) are not yet written to `local_events`; only the hub's events are, and they now reach the audit through `audit.record_local_events`
+- From S04 PR 5, with the installer (Q1): the hub listens on 7443, 7444 and 7080 on every interface, so Windows asks to allow the app on private networks at its first start as hub; the installer should add the firewall rules
 
 - From S04 PR 4's review: an update whose installer did not start, or left the same version in place (elevation refused), is not tried again by that version; the next release is. Whether a failed install is retried, and how often, is the owner's call (with the deploy skeleton, Q1)
 - From S04 PR 4: the Windows installer (Q1) must unpack the native modules from the asar archive (`better-sqlite3-multiple-ciphers`' prebuild, `@powersync/node`'s core DLL) and set `UPDATE_FEED_URL` for the packaged app; the update installer's signature is checked there too

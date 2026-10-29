@@ -1,4 +1,5 @@
 import {
+  type DeviceMember,
   deviceTokenMessage,
   deviceTokenTtlSeconds,
   type MemberList,
@@ -20,6 +21,7 @@ import type { DeviceKey } from './device-key.js';
 import type { DeviceRecord, DeviceStore, Registration, StoredRecord } from './device-store.js';
 import {
   approveLocally,
+  checkPinLocally,
   clearLocalLockout,
   countFailure,
   type LocalOutcome,
@@ -440,6 +442,35 @@ export class DeviceService {
     return record
       ? { offsetMs: this.clockOffsetMs, highestSeenTime: new Date(record.highestSeenAt) }
       : null;
+  }
+
+  /** The branch's members as this PC holds them, with their verifiers: the hub's member list. */
+  members(): readonly DeviceMember[] {
+    return this.registered()?.memberList.members ?? [];
+  }
+
+  /** The member of the PIN session open on this PC, or null. */
+  sessionMember(): string | null {
+    return this.session?.membershipId ?? null;
+  }
+
+  /** The offline window closed (S02 rule 30): commands made now carry `afterOfflineWindow`. */
+  afterOfflineWindow(): boolean {
+    const record = this.registered();
+    return record ? !windowOf(record, this.deps.now()).open : false;
+  }
+
+  /** Spec S04 rule 27: a PIN typed on this PC for the manual promotion, with rule 25's lockout. */
+  checkPin(membershipId: string, pin: string): Promise<'ok' | 'invalid' | 'disabled'> {
+    return this.run(async () => {
+      const record = this.registered();
+      if (!record) return 'invalid';
+      const outcome = await checkPinLocally(record, membershipId, pin, this.deps.verifyPin);
+      await this.save(outcome.record);
+      this.deps.onChange();
+      if (outcome.ok) return 'ok';
+      return outcome.code === 'PIN_DISABLED' ? 'disabled' : 'invalid';
+    });
   }
 
   /** Rule 44: a 5-minute device token for the device key's signature of a server nonce. */

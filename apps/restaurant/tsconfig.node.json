@@ -10,6 +10,7 @@
     "e2e",
     "test",
     "vite.config.ts",
+    "vite.hub-clients.config.ts",
     "vitest.config.ts",
     "playwright.config.ts"
   ]

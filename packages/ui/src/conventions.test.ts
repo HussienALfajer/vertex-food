@@ -10,7 +10,13 @@ import { describe, expect, it } from 'vitest';
  */
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const sourceDirs = ['packages/ui/src', 'apps/restaurant/src', 'apps/console/src', 'apps/web/src'];
+const sourceDirs = [
+  'packages/ui/src',
+  'apps/restaurant/src',
+  'apps/restaurant/hub-clients/src',
+  'apps/console/src',
+  'apps/web/src',
+];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(join(root, dir), { withFileTypes: true, recursive: true })

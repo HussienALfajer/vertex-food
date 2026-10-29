@@ -18,14 +18,19 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/brand/**"],
       "outputs": [],
-      "env": ["CI"],
+      "env": ["CI", "SYNC_SCENARIOS"],
       "passThroughEnv": [
         "DATABASE_OWNER_URL",
         "DATABASE_APP_URL",
         "DATABASE_JOBS_URL",
         "DATABASE_QUEUE_URL",
-        "DATABASE_SYNC_URL"
+        "DATABASE_SYNC_URL",
+        "POWERSYNC_STORAGE_URI"
       ]
+    },
+    "test:electron": {
+      "dependsOn": ["^build"],
+      "cache": false
     },
     "test:e2e": {
       "dependsOn": ["build"],

@@ -5,4 +5,9 @@
  */
 export const hubClients = {
   title: 'شاشات الفرع',
+  // The page the hub serves until PR 7's pages replace it.
+  placeholder: {
+    heading: 'حاسوب الفرع يعمل',
+    body: 'هذه الصفحة يقدّمها حاسوب الفرع على شبكة المطعم المحلية.',
+  },
 } as const;

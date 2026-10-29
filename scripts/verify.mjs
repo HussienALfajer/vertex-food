@@ -37,7 +37,14 @@ const LOCK_MAX_AGE_MS = 30 * 60_000;
 // The apps with a Playwright suite, and the port of each one's dev server (its `dev` script or
 // vite.config.ts): a dev server loads the machine and its watcher rebuilds under the checks.
 const E2E_APPS = ['restaurant', 'console', 'web', 'customer', 'driver'];
-const DEV_PORTS = { restaurant: 5273, console: 5274, web: 5275, customer: 5276, driver: 5277 };
+const DEV_PORTS = {
+  restaurant: 5273,
+  console: 5274,
+  web: 5275,
+  customer: 5276,
+  driver: 5277,
+  'restaurant hub clients': 5278,
+};
 const E2E_SPEC = /^apps\/([\w-]+)\/e2e\/.+\.spec\.ts$/;
 // Changes outside the packages that every build reads: the logo and fonts, the dependency set, the
 // task graph, the Node version.

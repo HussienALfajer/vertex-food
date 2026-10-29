@@ -7,6 +7,7 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/brand/**",
         "$TURBO_ROOT$/apps/restaurant/src/**",
+        "$TURBO_ROOT$/apps/restaurant/hub-clients/src/**",
         "$TURBO_ROOT$/apps/console/src/**",
         "$TURBO_ROOT$/apps/web/src/**"
       ]
