@@ -38,11 +38,11 @@ Rules that keep the parallel PRs apart:
 - [ ] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
-## PR 3 — worker (after PR 1, parallel with PR 2)
+## PR 3 `feat/s06-data-export-worker` — worker (after PR 1, parallel with PR 2)
 
-- [ ] Queue `data-export.build` fed by `data_export.requested.v1`: claim, one `REPEATABLE READ, READ ONLY` snapshot in `withTenant`, streamed ZIP into 1 MiB chunks (datasets, files, `README.txt`, `columns.csv`, `manifest.json`), 1 GiB and 30-minute caps, 3 attempts, rebuild after a crash, audit entries
-- [ ] Scheduled `data-export/expire` hourly
-- [ ] Tests (files agree with the database at `as_of`, nothing of a second tenant, manifest hashes, rerun skipped, crash rebuilt, `too_large`, `timed_out`, expire once)
+- [x] Queue `data-export.build` fed by `data_export.requested.v1`: claim, one `REPEATABLE READ, READ ONLY` snapshot in `withTenant`, streamed ZIP into 1 MiB chunks (datasets, files, `README.txt`, `columns.csv`, `manifest.json`), 1 GiB and 30-minute caps, 3 attempts, rebuild after a crash, audit entries (`jobs/data-export/build.job.ts`, the ZIP writer `zip.ts` on `node:zlib` with data descriptors, no new package; `started_at` is the attempt's token: chunks and the final change are written only while the row still holds it, so an attempt a retry replaced stops; pg-boss's dead-letter queue `data-export.build.failed` turns the third failure, a crash or lost heartbeat included, into `server_error`; `QueueJob` gained `options` and `failed`)
+- [x] Scheduled `data-export/expire` hourly (`jobs/data-export/expire.job.ts`)
+- [x] Tests (files agree with the database at `as_of`, nothing of a second tenant, manifest hashes, rerun skipped, crash rebuilt, `too_large`, `timed_out`, expire once) (`test/data-export.test.ts` with an independent reader `test/unzip.ts`, also a row committed during the build left out, an attempt taken over, `server_error` once; `src/jobs/data-export/zip.test.ts`; the archive also checked by hand with Python's `zipfile` and `unzip -t`)
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
 ## PR 4 — restaurant screens (after PR 2, parallel with PR 5)
