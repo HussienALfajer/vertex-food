@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime } from './format';
+import { formatDate, formatDateTime, formatTime } from './format';
 
 describe('format', () => {
   it('shows a calendar date with the month name read in Syria', () => {
@@ -11,5 +11,10 @@ describe('format', () => {
     expect(formatDateTime('2026-10-20T01:00:00.000Z')).toBe(
       'الثلاثاء، 20 تشرين الأول 2026 في 4:00 ص',
     );
+  });
+
+  it('shows the time alone on the 24-hour clock in Damascus', () => {
+    expect(formatTime('2026-10-20T07:42:00.000Z')).toBe('10:42');
+    expect(formatTime('2026-10-20T13:05:00.000Z')).toBe('16:05');
   });
 });

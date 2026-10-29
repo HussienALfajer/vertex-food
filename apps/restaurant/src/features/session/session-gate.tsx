@@ -12,6 +12,9 @@ import { api, apiErrorCode, body, unwrapEmpty } from '../../lib/api';
 import { type DeviceBridge, type DeviceStatus, deviceBridge } from '../../lib/device';
 import { useOnline } from '../../lib/online';
 import { accessOfMe, type StaffAccess, StaffAccessContext } from '../../lib/staff-access';
+import { syncBridge } from '../../lib/sync';
+import { SyncChip } from '../sync/sync-chip';
+import { SyncNotices } from '../sync/sync-notices';
 import { useRestaurantNavigation } from '../tenancy/restaurant-nav';
 import { TenantGate } from '../tenancy/tenant-gate';
 import { ApprovalTrial } from './approval-trial';
@@ -90,7 +93,10 @@ function DeviceGate({ bridge }: { bridge: DeviceBridge }) {
     if (pathname !== '/lock') return <Navigate to="/lock" replace />;
     return (
       <Bare>
-        <LockScreen bridge={bridge} status={current} />
+        <div className="flex flex-col gap-6">
+          <SyncNotices bridge={null} corruptDatabase={current.localDatabase === 'corrupt'} />
+          <LockScreen bridge={bridge} status={current} />
+        </div>
       </Bare>
     );
   }
@@ -142,7 +148,11 @@ function DeviceSession({
       <SignedIn
         me={meData ?? null}
         actions={
-          <Button
+          <>
+            {syncBridge && (
+              <SyncChip bridge={syncBridge} branchId={status.branch.id} online={session.online} />
+            )}
+            <Button
             type="button"
             variant="secondary"
             aria-label={t('switchMember')}
@@ -152,9 +162,14 @@ function DeviceSession({
             {/* The icon alone on a phone, so the product name keeps its room. */}
             <span className="max-sm:sr-only">{t('switchMember')}</span>
           </Button>
+          </>
         }
         notices={
           <>
+            <SyncNotices
+              bridge={syncBridge}
+              corruptDatabase={status.localDatabase === 'corrupt'}
+            />
             <WindowWarning window={status.window} />
             {!session.online && online && (
               // Opened offline: no access token, so the online screens wait for a new PIN entry.
