@@ -4,10 +4,12 @@ import {
   type CommandFlag,
   type CommandReason,
   type CommandResult,
+  catalogFeature,
   clockSuspectReasons,
   correctedTime,
   DomainError,
   effectiveTime,
+  featureCatalog,
   isSyncProtocolSupported,
   type UploadCommands,
   type UploadCommandsResult,
@@ -38,6 +40,7 @@ import { ed25519Verifier } from '@vertex-food/sync/node';
 import { and, eq } from 'drizzle-orm';
 import type { DeviceActor } from '../../../core/access/actor.js';
 import { DATABASE } from '../../../core/database/database.module.js';
+import { databaseNow } from '../../../core/database/database-now.js';
 import { isDeadlineExceeded } from '../../../core/database/deadline.js';
 import { accessHistory, approverAllowed, memberDecision } from './command-access.js';
 import {
@@ -47,9 +50,10 @@ import {
   type CommandExecutor,
   type ExecutionResult,
 } from './executors.js';
+import { COMMAND_ENTITLEMENTS, type CommandEntitlements } from './ports.js';
 import { holdInQuarantine } from './quarantine-store.js';
 import { storableJson, toCommandResult } from './sync.views.js';
-import { databaseNow, lock } from './sync-locks.js';
+import { lock } from './sync-locks.js';
 
 // The server's execution of uploaded commands (spec S04 rules 7–16, ADR 0035): each command in
 // its own transaction under its tenant, after a transaction lock on its id; a known id answers its
@@ -110,6 +114,7 @@ export class CommandPipeline {
     @Inject(DATABASE) private readonly db: Database,
     @Inject(COMMAND_REGISTRY) private readonly registry: CommandRegistry,
     @Inject(COMMAND_EXECUTORS) executors: readonly CommandExecutor[],
+    @Inject(COMMAND_ENTITLEMENTS) private readonly entitlements: CommandEntitlements,
   ) {
     for (const executor of executors) {
       this.executors.set(`${executor.name}@${executor.version}`, executor);
@@ -118,6 +123,12 @@ export class CommandPipeline {
     for (const definition of registry.definitions()) {
       if (!this.executors.has(`${definition.name}@${definition.version}`)) {
         throw new Error(`${definition.name} v${definition.version} has no executor`);
+      }
+      // Spec S05 rule 23: a command's feature is one the catalog sells.
+      if (definition.feature !== null && !catalogFeature(featureCatalog, definition.feature)) {
+        throw new Error(
+          `${definition.name} v${definition.version} names unknown ${definition.feature}`,
+        );
       }
     }
   }
@@ -320,6 +331,18 @@ export class CommandPipeline {
         receivedAt,
         flags,
       });
+      // Spec S05 rule 25: executed whatever its entitlement; a feature off at its effective time
+      // is recorded for Vertex, never a rejection.
+      if (result.outcome !== 'rejected' && definition.feature !== null) {
+        await this.entitlements.recordUse(tx, {
+          tenantId: scope.tenantId,
+          branchId: scope.branchId,
+          deviceId: envelope.executedByDeviceId,
+          commandId: envelope.id,
+          feature: definition.feature,
+          effectiveAt: effective,
+        });
+      }
     }
     return this.record(tx, scope, uploaded, { result, receivedAt, effective, flags });
   }

@@ -44,6 +44,7 @@ export type Entitlement = { kind: 'feature'; feature: string } | { kind: 'none' 
 
 export const ACCESS = Symbol('Access');
 export const ENTITLEMENT = Symbol('Entitlement');
+export const SUSPENDED_ALLOWED = Symbol('SuspendedAllowed');
 
 function declare(key: symbol, value: Access | Entitlement): ClassDecorator & MethodDecorator {
   return ((target: object, property?: string | symbol, descriptor?: PropertyDescriptor) => {
@@ -109,3 +110,13 @@ export const RequiresFeature = (feature: string) =>
 
 /** The route belongs to no commercial feature (health check, setup, console). */
 export const NoFeature = () => declare(ENTITLEMENT, { kind: 'none' });
+
+/**
+ * A staff write a suspended tenant still makes (spec S05 rule 22, S02 rule 36): ending or
+ * re-entering one's session, one's own password and PIN, PIN resets, deactivations and
+ * revocations. Every other staff write answers `TENANT_SUSPENDED` while the tenant is suspended.
+ */
+export const SuspendedAllowed = (): MethodDecorator =>
+  ((_target: object, _property: string | symbol, descriptor: PropertyDescriptor) => {
+    Reflect.defineMetadata(SUSPENDED_ALLOWED, true, descriptor.value as object);
+  }) as MethodDecorator;

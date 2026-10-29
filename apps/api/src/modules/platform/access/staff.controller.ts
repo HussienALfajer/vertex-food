@@ -22,7 +22,7 @@ import {
   staffMemberSchema,
 } from '@vertex-food/contracts';
 import type { z } from 'zod';
-import { NoFeature, StaffRoute } from '../../../core/access/access.decorators.js';
+import { NoFeature, StaffRoute, SuspendedAllowed } from '../../../core/access/access.decorators.js';
 import { CurrentStaff, type StaffActor } from '../../../core/access/actor.js';
 import { StaffService } from './staff.service.js';
 
@@ -88,6 +88,7 @@ export class StaffController {
 
   @Post(':id/deactivate')
   @HttpCode(200)
+  @SuspendedAllowed()
   @StaffRoute({ reauth: true }, 'staff.manage')
   @SerializeOptions({ schema: staffMemberSchema })
   deactivate(

@@ -2,6 +2,7 @@ import type { Type } from '@nestjs/common';
 import type { QueueJob } from '../core/queue/queue-job.js';
 import type { ScheduledJob } from '../core/queue/scheduled-job.js';
 import type { RepeatingJob } from '../core/repeat/repeating-job.js';
+import { ApplyBoundariesJob } from './entitlements/apply-boundaries.job.js';
 import { ClearRevokedHubRoleJob } from './sync/clear-revoked-hub-role.job.js';
 import { ConnectivitySweepJob } from './sync/connectivity-sweep.job.js';
 import { ApplyScheduledStatusJob } from './tenancy/apply-scheduled-status.job.js';
@@ -17,7 +18,7 @@ export type WorkerJobs = {
 };
 
 export const jobs: WorkerJobs = {
-  scheduled: [ApplyScheduledStatusJob],
+  scheduled: [ApplyScheduledStatusJob, ApplyBoundariesJob],
   repeating: [ConnectivitySweepJob],
   events: [ClearRevokedHubRoleJob],
 };

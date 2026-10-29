@@ -14,9 +14,3 @@ export function lockKey(kind: string, id: string): SQL {
 export async function lock(tx: Transaction, kind: string, id: string): Promise<void> {
   await tx.execute(sql`select pg_advisory_xact_lock(${lockKey(kind, id)})`);
 }
-
-/** The transaction's start (`now()`): `received_at` of the commands it records. */
-export async function databaseNow(tx: Transaction): Promise<Date> {
-  const result = await tx.execute<{ now: Date }>(sql`select now() as now`);
-  return new Date(result.rows[0]?.now as Date);
-}

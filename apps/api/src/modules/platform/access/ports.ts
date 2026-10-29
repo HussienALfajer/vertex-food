@@ -59,3 +59,14 @@ export interface MemberCredentials {
 }
 
 export const MEMBER_CREDENTIALS = Symbol('MemberCredentials');
+
+/** The agreement's `staff` limit (owned by entitlements, spec S05 rule 21). */
+export interface StaffLimit {
+  /**
+   * Another active member fits the limit, counted under the lock of the tenant's entitlement
+   * state (`ENTITLEMENT_LIMIT_REACHED`). The tenant's first owner is exempt.
+   */
+  assertMemberFits(tx: Transaction, tenantId: string): Promise<void>;
+}
+
+export const STAFF_LIMIT = Symbol('StaffLimit');

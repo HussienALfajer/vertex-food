@@ -30,7 +30,7 @@ import { emit } from '../../../core/events/outbox.js';
 import { RateLimiter } from '../../../core/rate-limit/rate-limiter.js';
 import { permissionsOf, readMembership } from '../access/index.js';
 import { memberListOf, tenantStatusAt } from './member-lists.js';
-import { BRANCH_PCS, type BranchPcs } from './ports.js';
+import { BRANCH_PCS, type BranchPcs, DEVICE_LIMIT, type DeviceLimit } from './ports.js';
 import { verifyEd25519 } from './secrets.js';
 import type { Nonces } from './single-use.js';
 import { endSessions, SessionIssuer } from './staff-sessions.js';
@@ -87,6 +87,7 @@ export class DevicesService {
     @Inject(DEVICE_NONCES) private readonly nonces: Nonces,
     @Inject(KEYED_HASH) private readonly hashes: KeyedHash,
     @Inject(BRANCH_PCS) private readonly branchPcs: BranchPcs,
+    @Inject(DEVICE_LIMIT) private readonly limit: DeviceLimit,
   ) {}
 
   /**
@@ -115,7 +116,8 @@ export class DevicesService {
       if (!branch || !permissions.includes('devices.manage') || !inBranch) {
         throw new DomainError('FORBIDDEN', 'No devices.manage for this branch');
       }
-      // S05: the device limit of the agreement is checked here (`NOT_ENTITLED`).
+      // S05 rule 21: the agreement's device limit, counted under the entitlement state's lock.
+      await this.limit.assertPcFits(tx, input.tenantId);
       await this.tickets.consume(tx, ticket);
       const [row] = await tx
         .insert(devices)

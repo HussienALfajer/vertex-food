@@ -59,6 +59,7 @@ import {
   NoFeature,
   Public,
   StaffRoute,
+  SuspendedAllowed,
   TicketRoute,
 } from '../../../core/access/access.decorators.js';
 import {
@@ -285,6 +286,7 @@ export class DevicesController {
 
   @Post(':id/revoke')
   @HttpCode(200)
+  @SuspendedAllowed()
   @StaffRoute({ reauth: true }, 'devices.manage')
   @SerializeOptions({ schema: deviceSchema })
   revoke(
@@ -325,6 +327,7 @@ export class SessionsController {
 
   @Post('current/end')
   @HttpCode(204)
+  @SuspendedAllowed()
   @StaffRoute({ whileClosed: true })
   @SerializeOptions({ schema: noContentSchema })
   async end(
@@ -338,6 +341,7 @@ export class SessionsController {
 
   @Post('current/reauth')
   @HttpCode(204)
+  @SuspendedAllowed()
   @StaffRoute()
   @SerializeOptions({ schema: noContentSchema })
   async reauthenticate(
@@ -363,6 +367,7 @@ export class MeController {
 
   @Put('password')
   @HttpCode(204)
+  @SuspendedAllowed()
   @StaffRoute()
   @SerializeOptions({ schema: noContentSchema })
   async changePassword(
@@ -374,6 +379,7 @@ export class MeController {
 
   @Put('pin')
   @HttpCode(204)
+  @SuspendedAllowed()
   @StaffRoute({ device: 'required' })
   @SerializeOptions({ schema: noContentSchema })
   async changePin(
@@ -393,6 +399,7 @@ export class MeController {
 
   @Post('personal-devices/:id/revoke')
   @HttpCode(200)
+  @SuspendedAllowed()
   @StaffRoute({ reauth: true })
   @SerializeOptions({ schema: personalDeviceListSchema })
   revokePersonalDevice(@CurrentStaff() staff: StaffActor, @Param('id', idParam) id: string) {
@@ -408,6 +415,7 @@ export class StaffPinController {
 
   @Put(':id/pin')
   @HttpCode(204)
+  @SuspendedAllowed()
   @StaffRoute({ device: 'required', reauth: true }, 'staff.manage')
   @SerializeOptions({ schema: noContentSchema })
   async setPin(

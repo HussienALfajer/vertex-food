@@ -1,0 +1,6 @@
+{
+  "kind": "grant",
+  "featureKey": "analytics",
+  "reason": "Analytics trial for an acceptance test",
+  "expiresAt": "2027-01-31"
+}

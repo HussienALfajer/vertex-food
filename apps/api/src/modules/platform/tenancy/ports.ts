@@ -40,3 +40,18 @@ export interface TenantMembers {
 }
 
 export const TENANT_MEMBERS = Symbol('TenantMembers');
+
+/** The tenant's agreement and entitlements (owned by commercial and entitlements, spec S05). */
+export interface TenantEntitlements {
+  /** S05 rule 9: activation needs an agreement in force (`AGREEMENT_NOT_IN_FORCE`). */
+  assertAgreementInForce(tx: Transaction, tenantId: string, now: Date): Promise<void>;
+  /**
+   * S05 rule 21: another branch fits the `branches` limit, under the lock of the tenant's
+   * entitlement state (`ENTITLEMENT_LIMIT_REACHED`). The tenant's first branches are exempt.
+   */
+  assertBranchFits(tx: Transaction, tenantId: string): Promise<void>;
+  /** S05 rule 18: a new branch gets its copy of the entitlements in its creation's transaction. */
+  branchCreated(tx: Transaction, tenantId: string, branchId: string): Promise<void>;
+}
+
+export const TENANT_ENTITLEMENTS = Symbol('TenantEntitlements');

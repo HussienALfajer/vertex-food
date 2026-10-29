@@ -25,6 +25,7 @@ import { StaffService } from '../src/modules/platform/access/staff.service.js';
 import { AreasService } from '../src/modules/platform/areas/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
+import { giveAgreement } from './commercial.js';
 import { newPhone } from './staff.js';
 
 // Spec S01 over the API: the rules exercised on the service the routes call, with staff actors as
@@ -161,9 +162,11 @@ describe('creating a tenant', () => {
         { action: 'staff.added', actorName: 'test operator' },
       ]),
     );
+    // Spec S05 rule 18: the first branch's copy of the entitlements makes the tenant's state.
     expect(events.map((e) => e.type).sort()).toEqual([
       'branch.created.v1',
       'branch.created.v1',
+      'entitlements.changed.v1',
       'staff.member_added.v1',
       'tenant.created.v1',
     ]);
@@ -218,6 +221,11 @@ describe('onboarding', () => {
     expect((await tenancy.completeOnboarding(owner)).onboardingCompletedAt).toBe(
       done.onboardingCompletedAt,
     );
+    // Spec S05 rule 9: activation needs an agreement in force.
+    expect(await codeOf(tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' }))).toBe(
+      'AGREEMENT_NOT_IN_FORCE',
+    );
+    await giveAgreement(app, tenantId);
     const active = await tenancy.changeStatus(OPERATOR, tenantId, { to: 'active' });
     expect(active.tenant).toMatchObject({ status: 'active' });
     expect(active.tenant.activatedAt).not.toBeNull();
@@ -229,6 +237,7 @@ describe('status lifecycle', () => {
     const created = await newTenant();
     await completeBranch(created.owner, created.branchIds[0] ?? '');
     await tenancy.completeOnboarding(created.owner);
+    await giveAgreement(app, created.tenantId);
     await tenancy.changeStatus(OPERATOR, created.tenantId, { to: 'active' });
     return created;
   }

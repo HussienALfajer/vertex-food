@@ -1,0 +1,16 @@
+{
+  "code": "sample_monthly",
+  "nameAr": "قالب شهري تجريبي",
+  "nameLatin": "Sample monthly",
+  "chargeTerms": [
+    {
+      "kind": "subscription",
+      "amount": 2500,
+      "currency": "USD",
+      "period": "month",
+      "per": "active_branch"
+    },
+    { "kind": "commission", "channel": "marketplace", "percentBp": 500 },
+    { "kind": "setup_fee", "amount": 5000, "currency": "USD", "label": "Setup and training" }
+  ]
+}
