@@ -159,7 +159,7 @@ export class EntitlementStates {
     current: StateRow | undefined,
     now: Date,
   ): Promise<StateRow> {
-    const resolved = resolveEntitlements(await this.inputs(tx, tenantId), now);
+    let resolved = resolveEntitlements(await this.inputs(tx, tenantId), now);
     let row = current;
     if (!row) {
       const [inserted] = await tx
@@ -177,9 +177,11 @@ export class EntitlementStates {
         await this.changed(tx, tenantId, inserted);
         return inserted;
       }
-      // Another transaction wrote the first state meanwhile: continue from it, locked.
+      // Another transaction wrote the first state meanwhile, maybe with inputs it changed:
+      // continue from its row, locked, with the inputs read again.
       row = await this.locked(tx, tenantId);
       if (!row) throw new Error('No entitlement state after a conflict');
+      resolved = resolveEntitlements(await this.inputs(tx, tenantId), now);
     }
     const same = sameEntitlements(resolvedOf(row), resolved);
     const [updated] = await tx

@@ -186,7 +186,7 @@ describe('amendments (states, rules 2, 6, 10, 11)', () => {
       TermDraft & { amount: number; listValue: Record<string, unknown> },
       TermDraft,
     ];
-    const cheaper = { ...subscription, amount: 2000 };
+    const cheaper = { ...subscription, amount: 2000 } as TermDraft;
     const edit = (add: TermDraft[], updatedAt: string) =>
       commercial.updateAmendment(SALES, draft.id, {
         changes: { add, end: [] },
@@ -198,14 +198,19 @@ describe('amendments (states, rules 2, 6, 10, 11)', () => {
       'VALIDATION_FAILED',
     );
     current = await edit(
-      [feature, limit, { ...cheaper, listValue: { ...subscription.listValue, amount: 2000 } }, fee],
+      [
+        feature,
+        limit,
+        { ...cheaper, listValue: { ...subscription.listValue, amount: 2000 } } as TermDraft,
+        fee,
+      ],
       current.updatedAt,
     );
     expect(await codeOf(commercial.submitAmendment(SALES, draft.id, current.updatedAt))).toBe(
       'VALIDATION_FAILED',
     );
     current = await edit(
-      [feature, limit, { ...cheaper, differenceReason: 'Pilot restaurant' }, fee],
+      [feature, limit, { ...cheaper, differenceReason: 'Pilot restaurant' } as TermDraft, fee],
       current.updatedAt,
     );
     // Only the author edits; a stale edit is a conflict.
