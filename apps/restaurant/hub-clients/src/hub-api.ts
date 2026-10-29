@@ -71,7 +71,7 @@ async function call<T>(
   const response = await fetch(url, {
     method: init.method ?? 'GET',
     headers: headers(init.credentials, init.body !== undefined),
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+    body: init.body === undefined ? null : JSON.stringify(init.body),
     signal: AbortSignal.timeout(init.timeoutMs),
     cache: 'no-store',
   });

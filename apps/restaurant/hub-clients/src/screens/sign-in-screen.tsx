@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/page-shell';
 import { PinPad } from '../components/pin-pad';
 import type { ConnectionState } from '../connection';
-import { type HubCredentials, HubApiError, members, startSession } from '../hub-api';
+import { HubApiError, type HubCredentials, members, startSession } from '../hub-api';
 import { Reconnecting } from './reconnecting';
 
 type Member = HubMembers['members'][number];
@@ -62,12 +62,12 @@ export function SignInScreen({
     setBusy(true);
     setError(null);
     try {
-      onSignedIn(await startSession(address, credentials, { membershipId: member.membershipId, pin }));
+      onSignedIn(
+        await startSession(address, credentials, { membershipId: member.membershipId, pin }),
+      );
     } catch (caught) {
       setError(
-        caught instanceof HubApiError && caught.code
-          ? errors(caught.code)
-          : t('pair.unreachable'),
+        caught instanceof HubApiError && caught.code ? errors(caught.code) : t('pair.unreachable'),
       );
     } finally {
       setBusy(false);
@@ -96,7 +96,7 @@ export function SignInScreen({
           </Button>
         </div>
       ) : list.state === 'loading' ? (
-        <div className="flex flex-col gap-3" aria-label={t('loading')}>
+        <div className="flex flex-col gap-3" role="status" aria-label={t('loading')}>
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>

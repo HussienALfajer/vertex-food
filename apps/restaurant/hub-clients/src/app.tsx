@@ -56,9 +56,12 @@ export function App() {
     return new HubConnection(pairing.peers, credentials, {
       member: () => sessionRef.current?.membershipId ?? null,
       onUnpaired: () => {
-        const fingerprint = pairingRef.current?.caFingerprint ?? null;
+        // Each call still running answers 401: the first one ends the pairing.
+        if (!pairingRef.current) return;
+        const fingerprint = pairingRef.current.caFingerprint;
+        pairingRef.current = null;
         void clearPairing();
-        setEnded(fingerprint ?? '');
+        setEnded(fingerprint);
         setSession(null);
         setPairing(null);
         navigate('/', true);

@@ -19,13 +19,10 @@ window.addEventListener('popstate', () => {
 });
 
 export function usePath(): PagePath {
-  return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    current,
-  );
+  return useSyncExternalStore((listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }, current);
 }
 
 /** Goes to `path`; `replace` for a redirect, so Back never returns to the page that redirected. */

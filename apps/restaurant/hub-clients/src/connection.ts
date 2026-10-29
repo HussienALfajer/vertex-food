@@ -45,6 +45,8 @@ export class HubConnection {
   private stopped = true;
   private running: Promise<void> | null = null;
   private live: { hub: CurrentHub; abort: AbortController } | null = null;
+  /** The hub the last snapshot came from: it stays shown while the stream is opened again. */
+  private liveFrom: CurrentHub | null = null;
 
   constructor(
     peers: readonly string[],
@@ -151,7 +153,7 @@ export class HubConnection {
     this.update({
       hub,
       // A snapshot from a PC that is no longer the hub says nothing of the branch now.
-      live: hub && this.live && sameHub(this.live.hub, hub) ? this.state.live : null,
+      live: hub && this.liveFrom && sameHub(this.liveFrom, hub) ? this.state.live : null,
       outbox,
       sending: outbox.filter((item) => item.state === 'pending').length,
     });
@@ -232,7 +234,10 @@ export class HubConnection {
       return;
     }
     const parsed = hubLiveSnapshotSchema.safeParse(json);
-    if (parsed.success) this.update({ live: parsed.data });
+    if (parsed.success) {
+      this.liveFrom = hub;
+      this.update({ live: parsed.data });
+    }
   }
 }
 

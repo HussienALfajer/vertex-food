@@ -32,14 +32,21 @@ export function PageShell({
           <VertexFoodMark aria-hidden className="w-7 shrink-0 text-primary" />
           <span className="truncate">{t('title')}</span>
         </p>
-        {connection && <ConnectionBadge connected={connection.hub !== null} />}
+        {connection && (
+          // Its own row on a phone, so the name stays whole.
+          <div className="order-last basis-full sm:order-none sm:basis-auto">
+            <ConnectionBadge connected={connection.hub !== null} />
+          </div>
+        )}
         {session && (
           <Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t('session.signOut')}>
             <LogOutIcon aria-hidden />
             <span className="max-w-32 truncate">{session.name}</span>
           </Button>
         )}
-        <ThemeToggle labels={{ toDark: common('theme.toDark'), toLight: common('theme.toLight') }} />
+        <ThemeToggle
+          labels={{ toDark: common('theme.toDark'), toLight: common('theme.toLight') }}
+        />
       </header>
       <main className="flex flex-1 justify-center px-4 py-6">{children}</main>
       <footer className="flex justify-center px-4 py-4">

@@ -21,9 +21,7 @@ async function pairAnywhere(
   peers: readonly string[],
   expectedFingerprint: string | null,
 ): Promise<{ ok: true; pairing: StoredPairing } | { ok: false; error: PairError }> {
-  const origins = [
-    ...new Set([window.location.origin, ...peers.map((peer) => hubOrigin(peer))]),
-  ];
+  const origins = [...new Set([window.location.origin, ...peers.map((peer) => hubOrigin(peer))])];
   let error: PairError = { kind: 'unreachable' };
   for (const origin of origins) {
     try {

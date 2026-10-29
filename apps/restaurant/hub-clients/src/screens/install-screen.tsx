@@ -2,8 +2,8 @@ import { caDownloadUrl } from '@vertex-food/contracts';
 import { Button, Callout } from '@vertex-food/ui';
 import { DownloadIcon, ShieldCheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { QrCode } from '../components/qr-code';
 import { Screen } from '../components/page-shell';
+import { QrCode } from '../components/qr-code';
 import { navigate } from '../router';
 
 const steps = ['open', 'download', 'install', 'compare', 'pair'] as const;
