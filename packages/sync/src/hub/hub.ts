@@ -445,7 +445,7 @@ export class BranchHub implements PeerHandlers {
               );
         } else {
           const now = this.ports.clock.now();
-          entry = await this.resolveAndCommit(definition, command.id, payload.data, decision, {
+          const timing: Timing = {
             deviceTime: now.toISOString(),
             clockOffsetMs: this.ports.clock.offsetMs(),
             highestSeenTime: this.ports.clock.highestSeenTime().toISOString(),
@@ -453,7 +453,25 @@ export class BranchHub implements PeerHandlers {
               source.kind === 'pc'
                 ? (command.afterOfflineWindow ?? this.ports.branch.afterOfflineWindow())
                 : this.ports.branch.afterOfflineWindow(),
-          });
+          };
+          // Spec S05 rule 24: a feature the branch's copy shows off at the command's effective time.
+          // A re-sent version was entitled where it was first answered, so it is not checked again.
+          if (
+            definition.feature !== null &&
+            !this.ports.branch.featureEntitled(
+              definition.feature,
+              correctedTime(now, timing.clockOffsetMs),
+            )
+          ) {
+            return { status: 'refused', reason: 'not_entitled' };
+          }
+          entry = await this.resolveAndCommit(
+            definition,
+            command.id,
+            payload.data,
+            decision,
+            timing,
+          );
         }
         return entry ? this.okAnswer(entry) : { status: 'refused', reason: 'payload_invalid' };
       } catch (error) {

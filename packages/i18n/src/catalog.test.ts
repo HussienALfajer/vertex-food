@@ -1,4 +1,11 @@
-import { errorCodes, messageTemplateKeys, messageTemplates } from '@vertex-food/contracts';
+import {
+  commandReasons,
+  errorCodes,
+  featureKeys,
+  limitKeys,
+  messageTemplateKeys,
+  messageTemplates,
+} from '@vertex-food/contracts';
 import { describe, expect, it } from 'vitest';
 import { ar, formatLocale } from './index.js';
 
@@ -27,6 +34,12 @@ describe('Arabic catalog', () => {
 
   it('has a text for every error code', () => {
     expect(Object.keys(ar.errors).sort()).toEqual([...errorCodes].sort());
+  });
+
+  it('names every feature, limit and command reason', () => {
+    expect(Object.keys(ar.agreement.features).sort()).toEqual([...featureKeys].sort());
+    expect(Object.keys(ar.agreement.limits).sort()).toEqual([...limitKeys].sort());
+    expect(Object.keys(ar.sync.reasons).sort()).toEqual([...commandReasons].sort());
   });
 
   it('has a WhatsApp text for every message template, naming exactly its parameters', () => {

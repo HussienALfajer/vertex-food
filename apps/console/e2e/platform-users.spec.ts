@@ -38,7 +38,7 @@ test.describe('platform users', () => {
     await dialog.getByLabel('رقم الهاتف').fill('0900000204');
     await dialog.getByRole('combobox').click();
     await page.getByRole('option', { name: 'مبيعات' }).click();
-    await expect(dialog).toContainText('إنشاء المطاعم وإدارة بياناتها.');
+    await expect(dialog).toContainText('إنشاء المطاعم وإدارة بياناتها، وكتابة تعديلات الاتفاقيات.');
     await screenshot(page, testInfo, 'platform-users-create');
     await dialog.getByRole('button', { name: 'إضافة', exact: true }).click();
 

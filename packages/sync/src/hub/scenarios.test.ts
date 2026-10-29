@@ -779,9 +779,10 @@ describe('review findings of PR 2', () => {
   });
 
   // Over 600 signed commands each: CPU-bound, so more time than the default when every
-  // package's tests run at once (`pnpm test`).
+  // package's tests run at once (`pnpm test`). 6 s alone; 15 s in CI with the API's tests beside
+  // it, 23 s when a shared-package change runs every package's tests together.
   it('catches a standby up that misses more than one batch of entries', {
-    timeout: 20_000,
+    timeout: 60_000,
   }, async () => {
     branch.pc2.powerOff();
     for (let i = 1; i <= 620; i++) await cashier(branch.pc1, branch.networkCheck(i));
@@ -792,7 +793,7 @@ describe('review findings of PR 2', () => {
     expect(branch.pc2.store.lineageIds()).toHaveLength(620);
   });
 
-  it('rejoins over several pages of the hub’s journal', { timeout: 20_000 }, async () => {
+  it('rejoins over several pages of the hub’s journal', { timeout: 60_000 }, async () => {
     branch.lan.cut(branch.pc1.deviceId, branch.pc2.deviceId);
     await branch.run(3500);
     for (let i = 1; i <= 600; i++) await cashier(branch.pc2, branch.networkCheck(i));

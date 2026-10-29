@@ -1,3 +1,4 @@
+import { agreement } from './agreement.js';
 import { common } from './common.js';
 import { staffConsole } from './console.js';
 import { customer } from './customer.js';
@@ -16,6 +17,7 @@ export const ar = {
   messaging,
   restaurant,
   sync,
+  agreement,
   hubClients,
   console: staffConsole,
   web,

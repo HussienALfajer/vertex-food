@@ -33,6 +33,7 @@ export const recordLocalEvents = defineCommand({
   payload: recordLocalEventsPayloadSchema,
   resolved: z.object({}),
   access: { actor: 'device' },
+  feature: null,
   resolve: () => ({}),
   describe: (payload) => ({
     key: 'commands.audit.record_local_events',

@@ -530,6 +530,7 @@ export const restaurant = {
       attention: { resolve: 'إغلاق بنود «يحتاج انتباهًا»' },
       quarantine: { review: 'مراجعة الأوامر المحجوزة' },
     },
+    agreement: { view: 'عرض اتفاقية المطعم' },
   },
   staff: {
     title: 'فريق العمل',

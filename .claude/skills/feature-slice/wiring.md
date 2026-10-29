@@ -61,3 +61,4 @@ From S01. For a need not listed here, Vertex Shifa's files (read only, through t
 | Restaurant main process on the encrypted local database, tested on the real database (S04) | `apps/restaurant/electron/hub-store.ts`, `hub-store.test.ts` |
 | Branch hub LAN routes, mutual TLS, a branch on loopback addresses in tests (S04) | `apps/restaurant/electron/hub-lan.ts`, `hub-test-kit.ts`, `hub-scenarios.test.ts` |
 | The real sync service in a test (S04) | `apps/api/test/sync-service.test.ts` |
+| A feature or limit a spec sells, and the command's or route's feature (S05) | its layer's `packages/contracts/src/*-features.ts`, assembled in `feature-catalog.ts`; `CommandDefinition.feature` in `packages/sync/src/registry.ts` |

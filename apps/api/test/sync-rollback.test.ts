@@ -33,6 +33,7 @@ const testCommand = (name: string) =>
     payload: z.object({}),
     resolved: z.object({}),
     access: { actor: 'member', permission: 'hub.manage', station: false },
+    feature: null,
     resolve: () => ({}),
     describe: () => ({ key: `commands.test.${name}`, params: {} }),
   });

@@ -221,7 +221,11 @@ describe('signing in (rule 39)', () => {
     nextStep();
     const fresh = await signIn(app, user, codeOf(user.secret));
     expect(fresh.status).toBe(200);
-    expect(fresh.body.permissions).toEqual(['console.tenants.manage']);
+    expect(fresh.body.permissions).toEqual([
+      'console.tenants.manage',
+      'console.agreements.read',
+      'console.agreements.draft',
+    ]);
 
     const recovery = user.recovery[0] as string;
     const byRecovery = await signIn(app, user, recovery.toLowerCase());
@@ -487,7 +491,12 @@ describe('platform users (rule 42)', () => {
         revokedPermissions: ['console.tenants.status'],
       })
       .expect(200);
-    expect(promoted.body.effectivePermissions).toEqual([]);
+    // Finance's S05 preset stays; its S01 permission was revoked.
+    expect(promoted.body.effectivePermissions).toEqual([
+      'console.agreements.read',
+      'console.agreements.approve',
+      'console.entitlements.override',
+    ]);
     for (const change of [{ disabled: true }, { role: 'support' }]) {
       const self = await asUser(admin.cookie)
         .patch(`/api/console/platform-users/${admin.userId}`)

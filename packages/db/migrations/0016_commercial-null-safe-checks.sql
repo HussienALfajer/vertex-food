@@ -1,0 +1,4 @@
+ALTER TABLE "agreement_amendments" DROP CONSTRAINT "agreement_amendments_decision_reason";--> statement-breakpoint
+ALTER TABLE "entitlement_overrides" DROP CONSTRAINT "entitlement_overrides_expiry";--> statement-breakpoint
+ALTER TABLE "agreement_amendments" ADD CONSTRAINT "agreement_amendments_decision_reason" CHECK ((("agreement_amendments"."status" <> 'rejected' or char_length("agreement_amendments"."decision_reason") between 3 and 500) and ("agreement_amendments"."status" = 'rejected' or "agreement_amendments"."decision_reason" is null)) is true);--> statement-breakpoint
+ALTER TABLE "entitlement_overrides" ADD CONSTRAINT "entitlement_overrides_expiry" CHECK ((("entitlement_overrides"."expires_at" is null and "entitlement_overrides"."kind" = 'grant') or ("entitlement_overrides"."expires_at" > "entitlement_overrides"."starts_at" and "entitlement_overrides"."expires_at" <= "entitlement_overrides"."starts_at" + interval '367 days')) is true);

@@ -55,6 +55,16 @@ const OWNED_TABLES = {
   whatsappMessages: 'platform/messaging',
   whatsappKnownRecipients: 'platform/messaging',
   whatsappOptOuts: 'platform/messaging',
+  packages: 'platform/commercial',
+  agreementTemplates: 'platform/commercial',
+  agreements: 'platform/commercial',
+  agreementAmendments: 'platform/commercial',
+  agreementTerms: 'platform/commercial',
+  agreementTermEndings: 'platform/commercial',
+  entitlementOverrides: 'platform/entitlements',
+  entitlementOverrideRevocations: 'platform/entitlements',
+  entitlementStates: 'platform/entitlements',
+  entitlementExceptions: 'platform/entitlements',
 };
 
 /** The `.ts` files under `root`; a shared package's tests are left out (they import any file). */
@@ -72,7 +82,8 @@ function sourceFiles(
 
 /**
  * The layer of each per-module file of the shared packages (ADR 0025); `null` gathers them all.
- * Every file is platform today: food files (menus, orders) arrive with their specs.
+ * S05's feature catalog is the first file above platform: each layer declares its own features
+ * and a product-layer file assembles them.
  */
 const platform = (names: string[]) => Object.fromEntries(names.map((name) => [name, 'platform']));
 const CONTRACTS_LAYERS: Record<string, string | null> = {
@@ -80,8 +91,11 @@ const CONTRACTS_LAYERS: Record<string, string | null> = {
     'access.ts',
     'areas.ts',
     'audit.ts',
+    'commercial.ts',
+    'commercial-money.ts',
     'common-passwords.ts',
     'console-identity.ts',
+    'entitlements.ts',
     'errors.ts',
     'events.ts',
     'files.ts',
@@ -99,6 +113,10 @@ const CONTRACTS_LAYERS: Record<string, string | null> = {
     'tenancy.ts',
     'time.ts',
   ]),
+  'restaurant-features.ts': 'food',
+  'marketplace-features.ts': 'marketplace',
+  // The product layer: it gathers every layer's features into the one catalog.
+  'feature-catalog.ts': 'restaurant',
   'index.ts': null,
   'json-schema.ts': null,
 };
@@ -108,6 +126,8 @@ const SCHEMA_LAYERS: Record<string, string | null> = {
     'areas.ts',
     'audit.ts',
     'columns.ts',
+    'commercial.ts',
+    'entitlements.ts',
     'events.ts',
     'files.ts',
     'identity.ts',

@@ -129,10 +129,11 @@ export const staffConsole = {
   },
   roleDescriptions: {
     admin: 'كل صلاحيات اللوحة، ومنها إدارة مستخدمي اللوحة.',
-    sales: 'إنشاء المطاعم وإدارة بياناتها.',
+    sales: 'إنشاء المطاعم وإدارة بياناتها، وكتابة تعديلات الاتفاقيات.',
     dispatch: 'أسطول فيرتكس والتوزيع، حين تصل شاشاتها.',
-    finance: 'إيقاف المطاعم وإغلاقها، والمال والتسويات حين تصل شاشاتها.',
-    support: 'استرداد حسابات المالكين وتغيير أرقامهم.',
+    finance:
+      'إيقاف المطاعم وإغلاقها، واعتماد تعديلات الاتفاقيات والاستثناءات، والمال والتسويات حين تصل شاشاتها.',
+    support: 'استرداد حسابات المالكين وتغيير أرقامهم، وعرض الاتفاقيات.',
   },
   permissions: {
     'console.tenants.manage': 'إنشاء المطاعم وإدارة بياناتها',
@@ -141,6 +142,11 @@ export const staffConsole = {
     'console.accounts.recover': 'استرداد حسابات المالكين',
     'console.messaging.read': 'عرض أرقام واتساب المنصة',
     'console.messaging.manage': 'إدارة أرقام واتساب المنصة',
+    'console.agreements.read': 'عرض اتفاقيات المطاعم وميزاتها',
+    'console.agreements.draft': 'كتابة تعديلات الاتفاقيات',
+    'console.agreements.approve': 'اعتماد تعديلات الاتفاقيات أو رفضها',
+    'console.entitlements.override': 'منح الميزات أو منعها أو تغيير حدودها استثناءً',
+    'console.catalog.manage': 'إدارة الباقات وقوالب الاتفاقيات',
   },
   platformUsers: {
     title: 'مستخدمو اللوحة',

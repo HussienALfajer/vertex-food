@@ -557,6 +557,9 @@ export class HubRuntime {
           return pc?.publicKey ? ed25519Verifier(pc.publicKey) : null;
         },
         caFingerprint: () => this.deps.certificate()?.caFingerprint ?? '',
+        // Spec S05 rule 24: the local `branch_entitlements` row arrives with S05's PR 3. Until then
+        // no command of this release has a feature, and one that had would be refused.
+        featureEntitled: () => false,
       },
       peers: lanPeers({
         tls: () => this.tls(),

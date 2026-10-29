@@ -79,6 +79,17 @@ export const errorStatus = {
   PAIRING_CODE_INVALID: 401,
   PAIRING_LOCKED: 429,
   NOT_HUB: 409,
+  // S05 entitlements and agreements
+  ENTITLEMENT_LIMIT_REACHED: 409,
+  AGREEMENT_NOT_IN_FORCE: 409,
+  AMENDMENT_OPEN: 409,
+  SELF_APPROVAL: 403,
+  TERM_OVERLAP: 422,
+  EFFECTIVE_DATE_PAST: 422,
+  FEATURE_DEPENDENCY_MISSING: 422,
+  OVERRIDE_OVERLAP: 409,
+  ALREADY_REVOKED: 409,
+  CODE_TAKEN: 409,
 } as const satisfies Record<string, number>;
 
 export type ErrorCode = keyof typeof errorStatus;

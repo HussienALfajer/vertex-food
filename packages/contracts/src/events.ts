@@ -45,6 +45,10 @@ export const eventCatalog = {
     from: connectivityStateSchema,
     to: connectivityStateSchema,
   }),
+  /** S05: an amendment was approved (S14 and S16 consume it). */
+  'agreement.amended.v1': z.object({ tenantId: idSchema, amendmentId: idSchema }),
+  /** S05: a recompute changed the tenant's resolved entitlements (rule 18). */
+  'entitlements.changed.v1': z.object({ tenantId: idSchema, version: z.int().min(1) }),
 } as const;
 
 export type EventType = keyof typeof eventCatalog;
