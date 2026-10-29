@@ -13,6 +13,7 @@ import { type DeviceBridge, type DeviceStatus, deviceBridge } from '../../lib/de
 import { useOnline } from '../../lib/online';
 import { accessOfMe, type StaffAccess, StaffAccessContext } from '../../lib/staff-access';
 import { syncBridge } from '../../lib/sync';
+import { EntitlementBanners } from '../agreement/entitlement-banners';
 import { SyncChip } from '../sync/sync-chip';
 import { SyncNotices } from '../sync/sync-notices';
 import { useRestaurantNavigation } from '../tenancy/restaurant-nav';
@@ -167,6 +168,10 @@ function DeviceSession({
         notices={
           <>
             <SyncNotices bridge={syncBridge} corruptDatabase={status.localDatabase === 'corrupt'} />
+            {/* Spec S05 screen 2: from the branch's copy, offline too, by the member's roles. */}
+            {syncBridge && member?.roles.some((role) => role === 'owner' || role === 'manager') && (
+              <EntitlementBanners bridge={syncBridge} />
+            )}
             <WindowWarning window={status.window} />
             {!session.online && online && (
               // Opened offline: no access token, so the online screens wait for a new PIN entry.

@@ -5,6 +5,7 @@ import { sidebarLinkClassName } from '@vertex-food/ui';
 import {
   Building2Icon,
   ClockIcon,
+  FileTextIcon,
   HouseIcon,
   MonitorIcon,
   NetworkIcon,
@@ -57,7 +58,7 @@ function RestaurantNav({
   access: StaffAccess;
   onNavigate: () => void;
 }) {
-  const { t } = useTranslation(['restaurant', 'sync']);
+  const { t } = useTranslation(['restaurant', 'sync', 'agreement']);
   const [only] = branches ?? [];
   return (
     <>
@@ -119,6 +120,12 @@ function RestaurantNav({
         <Link to="/settings/quarantine" onClick={onNavigate} className={sidebarLinkClassName}>
           <ShieldAlertIcon aria-hidden />
           {t('sync:nav.quarantine')}
+        </Link>
+      )}
+      {can(access, 'agreement.view') && (
+        <Link to="/settings/agreement" onClick={onNavigate} className={sidebarLinkClassName}>
+          <FileTextIcon aria-hidden />
+          {t('agreement:page.nav')}
         </Link>
       )}
       <Link to="/me" onClick={onNavigate} className={sidebarLinkClassName}>

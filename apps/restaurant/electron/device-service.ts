@@ -341,7 +341,11 @@ export class DeviceService {
         return { ok: true };
       } catch (error) {
         if (isUnreachable(error)) this.online = false;
-        return { ok: false, code: codeOf(error) };
+        // A PC past the agreement's device limit (spec S05 rule 21) says which limit and its value.
+        const limit = error instanceof DeviceApiError ? error.limit : undefined;
+        return limit
+          ? { ok: false, code: codeOf(error), limit }
+          : { ok: false, code: codeOf(error) };
       } finally {
         this.deps.onChange();
       }

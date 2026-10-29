@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { DeviceMember, MemberList, SessionTokens } from '@vertex-food/contracts';
 import { describe, expect, it, vi } from 'vitest';
 import { deviceChannels, syncChannels } from './bridge.js';
-import { type DeviceApi, DeviceApiError } from './device-client.js';
+import { type DeviceApi, DeviceApiError, DeviceClient } from './device-client.js';
 import { generateDeviceKey, signWithDeviceKey } from './device-key.js';
 import { DeviceService } from './device-service.js';
 import {
@@ -227,6 +227,39 @@ describe('DeviceService registration (rule 16)', () => {
     const { service, input, server, store } = await setup();
     server.reachable = false;
     expect(await service.register(input)).toEqual({ ok: false, code: 'NETWORK_ERROR' });
+    expect(store.read()).toBeNull();
+  });
+
+  it('names the limit and its value when the agreement holds no more PCs (spec S05 rule 21)', async () => {
+    const refusal = {
+      code: 'ENTITLEMENT_LIMIT_REACHED',
+      message: 'The devices limit is reached',
+      details: { limit: 'devices', value: 3, usage: 3 },
+    };
+    const client = new DeviceClient('https://api.test', async () =>
+      Response.json(refusal, { status: 409 }),
+    );
+    const error = await client
+      .register('ticket', {
+        tenantId: uuid7(),
+        branchId: uuid7(),
+        name: 'الكاشير 4',
+        publicKey: 'key',
+        os: 'win32 10.0',
+        appVersion: '0.0.0',
+      })
+      .catch((caught: unknown) => caught);
+    // The usage stays in the main process: the message names the limit and its value only.
+    expect(error).toMatchObject({ code: 'ENTITLEMENT_LIMIT_REACHED' });
+    expect((error as DeviceApiError).limit).toEqual({ limit: 'devices', value: 3 });
+
+    const { service, input, api, store } = await setup();
+    vi.mocked(api.register).mockRejectedValueOnce(error);
+    expect(await service.register(input)).toEqual({
+      ok: false,
+      code: 'ENTITLEMENT_LIMIT_REACHED',
+      limit: { limit: 'devices', value: 3 },
+    });
     expect(store.read()).toBeNull();
   });
 });

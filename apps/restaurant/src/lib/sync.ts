@@ -15,6 +15,7 @@ export const syncBridge: SyncBridge | null =
   typeof window === 'undefined' ? null : (window.vertexSync ?? null);
 
 export type {
+  BranchEntitlementsView,
   BranchNetworkView,
   CommandResultView,
   HubView,
