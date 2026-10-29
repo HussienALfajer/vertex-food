@@ -418,6 +418,10 @@ export class HubLanServer {
     if (!pairing) throw new HttpError(401, 'UNAUTHENTICATED');
     const source = () => hub.sourceOfPairing(pairing, sessionToken(req));
     const stream = { pairingId: pairing.id, deviceId: null };
+    // The page sends its session on `hello` only after a tap or a key since its last one, so the
+    // hub's idle lock counts the page's input, not only its commands (rule 35).
+    const session = sessionToken(req);
+    if (route === 'GET /hub/hello' && session) await hub.pairing.session(pairing, session);
     if (await this.common(req, res, path, hub, source, stream)) return;
     // Member sessions belong to personal pairings only (rule 35).
     switch (route) {

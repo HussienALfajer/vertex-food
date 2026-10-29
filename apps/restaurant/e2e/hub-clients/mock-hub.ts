@@ -62,6 +62,11 @@ type Pc = {
   role: 'hub' | 'standby';
   epoch: number;
   up: boolean;
+  /** False for a PC that never got the pairing (off when the phone paired): it answers 401. */
+  knowsPairing: boolean;
+  /** `hello` requests it answered, and those carrying the PIN session (input on the page). */
+  hellos: number;
+  touches: number;
 };
 
 export type MockHub = {
@@ -78,6 +83,11 @@ export type MockHub = {
   revoked: boolean;
   /** Fails the next pairings with this code. */
   pairError: ErrorCode | null;
+  /** The branch's idle lock and how long a new session may last at most. */
+  idleLockMinutes: number;
+  sessionMinutes: number;
+  /** `DELETE /hub/sessions/current` calls. */
+  sessionsEnded: number;
 };
 
 export function mockHub(): MockHub {
@@ -89,6 +99,9 @@ export function mockHub(): MockHub {
         role: 'hub',
         epoch: 1,
         up: true,
+        knowsPairing: true,
+        hellos: 0,
+        touches: 0,
       },
       {
         address: peers[1],
@@ -96,6 +109,9 @@ export function mockHub(): MockHub {
         role: 'standby',
         epoch: 1,
         up: true,
+        knowsPairing: true,
+        hellos: 0,
+        touches: 0,
       },
     ],
     pairingOpen: true,
@@ -106,6 +122,9 @@ export function mockHub(): MockHub {
     mirrored: true,
     revoked: false,
     pairError: null,
+    idleLockMinutes: 15,
+    sessionMinutes: 12 * 60,
+    sessionsEnded: 0,
   };
 }
 
@@ -227,13 +246,20 @@ export async function installMockHub(page: Page, hub: MockHub): Promise<void> {
         return route.fulfill({ status: 204, headers: cors(route) });
       }
       const headers = request.headers();
-      if (hub.revoked || !hub.token || headers.authorization !== `Bearer ${hub.token}`) {
+      if (
+        hub.revoked ||
+        !hub.token ||
+        !pc.knowsPairing ||
+        headers.authorization !== `Bearer ${hub.token}`
+      ) {
         return refuse(route, 'UNAUTHENTICATED');
       }
       const path = new URL(request.url()).pathname;
       const member = hub.sessions.get(headers['x-hub-session'] ?? '') ?? null;
       switch (`${request.method()} ${path}`) {
         case 'GET /hub/hello':
+          pc.hellos += 1;
+          if (member) pc.touches += 1;
           return json(route, 200, {
             deviceId: pc.deviceId,
             role: pc.role,
@@ -260,11 +286,12 @@ export async function installMockHub(page: Page, hub: MockHub): Promise<void> {
             membershipId: found.membershipId,
             name: found.name,
             permissions: found.permissions,
-            idleLockMinutes: 15,
-            expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+            idleLockMinutes: hub.idleLockMinutes,
+            expiresAt: new Date(Date.now() + hub.sessionMinutes * 60 * 1000).toISOString(),
           });
         }
         case 'DELETE /hub/sessions/current':
+          hub.sessionsEnded += 1;
           hub.sessions.delete(headers['x-hub-session'] ?? '');
           return route.fulfill({ status: 204, headers: cors(route) });
         case 'POST /hub/commands': {

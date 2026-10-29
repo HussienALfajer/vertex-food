@@ -233,6 +233,47 @@ test.describe('hub client pages', () => {
     );
   });
 
+  test('a 401 from a PC that does not know the pairing keeps it', async ({ page }) => {
+    // The standby was off when the phone paired: it answers 401 while the hub accepts the token.
+    const standby = hub.pcs[1];
+    if (standby) standby.knowsPairing = false;
+    await pairAndSignIn(page);
+    await expect.poll(() => hub.pcs[0]?.hellos ?? 0).toBeGreaterThan(2);
+    await expect(page).toHaveURL(/\/check$/);
+    await page.getByRole('button', { name: 'إرسال اختبار' }).click();
+    await expect(page.getByTestId('sending')).toHaveText('لا شيء قيد الإرسال');
+    await page.reload();
+    await expect(page).toHaveURL(/\/sign-in$/);
+  });
+
+  test("lock the session after the branch's idle time without input", async ({ page }) => {
+    await page.clock.install();
+    await pairAndSignIn(page);
+    // Input reaches the hub with the next `hello`, so its idle lock counts it too.
+    await page.getByRole('heading', { level: 1 }).click();
+    await expect.poll(() => hub.pcs[0]?.touches ?? 0).toBeGreaterThan(0);
+    await page.clock.fastForward('10:00');
+    await page.getByRole('heading', { level: 1 }).click();
+    await page.clock.fastForward('10:00');
+    await expect(page).toHaveURL(/\/check$/);
+    await page.clock.fastForward('06:00');
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await expect(page.getByText('انتهت الجلسة. سجّل الدخول من جديد.')).toBeVisible();
+    await expect.poll(() => hub.sessionsEnded).toBe(1);
+  });
+
+  test('end the session at its expiry, even with input', async ({ page }) => {
+    hub.idleLockMinutes = 60;
+    hub.sessionMinutes = 20;
+    await page.clock.install();
+    await pairAndSignIn(page);
+    await page.clock.fastForward('10:00');
+    await page.getByRole('heading', { level: 1 }).click();
+    await expect(page).toHaveURL(/\/check$/);
+    await page.clock.fastForward('11:00');
+    await expect(page).toHaveURL(/\/sign-in$/);
+  });
+
   test('a station pairing shows its screen and the hub', async ({ page }, testInfo) => {
     hub.kind = 'station';
     await page.goto(pairUrl);

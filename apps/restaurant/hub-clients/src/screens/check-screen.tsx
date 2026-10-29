@@ -51,7 +51,8 @@ export function CheckScreen({
 }: {
   connection: ConnectionState;
   session: HubSession;
-  send: (command: HubCommand) => void;
+  /** Resolves once the command is saved in the outbox, rejects when it could not be. */
+  send: (command: HubCommand) => Promise<void>;
 }) {
   const { t } = useTranslation('hubClients');
   const { t: sync } = useTranslation('sync');
@@ -60,15 +61,20 @@ export function CheckScreen({
   const [count, setCount] = useState('200');
   const [interval, setIntervalMs] = useState('100');
   const [checked, setChecked] = useState(false);
+  const [notSaved, setNotSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The stress run still sending: a save that resolves after "stop" sends nothing more. */
+  const activeRun = useRef<string | null>(null);
 
   const stop = () => {
+    activeRun.current = null;
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     setStress((current) => current && { ...current, running: false });
   };
   useEffect(
     () => () => {
+      activeRun.current = null;
       if (timer.current) clearTimeout(timer.current);
     },
     [],
@@ -91,23 +97,37 @@ export function CheckScreen({
 
   const sendTest = () => {
     const command = networkCheck(session, uuidv7(), 1);
-    setLastTest({ id: command.id, sentMs: Date.now() });
-    send(command);
+    setNotSaved(false);
+    send(command).then(
+      () => setLastTest({ id: command.id, sentMs: Date.now() }),
+      () => setNotSaved(true),
+    );
   };
 
   const startStress = (event: FormEvent) => {
     event.preventDefault();
     setChecked(true);
     if (countInvalid || intervalInvalid) return;
+    setNotSaved(false);
     const run: StressRun = { run: uuidv7(), total, ids: [], running: true };
     setStress(run);
+    activeRun.current = run.run;
+    // Each command counts as sent once it is saved; one that could not be stops the run.
     const next = (sequence: number) => {
       const command = networkCheck(session, run.run, sequence);
-      run.ids.push(command.id);
-      setStress({ ...run });
-      send(command);
-      if (sequence < total) timer.current = setTimeout(() => next(sequence + 1), gap);
-      else stop();
+      send(command).then(
+        () => {
+          run.ids.push(command.id);
+          setStress({ ...run });
+          if (activeRun.current !== run.run) return;
+          if (sequence < total) timer.current = setTimeout(() => next(sequence + 1), gap);
+          else stop();
+        },
+        () => {
+          setNotSaved(true);
+          stop();
+        },
+      );
     };
     next(1);
   };
@@ -119,6 +139,7 @@ export function CheckScreen({
   return (
     <Screen heading={t('check.heading')} description={t('check.description')} wide>
       {!connection.hub && <ReconnectingNotice />}
+      {notSaved && <Callout tone="danger" role="alert" title={t('check.notSaved')} />}
       {refusal && (
         <Callout
           tone="danger"

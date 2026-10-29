@@ -58,7 +58,7 @@ export class HubConnection {
       onRefused: (refusal: Refusal) => void;
     },
   ) {
-    const transport = hubTransport(credentials, () => events.onUnpaired());
+    const transport = hubTransport(credentials, peers, () => events.onUnpaired());
     this.client = new HubClient({
       peers,
       store: indexedDbOutbox,
@@ -67,6 +67,14 @@ export class HubConnection {
       transport: {
         hello: transport.hello,
         command: async (address, command, timeoutMs) => {
+          // `HubClient` picks a pass's commands by member when the pass starts; a member who
+          // signed out or was locked since then must not send another's command with no session
+          // or theirs, which the hub would refuse and the outbox drop. It waits, unsent, for its
+          // maker (rule 35); the next pass leaves it out.
+          const maker = command.actor?.kind === 'member' ? command.actor.membershipId : null;
+          if (maker && !command.resent && maker !== events.member()) {
+            throw new Error('Waits for its member');
+          }
           const answer = await transport.command(address, command, timeoutMs);
           if (answer.status === 'ok' || answer.status === 'duplicate') {
             const answeredAt = new Map(this.state.answeredAt);
@@ -104,9 +112,17 @@ export class HubConnection {
     this.closeLive();
   }
 
-  /** Keeps the command in the outbox and sends it with whatever else waits. */
+  /**
+   * Keeps the command in the outbox, then sends it with whatever else waits. It resolves once the
+   * command is saved on the phone, and rejects when it could not be (storage full, a private
+   * window): the page says so instead of counting it as sent (ADR 0008).
+   */
   async send(command: HubCommand): Promise<void> {
-    await this.client.send(command);
+    await indexedDbOutbox.put({ state: 'pending', command, queuedAt: new Date().toISOString() });
+    void this.client
+      .flush()
+      .catch(() => undefined)
+      .then(() => this.refresh());
     await this.refresh();
   }
 

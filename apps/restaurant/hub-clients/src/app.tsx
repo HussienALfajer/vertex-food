@@ -13,6 +13,7 @@ import { SignInScreen } from './screens/sign-in-screen';
 import { clearPairing, readPairing, type StoredPairing, savePairing } from './storage';
 
 const IDLE_CHECK_MS = 10_000;
+const TOUCH_WINDOW_MS = 5_000;
 
 const noConnection = (): ConnectionState | null => null;
 const noSubscribe = () => () => undefined;
@@ -47,6 +48,11 @@ export function App() {
     () => ({
       token: () => pairingRef.current?.token ?? null,
       session: () => sessionRef.current?.token ?? null,
+      // The page asks every PC every 3 s; input in the last few seconds reaches the hub that way.
+      touch: () =>
+        Date.now() - lastInput.current < TOUCH_WINDOW_MS
+          ? (sessionRef.current?.token ?? null)
+          : null,
     }),
     [],
   );
@@ -97,15 +103,10 @@ export function App() {
   useEffect(() => {
     if (!session) return;
     lastInput.current = Date.now();
-    const input = () => {
-      lastInput.current = Date.now();
-    };
-    window.addEventListener('pointerdown', input);
-    window.addEventListener('keydown', input);
     const startedAt = new Date();
-    const timer = setInterval(() => {
+    const active = () => {
       const now = new Date();
-      const active =
+      return (
         isHubSessionActive(
           {
             startedAt,
@@ -113,12 +114,23 @@ export function App() {
             idleLockMinutes: session.idleLockMinutes,
           },
           now,
-        ) && now.getTime() < Date.parse(session.expiresAt);
-      if (!active) signOut(t('session.ended'));
+        ) && now.getTime() < Date.parse(session.expiresAt)
+      );
+    };
+    // Checked before the input counts: the first tap after a phone slept past the idle lock (its
+    // timers paused) locks the session instead of keeping it.
+    const input = () => {
+      if (!active()) signOut(t('session.ended'));
+      else lastInput.current = Date.now();
+    };
+    window.addEventListener('pointerdown', input, { capture: true });
+    window.addEventListener('keydown', input, { capture: true });
+    const timer = setInterval(() => {
+      if (!active()) signOut(t('session.ended'));
     }, IDLE_CHECK_MS);
     return () => {
-      window.removeEventListener('pointerdown', input);
-      window.removeEventListener('keydown', input);
+      window.removeEventListener('pointerdown', input, { capture: true });
+      window.removeEventListener('keydown', input, { capture: true });
       clearInterval(timer);
     };
   }, [session]);
@@ -178,7 +190,9 @@ export function App() {
         <CheckScreen
           connection={state}
           session={session}
-          send={(command) => void connection?.send(command).catch(() => undefined)}
+          send={(command) =>
+            connection ? connection.send(command) : Promise.reject(new Error('Not connected'))
+          }
         />
       );
     }
