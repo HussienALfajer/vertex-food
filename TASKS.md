@@ -45,7 +45,7 @@ Rules that keep the parallel PRs apart:
 
 - [x] `branch_entitlements` in the local database's synced tables; the hub's entitlement port on it; the lease (7 days after the last stream sync); bridge read for the renderer (row, lease state, no money) (`electron/branch-entitlements.ts`, `SyncBridge.entitlements()`; the fake device's `FakeSync.entitlements` for PR 4, the full restaurant app by default)
 - [x] Tests on the real local database and a hub scenario (refused `not_entitled`, accepted after a newer row) (`branch-entitlements.test.ts`, `sync-ipc.test.ts`, `hub-scenarios.test.ts`: before a first sync, a row without the feature, a removal whose time has come, then a newer row)
-- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: the restaurant E2E suite green (238), lint fixed (import order); the restaurant, API and console files that hit the 5 s timeout under the full run on this 4-core cloud machine passed when rerun alone; reviewer: no blocking finding)
 
 ## PR 4 `feat/s05-restaurant-agreement-screens` — restaurant screens (after PR 2 and PR 3)
 

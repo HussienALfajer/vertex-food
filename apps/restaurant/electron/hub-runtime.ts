@@ -1,10 +1,10 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import type { PowerSyncDatabase } from '@powersync/node';
 import {
+  type BranchEntitledFeature,
   type ConnectivityState,
   caDownloadUrl,
   commandEnvelopeSchema,
-  type BranchEntitledFeature,
   type DeviceMember,
   DomainError,
   HUB_CA_HTTP_PORT,
