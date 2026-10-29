@@ -1474,8 +1474,79 @@ export interface components {
             /** @default [] */
             revokedPermissions: components["schemas"]["StaffPermission"][];
         };
+        AgreementTemplate: {
+            id: components["schemas"]["Id"];
+            code: components["schemas"]["CommercialCode"];
+            nameAr: string;
+            nameLatin: string | null;
+            packageId: components["schemas"]["Id"];
+            chargeTerms: components["schemas"]["ChargeTermDraft"][];
+            createdAt: components["schemas"]["Instant"];
+            updatedAt: components["schemas"]["Instant"];
+            archivedAt: components["schemas"]["Instant"] | null;
+        };
+        AgreementTemplateInput: {
+            code: components["schemas"]["CommercialCode"];
+            nameAr: string;
+            nameLatin?: string | null;
+            packageId: components["schemas"]["Id"];
+            chargeTerms: components["schemas"]["ChargeTermDraft"][];
+        };
+        AgreementTemplateList: components["schemas"]["AgreementTemplate"][];
+        AgreementTerm: {
+            id: components["schemas"]["Id"];
+            amendmentId: components["schemas"]["Id"];
+            values: components["schemas"]["TermValues"];
+            effectiveFrom: components["schemas"]["Instant"] | null;
+            effectiveTo: components["schemas"]["Instant"] | null;
+            endsAt: components["schemas"]["Instant"] | null;
+            endingAmendmentId: components["schemas"]["Id"] | null;
+            dueOn: components["schemas"]["LocalDate"] | null;
+            listValue: components["schemas"]["TermValues"] | null;
+            differenceReason: string | null;
+            state: components["schemas"]["TermState"];
+            createdAt: components["schemas"]["Instant"];
+        };
+        Amendment: {
+            id: components["schemas"]["Id"];
+            tenantId: components["schemas"]["Id"];
+            agreementId: components["schemas"]["Id"];
+            number: number;
+            status: components["schemas"]["AmendmentStatus"];
+            changes: components["schemas"]["AmendmentDraftChanges"];
+            note: string | null;
+            authoredBy: components["schemas"]["Id"] | null;
+            authoredByOperator: string | null;
+            submittedAt: components["schemas"]["Instant"] | null;
+            decidedAt: components["schemas"]["Instant"] | null;
+            decidedBy: components["schemas"]["Id"] | null;
+            decidedByOperator: string | null;
+            decisionReason: string | null;
+            applied: {
+                terms: components["schemas"]["AgreementTerm"][];
+                endings: {
+                    termId: components["schemas"]["Id"];
+                    endsAt: components["schemas"]["Instant"];
+                }[];
+            } | null;
+            createdAt: components["schemas"]["Instant"];
+            updatedAt: components["schemas"]["Instant"];
+        };
+        AmendmentChanges: components["schemas"]["AmendmentDraftChanges"];
+        AmendmentDraftChanges: {
+            add: components["schemas"]["TermDraft"][];
+            end: components["schemas"]["TermEndingDraft"][];
+        };
+        /** @enum {string} */
+        AmendmentStatus: "draft" | "submitted" | "approved" | "rejected" | "withdrawn";
+        AmendmentTransition: {
+            updatedAt: components["schemas"]["Instant"];
+        };
         ArchiveBranch: {
             note?: string;
+        };
+        ArchivePreset: {
+            updatedAt: components["schemas"]["Instant"];
         };
         AttentionItem: {
             id: components["schemas"]["Id"];
@@ -1509,7 +1580,7 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked" | "branch.hub_roles_changed" | "branch_ca.created" | "device_certificate.issued" | "quarantine_batch.received" | "quarantine_batch.accepted" | "quarantine_batch.rejected" | "attention_item.resolved" | "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted";
+        AuditAction: "tenant.created" | "tenant.profile_updated" | "tenant.slug_changed" | "tenant.status_scheduled" | "tenant.status_changed" | "tenant.status_schedule_cancelled" | "tenant.status_rescheduled" | "tenant.onboarding_completed" | "tenant_logo.replaced" | "tenant_logo.archived" | "tenant_cover.replaced" | "tenant_cover.archived" | "branch.created" | "branch.updated" | "branch.archived" | "branch_hours.replaced" | "branch_hour_exception.created" | "branch_hour_exception.updated" | "branch_hour_exception.archived" | "branch_charges.replaced" | "governorate.created" | "city.created" | "staff.added" | "staff.access_changed" | "staff.deactivated" | "staff.reactivated" | "staff.password_reset_authorized" | "staff_pin.set" | "staff_pin.disabled" | "device.registered" | "device.renamed" | "device.revoked" | "device.wiped" | "staff_session.started" | "staff_session.reauthenticated" | "branch.security_updated" | "account.created" | "account.password_set" | "account.password_reset_authorized" | "account.phone_changed" | "account.sign_in_locked" | "personal_device.added" | "personal_device.revoked" | "console.request" | "platform_user.created" | "platform_user.updated" | "platform_user.disabled" | "platform_user.reset" | "platform_user.setup_completed" | "platform_user.signed_in" | "platform_user.signed_out" | "platform_user.sign_in_failed" | "platform_user.totp_failed" | "platform_user.reauthenticated" | "platform_user.password_changed" | "whatsapp_session.created" | "whatsapp_session.relinked" | "whatsapp_session.paused" | "whatsapp_session.resumed" | "whatsapp_session.unlinked" | "branch.hub_roles_changed" | "branch_ca.created" | "device_certificate.issued" | "quarantine_batch.received" | "quarantine_batch.accepted" | "quarantine_batch.rejected" | "attention_item.resolved" | "hub.promoted" | "hub.demoted" | "hub.rejoined" | "hub.divergence_adopted" | "hub_pairing.opened" | "hub_pairing.paired" | "hub_pairing.revoked" | "hub_pairing.expired" | "hub_session.pin_locked" | "sync.network_check_run" | "staff_pin.failed_offline" | "staff_pin.locked_offline" | "staff_pin.reenabled_offline" | "staff_approval.granted" | "package.created" | "package.updated" | "package.archived" | "agreement_template.created" | "agreement_template.updated" | "agreement_template.archived" | "amendment.created" | "amendment.updated" | "amendment.submitted" | "amendment.unsubmitted" | "amendment.withdrawn" | "amendment.approved" | "amendment.rejected" | "entitlement_override.created" | "entitlement_override.revoked" | "agreement.amended" | "entitlements.overridden";
         /** @enum {string} */
         AuditActorKind: "staff" | "customer" | "driver" | "platform" | "system";
         AuthorizeAccountPasswordReset: {
@@ -1612,6 +1683,17 @@ export interface components {
             cancelScheduled: true;
             note?: string;
         };
+        CatalogFeature: {
+            key: components["schemas"]["EntitlementKey"];
+            dependsOn: components["schemas"]["EntitlementKey"][][];
+            private: boolean;
+            retired: boolean;
+        };
+        CatalogLimit: {
+            key: components["schemas"]["EntitlementKey"];
+            counts: string;
+            retired: boolean;
+        };
         CertificateRequest: {
             csr: string;
             lanAddresses: components["schemas"]["LanAddresses"];
@@ -1642,9 +1724,57 @@ export interface components {
             note?: string;
         };
         /** @enum {string} */
+        ChargeBasis: "tenant" | "active_branch";
+        /** @enum {string} */
         ChargeKind: "tax" | "service";
         /** @enum {string} */
         ChargeMode: "inclusive" | "added";
+        ChargeTermDraft: {
+            /** @constant */
+            kind: "subscription";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+        } | {
+            /** @constant */
+            kind: "listing_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+        } | {
+            /** @constant */
+            kind: "commission";
+            channel: components["schemas"]["CommissionChannel"];
+            percentBp: number;
+            fixed?: {
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+            };
+        } | {
+            /** @constant */
+            kind: "delivery_fee_share";
+            percentBp: number;
+        } | {
+            /** @constant */
+            kind: "setup_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        } | {
+            /** @constant */
+            kind: "hardware";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        } | {
+            /** @constant */
+            kind: "service";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        };
         City: {
             id: components["schemas"]["Id"];
             governorateId: components["schemas"]["Id"];
@@ -1699,7 +1829,7 @@ export interface components {
         /** @enum {string} */
         CommandOutcome: "accepted" | "adjusted" | "rejected";
         /** @enum {string} */
-        CommandReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported" | "protocol_unsupported" | "signature_invalid" | "device_revoked" | "member_inactive" | "approver_not_allowed" | "number_out_of_block" | "server_error";
+        CommandReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported" | "protocol_unsupported" | "signature_invalid" | "device_revoked" | "member_inactive" | "approver_not_allowed" | "number_out_of_block" | "server_error" | "not_entitled";
         CommandResult: {
             id: components["schemas"]["Id"];
             /** @enum {string} */
@@ -1717,6 +1847,9 @@ export interface components {
             };
         };
         CommandVersion: number;
+        CommercialCode: string;
+        /** @enum {string} */
+        CommissionChannel: "marketplace" | "web";
         /** @enum {string} */
         ConnectivityState: "online" | "weak" | "offline";
         ConsoleAccount: {
@@ -1738,6 +1871,18 @@ export interface components {
         ConsoleAccountLookup: {
             phone: components["schemas"]["MobilePhoneNumber"];
         };
+        ConsoleAgreement: {
+            tenantId: components["schemas"]["Id"];
+            agreement: {
+                id: components["schemas"]["Id"];
+                templateId: components["schemas"]["Id"] | null;
+                inForce: boolean;
+                createdAt: components["schemas"]["Instant"];
+            } | null;
+            terms: components["schemas"]["AgreementTerm"][];
+            amendments: components["schemas"]["Amendment"][];
+            overrides: components["schemas"]["EntitlementOverride"][];
+        };
         ConsoleMe: {
             id: components["schemas"]["Id"];
             phone: string;
@@ -1751,7 +1896,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover" | "console.messaging.read" | "console.messaging.manage";
+        ConsolePermission: "console.tenants.manage" | "console.tenants.status" | "console.users.manage" | "console.accounts.recover" | "console.messaging.read" | "console.messaging.manage" | "console.agreements.read" | "console.agreements.draft" | "console.agreements.approve" | "console.entitlements.override" | "console.catalog.manage";
         ConsoleReauth: {
             code: components["schemas"]["TotpCode"];
         };
@@ -1831,6 +1976,11 @@ export interface components {
         Coordinates: {
             latitudeE7: number;
             longitudeE7: number;
+        };
+        CreateAmendment: {
+            templateId?: components["schemas"]["Id"];
+            changes?: components["schemas"]["AmendmentDraftChanges"];
+            note?: string;
         };
         CreateBranch: {
             nameAr: string;
@@ -1934,8 +2084,61 @@ export interface components {
             /** @enum {string} */
             reason: "signed_out" | "locked" | "idle";
         };
+        EntitlementException: {
+            id: components["schemas"]["Id"];
+            tenantId: components["schemas"]["Id"];
+            branchId: components["schemas"]["Id"];
+            deviceId: components["schemas"]["Id"];
+            commandId: components["schemas"]["Id"];
+            featureKey: components["schemas"]["EntitlementKey"];
+            effectiveAt: components["schemas"]["Instant"];
+            recordedAt: components["schemas"]["Instant"];
+        };
+        EntitlementExceptionPage: {
+            items: components["schemas"]["EntitlementException"][];
+            nextBefore: components["schemas"]["Id"] | null;
+        };
+        EntitlementExceptionsQuery: {
+            before?: components["schemas"]["Id"];
+        };
+        EntitlementKey: string;
+        EntitlementOverride: {
+            id: components["schemas"]["Id"];
+            tenantId: components["schemas"]["Id"];
+            kind: components["schemas"]["OverrideKind"];
+            featureKey: components["schemas"]["EntitlementKey"] | null;
+            limitKey: components["schemas"]["EntitlementKey"] | null;
+            value: number | null;
+            reason: string;
+            startsAt: components["schemas"]["Instant"];
+            expiresAt: components["schemas"]["Instant"] | null;
+            createdBy: components["schemas"]["Id"] | null;
+            createdByOperator: string | null;
+            createdAt: components["schemas"]["Instant"];
+            revocation: components["schemas"]["EntitlementOverrideRevocation"] | null;
+        };
+        EntitlementOverrideRevocation: {
+            overrideId: components["schemas"]["Id"];
+            revokedAt: components["schemas"]["Instant"];
+            reason: string;
+            revokedBy: components["schemas"]["Id"] | null;
+            revokedByOperator: string | null;
+            createdAt: components["schemas"]["Instant"];
+        };
+        Entitlements: {
+            version: number;
+            at: components["schemas"]["Instant"];
+            features: components["schemas"]["ResolvedFeature"][];
+            limits: components["schemas"]["LimitUsage"][];
+            validUntil: components["schemas"]["Instant"] | null;
+        };
         /** @enum {string} */
-        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT" | "PROTOCOL_UNSUPPORTED" | "UPDATE_REQUIRED" | "DEVICE_NOT_HUB_CAPABLE" | "DEVICE_NOT_REVOKED" | "HUB_ROLE_ACTIVE" | "CERTIFICATE_ADDRESS_INVALID" | "ATTENTION_ALREADY_RESOLVED" | "QUARANTINE_ALREADY_DECIDED" | "PAIRING_CLOSED" | "PAIRING_CODE_INVALID" | "PAIRING_LOCKED" | "NOT_HUB";
+        EntitlementSource: "override" | "agreement" | "default";
+        EntitlementsQuery: {
+            at?: components["schemas"]["Instant"];
+        };
+        /** @enum {string} */
+        ErrorCode: "VALIDATION_FAILED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_ENTITLED" | "TENANT_SUSPENDED" | "TENANT_CLOSED" | "NOT_FOUND" | "CONFLICT" | "INVALID_STATUS_TRANSITION" | "LAST_ACTIVE_BRANCH" | "SLUG_TAKEN" | "BRANCH_CURRENCY_LOCKED" | "CURRENCY_MISMATCH" | "INVALID_AMOUNT" | "ONBOARDING_INCOMPLETE" | "FILE_REJECTED" | "MAP_LINK_UNRECOGNIZED" | "SLUG_RESERVED" | "INVALID_HOURS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "INVALID_CREDENTIALS" | "TICKET_INVALID" | "SESSION_ENDED" | "SIGNATURE_INVALID" | "DEVICE_UNKNOWN" | "INVALID_PIN" | "DEVICE_REVOKED" | "MEMBERSHIP_INACTIVE" | "BRANCH_NOT_IN_SCOPE" | "REAUTH_REQUIRED" | "DEVICE_REQUIRED" | "PIN_DISABLED" | "APPROVER_NOT_ALLOWED" | "OFFLINE_WINDOW_EXPIRED" | "POW_INVALID" | "OTP_INVALID" | "OTP_EXPIRED" | "OTP_ATTEMPTS_EXCEEDED" | "OTP_COOLDOWN" | "PASSWORD_TOO_WEAK" | "PIN_TOO_WEAK" | "TOTP_INVALID" | "PERMISSION_NOT_GRANTABLE" | "ALREADY_MEMBER" | "LAST_OWNER" | "LAST_ADMIN" | "BRANCH_HAS_DEVICES" | "BRANCH_HAS_MEMBERS" | "OTP_DELIVERY_UNAVAILABLE" | "WHATSAPP_SESSION_LIMIT" | "PROTOCOL_UNSUPPORTED" | "UPDATE_REQUIRED" | "DEVICE_NOT_HUB_CAPABLE" | "DEVICE_NOT_REVOKED" | "HUB_ROLE_ACTIVE" | "CERTIFICATE_ADDRESS_INVALID" | "ATTENTION_ALREADY_RESOLVED" | "QUARANTINE_ALREADY_DECIDED" | "PAIRING_CLOSED" | "PAIRING_CODE_INVALID" | "PAIRING_LOCKED" | "NOT_HUB" | "ENTITLEMENT_LIMIT_REACHED" | "AGREEMENT_NOT_IN_FORCE" | "AMENDMENT_OPEN" | "SELF_APPROVAL" | "TERM_OVERLAP" | "EFFECTIVE_DATE_PAST" | "FEATURE_DEPENDENCY_MISSING" | "OVERRIDE_OVERLAP" | "ALREADY_REVOKED" | "CODE_TAKEN";
         ErrorResponse: {
             code: components["schemas"]["ErrorCode"];
             message: string;
@@ -1948,6 +2151,12 @@ export interface components {
             to: components["schemas"]["CurrencyCode"];
             rate: string;
         };
+        FeatureCatalog: {
+            features: components["schemas"]["CatalogFeature"][];
+            limits: components["schemas"]["CatalogLimit"][];
+        };
+        /** @enum {string} */
+        FeatureKey: "custom_domain" | "custom_fields" | "pos" | "kitchen_display" | "waiter_app" | "order_intake" | "web_ordering" | "restaurant_delivery" | "vertex_delivery" | "promotions" | "loyalty" | "analytics" | "marketplace_listing";
         File: {
             id: components["schemas"]["Id"];
             purpose: components["schemas"]["FilePurpose"];
@@ -2079,7 +2288,7 @@ export interface components {
             caFingerprint: components["schemas"]["Sha256Hex"];
         };
         /** @enum {string} */
-        HubRefusalReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported";
+        HubRefusalReason: "payload_invalid" | "permission_missing" | "pin_session_ended" | "station_not_allowed" | "unknown_command" | "version_unsupported" | "not_entitled";
         /** @enum {string} */
         HubRole: "hub" | "standby";
         HubSession: {
@@ -2119,6 +2328,14 @@ export interface components {
             }[];
         };
         LanAddresses: string[];
+        /** @enum {string} */
+        LimitKey: "branches" | "devices" | "staff" | "catalog_items" | "custom_field_definitions";
+        LimitUsage: {
+            key: components["schemas"]["EntitlementKey"];
+            value: number | null;
+            source: components["schemas"]["EntitlementSource"];
+            usage: number;
+        };
         ListAttentionQuery: {
             /** @default 1 */
             page: number;
@@ -2147,6 +2364,10 @@ export interface components {
             order: components["schemas"]["SortOrder"];
             status?: components["schemas"]["TenantStatus"];
             q?: string;
+        };
+        ListPresetsQuery: {
+            /** @enum {string} */
+            includeArchived?: "true" | "false";
         };
         ListStaffQuery: {
             /** @default 1 */
@@ -2326,6 +2547,54 @@ export interface components {
             code: components["schemas"]["OtpCode"];
             intent: components["schemas"]["SignInIntent"];
         };
+        OverrideInput: {
+            /** @constant */
+            kind: "grant";
+            featureKey: components["schemas"]["EntitlementKey"];
+            reason: string;
+            startsAt?: components["schemas"]["TermDate"];
+            expiresAt?: components["schemas"]["LocalDate"];
+        } | {
+            /** @constant */
+            kind: "deny";
+            featureKey: components["schemas"]["EntitlementKey"];
+            reason: string;
+            startsAt?: components["schemas"]["TermDate"];
+            expiresAt?: components["schemas"]["LocalDate"];
+        } | {
+            /** @constant */
+            kind: "limit";
+            limitKey: components["schemas"]["EntitlementKey"];
+            value: number;
+            reason: string;
+            startsAt?: components["schemas"]["TermDate"];
+            expiresAt?: components["schemas"]["LocalDate"];
+        };
+        /** @enum {string} */
+        OverrideKind: "grant" | "deny" | "limit";
+        Package: {
+            id: components["schemas"]["Id"];
+            code: components["schemas"]["CommercialCode"];
+            nameAr: string;
+            nameLatin: string | null;
+            features: components["schemas"]["EntitlementKey"][];
+            limits: {
+                [key: string]: number;
+            };
+            createdAt: components["schemas"]["Instant"];
+            updatedAt: components["schemas"]["Instant"];
+            archivedAt: components["schemas"]["Instant"] | null;
+        };
+        PackageInput: {
+            code: components["schemas"]["CommercialCode"];
+            nameAr: string;
+            nameLatin?: string | null;
+            features: components["schemas"]["EntitlementKey"][];
+            limits: {
+                [key: string]: number;
+            };
+        };
+        PackageList: components["schemas"]["Package"][];
         PairingCode: string;
         /** @enum {string} */
         PairingKind: "station" | "personal";
@@ -2452,6 +2721,8 @@ export interface components {
             password: string;
         };
         RecoveryCode: string;
+        /** @enum {string} */
+        RecurringPeriod: "month" | "year";
         RefreshSession: {
             refreshToken: string;
         };
@@ -2467,6 +2738,10 @@ export interface components {
             device: components["schemas"]["Device"];
             members: components["schemas"]["MemberList"];
             session: components["schemas"]["SessionTokens"];
+        };
+        RejectAmendment: {
+            reason: string;
+            updatedAt: components["schemas"]["Instant"];
         };
         RejectQuarantine: {
             reason: components["schemas"]["DecisionReason"];
@@ -2486,6 +2761,24 @@ export interface components {
         ResolveAttention: {
             reason: components["schemas"]["DecisionReason"];
         };
+        ResolvedEntitlements: {
+            at: components["schemas"]["Instant"];
+            features: components["schemas"]["ResolvedFeature"][];
+            limits: components["schemas"]["ResolvedLimit"][];
+            validUntil: components["schemas"]["Instant"] | null;
+        };
+        ResolvedFeature: {
+            key: components["schemas"]["EntitlementKey"];
+            on: boolean;
+            source: components["schemas"]["EntitlementSource"];
+            reason: "dependency_missing" | null;
+            until: components["schemas"]["Instant"] | null;
+        };
+        ResolvedLimit: {
+            key: components["schemas"]["EntitlementKey"];
+            value: number | null;
+            source: components["schemas"]["EntitlementSource"];
+        };
         ResolveMapLink: {
             /** Format: uri */
             url: string;
@@ -2493,6 +2786,9 @@ export interface components {
         RevokeDevice: {
             reason: components["schemas"]["DeviceRevokeReason"];
             note?: string;
+        };
+        RevokeEntitlementOverride: {
+            reason: string;
         };
         /** @enum {string} */
         SalesChannel: "dine_in" | "takeaway" | "delivery" | "pickup";
@@ -2578,7 +2874,7 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote" | "hub.manage" | "sync.attention.resolve" | "sync.quarantine.review";
+        StaffPermission: "tenant.view" | "tenant.profile.edit" | "branch.settings.edit" | "branch.hours.edit" | "branch.security.edit" | "staff.view" | "staff.manage" | "staff.permissions.adjust" | "devices.manage" | "backoffice.remote" | "hub.manage" | "sync.attention.resolve" | "sync.quarantine.review" | "agreement.view";
         /** @enum {string} */
         StaffRole: "owner" | "manager" | "cashier" | "waiter" | "kitchen" | "driver";
         /** @enum {string} */
@@ -2612,6 +2908,35 @@ export interface components {
             createdAt: components["schemas"]["Instant"];
             updatedAt: components["schemas"]["Instant"];
         };
+        TenantAgreement: {
+            at: components["schemas"]["Instant"];
+            features: {
+                key: components["schemas"]["EntitlementKey"];
+                on: boolean;
+                source: components["schemas"]["EntitlementSource"];
+                reason: "dependency_missing" | null;
+                until: components["schemas"]["Instant"] | null;
+                private: boolean;
+            }[];
+            limits: components["schemas"]["LimitUsage"][];
+            charges: {
+                id: components["schemas"]["Id"];
+                values: components["schemas"]["TermValues"];
+                effectiveFrom: components["schemas"]["Instant"];
+                endsAt: components["schemas"]["Instant"] | null;
+                /** @enum {string} */
+                state: "in_force" | "scheduled";
+            }[];
+            oneOffFees: {
+                id: components["schemas"]["Id"];
+                values: components["schemas"]["TermValues"];
+                dueOn: components["schemas"]["LocalDate"];
+            }[];
+            amendments: {
+                number: number;
+                approvedAt: components["schemas"]["Instant"];
+            }[];
+        };
         TenantOptions: {
             intent: components["schemas"]["SignInIntent"];
             tenants: {
@@ -2635,8 +2960,223 @@ export interface components {
         /** @enum {string} */
         TenantStatusReason: "non_payment" | "abuse" | "other";
         TenantStatusRequest: components["schemas"]["ChangeTenantStatus"] | components["schemas"]["CancelScheduledTenantStatus"];
+        TermDate: "now" | components["schemas"]["LocalDate"];
+        TermDraft: {
+            /** @constant */
+            kind: "feature";
+            featureKey: components["schemas"]["EntitlementKey"];
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+        } | {
+            /** @constant */
+            kind: "limit";
+            limitKey: components["schemas"]["EntitlementKey"];
+            value: number;
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+        } | {
+            /** @constant */
+            kind: "subscription";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "subscription";
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+                period: components["schemas"]["RecurringPeriod"];
+                per: components["schemas"]["ChargeBasis"];
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "listing_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "listing_fee";
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+                period: components["schemas"]["RecurringPeriod"];
+                per: components["schemas"]["ChargeBasis"];
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "commission";
+            channel: components["schemas"]["CommissionChannel"];
+            percentBp: number;
+            fixed?: {
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+            };
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "commission";
+                channel: components["schemas"]["CommissionChannel"];
+                percentBp: number;
+                fixed?: {
+                    amount: number;
+                    currency: components["schemas"]["CurrencyCode"];
+                };
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "delivery_fee_share";
+            percentBp: number;
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "delivery_fee_share";
+                percentBp: number;
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "setup_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+            dueOn: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "setup_fee";
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+                label: string;
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "hardware";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+            dueOn: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "hardware";
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+                label: string;
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "service";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+            dueOn: components["schemas"]["LocalDate"];
+            listValue: {
+                /** @constant */
+                kind: "service";
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+                label: string;
+            } | null;
+            differenceReason?: string;
+        } | {
+            /** @constant */
+            kind: "waiver";
+            waives: components["schemas"]["WaivedSlot"];
+            effectiveFrom: components["schemas"]["TermDate"];
+            effectiveTo?: components["schemas"]["LocalDate"];
+        };
+        TermEndingDraft: {
+            termId: components["schemas"]["Id"];
+            endsAt: components["schemas"]["TermDate"];
+        };
+        /** @enum {string} */
+        TermKind: "feature" | "limit" | "subscription" | "listing_fee" | "commission" | "delivery_fee_share" | "setup_fee" | "hardware" | "service" | "waiver";
+        /** @enum {string} */
+        TermState: "in_force" | "future" | "ended" | "one_off";
+        TermValues: {
+            /** @constant */
+            kind: "feature";
+            featureKey: components["schemas"]["EntitlementKey"];
+        } | {
+            /** @constant */
+            kind: "limit";
+            limitKey: components["schemas"]["EntitlementKey"];
+            value: number;
+        } | {
+            /** @constant */
+            kind: "subscription";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+        } | {
+            /** @constant */
+            kind: "listing_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            period: components["schemas"]["RecurringPeriod"];
+            per: components["schemas"]["ChargeBasis"];
+        } | {
+            /** @constant */
+            kind: "commission";
+            channel: components["schemas"]["CommissionChannel"];
+            percentBp: number;
+            fixed?: {
+                amount: number;
+                currency: components["schemas"]["CurrencyCode"];
+            };
+        } | {
+            /** @constant */
+            kind: "delivery_fee_share";
+            percentBp: number;
+        } | {
+            /** @constant */
+            kind: "setup_fee";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        } | {
+            /** @constant */
+            kind: "hardware";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        } | {
+            /** @constant */
+            kind: "service";
+            amount: number;
+            currency: components["schemas"]["CurrencyCode"];
+            label: string;
+        } | {
+            /** @constant */
+            kind: "waiver";
+            waives: components["schemas"]["WaivedSlot"];
+        };
         TimeOfDay: string;
         TotpCode: string;
+        UpdateAgreementTemplate: {
+            nameAr: string;
+            nameLatin?: string | null;
+            packageId: components["schemas"]["Id"];
+            chargeTerms: components["schemas"]["ChargeTermDraft"][];
+            updatedAt: components["schemas"]["Instant"];
+        };
+        UpdateAmendment: {
+            changes: components["schemas"]["AmendmentDraftChanges"];
+            note: string | null;
+            updatedAt: components["schemas"]["Instant"];
+        };
         UpdateBranch: {
             nameAr?: string;
             nameLatin?: string | null;
@@ -2656,6 +3196,15 @@ export interface components {
             closed: boolean;
             periods: components["schemas"]["OpeningPeriod"][];
             note: string | null;
+            updatedAt: components["schemas"]["Instant"];
+        };
+        UpdatePackage: {
+            nameAr: string;
+            nameLatin?: string | null;
+            features: components["schemas"]["EntitlementKey"][];
+            limits: {
+                [key: string]: number;
+            };
             updatedAt: components["schemas"]["Instant"];
         };
         UpdatePlatformUser: {
@@ -2680,6 +3229,14 @@ export interface components {
         UploadedCommand: {
             envelope: components["schemas"]["CommandEnvelope"];
             mirrored: boolean;
+        };
+        WaivedSlot: {
+            /** @enum {string} */
+            kind: "subscription" | "listing_fee" | "delivery_fee_share";
+        } | {
+            /** @constant */
+            kind: "commission";
+            channel: components["schemas"]["CommissionChannel"];
         };
         Weekday: number;
         WeeklyPeriod: {

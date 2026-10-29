@@ -96,6 +96,25 @@ export const auditActions = [
   'staff_pin.locked_offline',
   'staff_pin.reenabled_offline',
   'staff_approval.granted',
+  // S05 agreements and entitlements, in the platform audit
+  'package.created',
+  'package.updated',
+  'package.archived',
+  'agreement_template.created',
+  'agreement_template.updated',
+  'agreement_template.archived',
+  'amendment.created',
+  'amendment.updated',
+  'amendment.submitted',
+  'amendment.unsubmitted',
+  'amendment.withdrawn',
+  'amendment.approved',
+  'amendment.rejected',
+  'entitlement_override.created',
+  'entitlement_override.revoked',
+  // S05, in the tenant's audit (actor kind `platform` or `system`)
+  'agreement.amended',
+  'entitlements.overridden',
 ] as const;
 
 export const auditActionSchema = z.enum(auditActions).meta({ id: 'AuditAction' });

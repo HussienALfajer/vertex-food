@@ -174,8 +174,8 @@ export const commandOutcomeSchema = z
 export type CommandOutcome = z.infer<typeof commandOutcomeSchema>;
 
 /**
- * Reason codes of refusals and rejections (rules 6, 8, 9, 20, 40, 16). The first six are also the
- * hub's refusals before journaling; `device_revoked` and `member_inactive` name a quarantine.
+ * Reason codes of refusals and rejections (rules 6, 8, 9, 20, 40, 16). The first six and S05's
+ * `not_entitled` are also the hub's refusals before journaling; `device_revoked` and `member_inactive` name a quarantine.
  */
 export const commandReasons = [
   'payload_invalid',
@@ -191,6 +191,8 @@ export const commandReasons = [
   'approver_not_allowed',
   'number_out_of_block',
   'server_error',
+  // S05: the hub's copy shows the command's feature off at its effective time (rule 24)
+  'not_entitled',
 ] as const;
 
 export const commandReasonSchema = z.enum(commandReasons).meta({ id: 'CommandReason' });
@@ -206,6 +208,7 @@ export const hubRefusalReasonSchema = z
     'station_not_allowed',
     'unknown_command',
     'version_unsupported',
+    'not_entitled',
   ])
   .meta({ id: 'HubRefusalReason' });
 

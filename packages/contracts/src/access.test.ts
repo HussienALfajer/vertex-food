@@ -21,7 +21,7 @@ import {
 import { DomainError } from './errors.js';
 
 // The two tables of spec S02 ("Permission catalog and role presets", "Console permissions and
-// presets") and spec S04's permissions ("Access and entitlements"), written out so a change to either is a visible change to this test.
+// presets") and spec S04's and S05's permissions ("Access and entitlements"), written out so a change to either is a visible change to this test.
 
 const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRole[] }> = {
   'tenant.view': {
@@ -41,6 +41,8 @@ const presetTable: Record<StaffPermission, { roles: StaffRole[]; limit: StaffRol
   'hub.manage': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
   'sync.attention.resolve': { roles: ['owner', 'manager'], limit: ['owner', 'manager'] },
   'sync.quarantine.review': { roles: ['owner'], limit: ['owner'] },
+  // S05
+  'agreement.view': { roles: ['owner'], limit: ['owner'] },
 };
 
 const branchScoped: StaffPermission[] = [
@@ -62,6 +64,12 @@ const consoleTable: Record<ConsolePermission, ConsoleRole[]> = {
   'console.accounts.recover': ['admin', 'support'],
   'console.messaging.read': ['admin', 'support'],
   'console.messaging.manage': ['admin'],
+  // S05
+  'console.agreements.read': ['admin', 'sales', 'finance', 'support'],
+  'console.agreements.draft': ['admin', 'sales'],
+  'console.agreements.approve': ['admin', 'finance'],
+  'console.entitlements.override': ['admin', 'finance'],
+  'console.catalog.manage': ['admin'],
 };
 
 function refusedCode(run: () => void): string | undefined {
@@ -197,6 +205,8 @@ describe('console permissions', () => {
   it('apply grants and revocations within the limits only', () => {
     expect(effectiveConsolePermissions('sales', ['console.tenants.status'], [])).toEqual([
       'console.tenants.manage',
+      'console.agreements.read',
+      'console.agreements.draft',
     ]);
     expect(effectiveConsolePermissions('admin', [], ['console.tenants.status'])).toEqual([
       'console.tenants.manage',
@@ -204,6 +214,11 @@ describe('console permissions', () => {
       'console.accounts.recover',
       'console.messaging.read',
       'console.messaging.manage',
+      'console.agreements.read',
+      'console.agreements.draft',
+      'console.agreements.approve',
+      'console.entitlements.override',
+      'console.catalog.manage',
     ]);
     expect(effectiveConsolePermissions('dispatch', [], [])).toEqual([]);
   });

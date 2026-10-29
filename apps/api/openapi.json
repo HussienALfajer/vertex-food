@@ -4018,6 +4018,441 @@
         ],
         "additionalProperties": false
       },
+      "AgreementTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "code": {
+            "$ref": "#/components/schemas/CommercialCode"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "packageId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "chargeTerms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChargeTermDraft"
+            }
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameLatin",
+          "packageId",
+          "chargeTerms",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AgreementTemplateInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/CommercialCode"
+          },
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "packageId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "chargeTerms": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChargeTermDraft"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "nameAr",
+          "packageId",
+          "chargeTerms"
+        ],
+        "additionalProperties": false
+      },
+      "AgreementTemplateList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/AgreementTemplate"
+        }
+      },
+      "AgreementTerm": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "amendmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "values": {
+            "$ref": "#/components/schemas/TermValues"
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endsAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endingAmendmentId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dueOn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listValue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "differenceReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/TermState"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "amendmentId",
+          "values",
+          "effectiveFrom",
+          "effectiveTo",
+          "endsAt",
+          "endingAmendmentId",
+          "dueOn",
+          "listValue",
+          "differenceReason",
+          "state",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Amendment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "agreementId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "$ref": "#/components/schemas/AmendmentStatus"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/AmendmentDraftChanges"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "authoredBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "authoredByOperator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decidedByOperator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decisionReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "applied": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "terms": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/AgreementTerm"
+                    }
+                  },
+                  "endings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "termId": {
+                          "$ref": "#/components/schemas/Id"
+                        },
+                        "endsAt": {
+                          "$ref": "#/components/schemas/Instant"
+                        }
+                      },
+                      "required": [
+                        "termId",
+                        "endsAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "terms",
+                  "endings"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "agreementId",
+          "number",
+          "status",
+          "changes",
+          "note",
+          "authoredBy",
+          "authoredByOperator",
+          "submittedAt",
+          "decidedAt",
+          "decidedBy",
+          "decidedByOperator",
+          "decisionReason",
+          "applied",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AmendmentChanges": {
+        "type": "object",
+        "properties": {
+          "add": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermDraft"
+            }
+          },
+          "end": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermEndingDraft"
+            }
+          }
+        },
+        "required": [
+          "add",
+          "end"
+        ],
+        "additionalProperties": false,
+        "$ref": "#/components/schemas/AmendmentDraftChanges"
+      },
+      "AmendmentDraftChanges": {
+        "type": "object",
+        "properties": {
+          "add": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermDraft"
+            }
+          },
+          "end": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermEndingDraft"
+            }
+          }
+        },
+        "required": [
+          "add",
+          "end"
+        ],
+        "additionalProperties": false
+      },
+      "AmendmentStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "submitted",
+          "approved",
+          "rejected",
+          "withdrawn"
+        ]
+      },
+      "AmendmentTransition": {
+        "type": "object",
+        "properties": {
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
       "ArchiveBranch": {
         "type": "object",
         "properties": {
@@ -4027,6 +4462,18 @@
             "maxLength": 500
           }
         },
+        "additionalProperties": false
+      },
+      "ArchivePreset": {
+        "type": "object",
+        "properties": {
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "updatedAt"
+        ],
         "additionalProperties": false
       },
       "AttentionItem": {
@@ -4274,7 +4721,24 @@
           "staff_pin.failed_offline",
           "staff_pin.locked_offline",
           "staff_pin.reenabled_offline",
-          "staff_approval.granted"
+          "staff_approval.granted",
+          "package.created",
+          "package.updated",
+          "package.archived",
+          "agreement_template.created",
+          "agreement_template.updated",
+          "agreement_template.archived",
+          "amendment.created",
+          "amendment.updated",
+          "amendment.submitted",
+          "amendment.unsubmitted",
+          "amendment.withdrawn",
+          "amendment.approved",
+          "amendment.rejected",
+          "entitlement_override.created",
+          "entitlement_override.revoked",
+          "agreement.amended",
+          "entitlements.overridden"
         ]
       },
       "AuditActorKind": {
@@ -4835,6 +5299,56 @@
         ],
         "additionalProperties": false
       },
+      "CatalogFeature": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "dependsOn": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              }
+            }
+          },
+          "private": {
+            "type": "boolean"
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "dependsOn",
+          "private",
+          "retired"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogLimit": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "counts": {
+            "type": "string"
+          },
+          "retired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "counts",
+          "retired"
+        ],
+        "additionalProperties": false
+      },
       "CertificateRequest": {
         "type": "object",
         "properties": {
@@ -4971,6 +5485,13 @@
         ],
         "additionalProperties": false
       },
+      "ChargeBasis": {
+        "type": "string",
+        "enum": [
+          "tenant",
+          "active_branch"
+        ]
+      },
       "ChargeKind": {
         "type": "string",
         "enum": [
@@ -4983,6 +5504,219 @@
         "enum": [
           "inclusive",
           "added"
+        ]
+      },
+      "ChargeTermDraft": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "subscription"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "listing_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "commission"
+              },
+              "channel": {
+                "$ref": "#/components/schemas/CommissionChannel"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "fixed": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "$ref": "#/components/schemas/CurrencyCode"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel",
+              "percentBp"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "delivery_fee_share"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "kind",
+              "percentBp"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "setup_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "hardware"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "service"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          }
         ]
       },
       "City": {
@@ -5222,7 +5956,8 @@
           "member_inactive",
           "approver_not_allowed",
           "number_out_of_block",
-          "server_error"
+          "server_error",
+          "not_entitled"
         ]
       },
       "CommandResult": {
@@ -5298,6 +6033,17 @@
         "type": "integer",
         "minimum": 1,
         "maximum": 1000
+      },
+      "CommercialCode": {
+        "type": "string",
+        "pattern": "^[a-z0-9_]{2,40}$"
+      },
+      "CommissionChannel": {
+        "type": "string",
+        "enum": [
+          "marketplace",
+          "web"
+        ]
       },
       "ConnectivityState": {
         "type": "string",
@@ -5407,6 +6153,78 @@
         ],
         "additionalProperties": false
       },
+      "ConsoleAgreement": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "$ref": "#/components/schemas/Id"
+                  },
+                  "templateId": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Id"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "inForce": {
+                    "type": "boolean"
+                  },
+                  "createdAt": {
+                    "$ref": "#/components/schemas/Instant"
+                  }
+                },
+                "required": [
+                  "id",
+                  "templateId",
+                  "inForce",
+                  "createdAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgreementTerm"
+            }
+          },
+          "amendments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Amendment"
+            }
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntitlementOverride"
+            }
+          }
+        },
+        "required": [
+          "tenantId",
+          "agreement",
+          "terms",
+          "amendments",
+          "overrides"
+        ],
+        "additionalProperties": false
+      },
       "ConsoleMe": {
         "type": "object",
         "properties": {
@@ -5476,7 +6294,12 @@
           "console.users.manage",
           "console.accounts.recover",
           "console.messaging.read",
-          "console.messaging.manage"
+          "console.messaging.manage",
+          "console.agreements.read",
+          "console.agreements.draft",
+          "console.agreements.approve",
+          "console.entitlements.override",
+          "console.catalog.manage"
         ]
       },
       "ConsoleReauth": {
@@ -5880,6 +6703,22 @@
           "latitudeE7",
           "longitudeE7"
         ],
+        "additionalProperties": false
+      },
+      "CreateAmendment": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/AmendmentDraftChanges"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
         "additionalProperties": false
       },
       "CreateBranch": {
@@ -6382,6 +7221,294 @@
         ],
         "additionalProperties": false
       },
+      "EntitlementException": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "branchId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "commandId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "featureKey": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "effectiveAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "recordedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "branchId",
+          "deviceId",
+          "commandId",
+          "featureKey",
+          "effectiveAt",
+          "recordedAt"
+        ],
+        "additionalProperties": false
+      },
+      "EntitlementExceptionPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntitlementException"
+            }
+          },
+          "nextBefore": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextBefore"
+        ],
+        "additionalProperties": false
+      },
+      "EntitlementExceptionsQuery": {
+        "type": "object",
+        "properties": {
+          "before": {
+            "$ref": "#/components/schemas/Id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EntitlementKey": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{1,39}$"
+      },
+      "EntitlementOverride": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "tenantId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/OverrideKind"
+          },
+          "featureKey": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limitKey": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "startsAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdByOperator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "revocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EntitlementOverrideRevocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "tenantId",
+          "kind",
+          "featureKey",
+          "limitKey",
+          "value",
+          "reason",
+          "startsAt",
+          "expiresAt",
+          "createdBy",
+          "createdByOperator",
+          "createdAt",
+          "revocation"
+        ],
+        "additionalProperties": false
+      },
+      "EntitlementOverrideRevocation": {
+        "type": "object",
+        "properties": {
+          "overrideId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revokedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "revokedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revokedByOperator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "overrideId",
+          "revokedAt",
+          "reason",
+          "revokedBy",
+          "revokedByOperator",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Entitlements": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResolvedFeature"
+            }
+          },
+          "limits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LimitUsage"
+            }
+          },
+          "validUntil": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "version",
+          "at",
+          "features",
+          "limits",
+          "validUntil"
+        ],
+        "additionalProperties": false
+      },
+      "EntitlementSource": {
+        "type": "string",
+        "enum": [
+          "override",
+          "agreement",
+          "default"
+        ]
+      },
+      "EntitlementsQuery": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "additionalProperties": false
+      },
       "ErrorCode": {
         "type": "string",
         "enum": [
@@ -6448,7 +7575,17 @@
           "PAIRING_CLOSED",
           "PAIRING_CODE_INVALID",
           "PAIRING_LOCKED",
-          "NOT_HUB"
+          "NOT_HUB",
+          "ENTITLEMENT_LIMIT_REACHED",
+          "AGREEMENT_NOT_IN_FORCE",
+          "AMENDMENT_OPEN",
+          "SELF_APPROVAL",
+          "TERM_OVERLAP",
+          "EFFECTIVE_DATE_PAST",
+          "FEATURE_DEPENDENCY_MISSING",
+          "OVERRIDE_OVERLAP",
+          "ALREADY_REVOKED",
+          "CODE_TAKEN"
         ]
       },
       "ErrorResponse": {
@@ -6495,6 +7632,46 @@
           "rate"
         ],
         "additionalProperties": false
+      },
+      "FeatureCatalog": {
+        "type": "object",
+        "properties": {
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogFeature"
+            }
+          },
+          "limits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogLimit"
+            }
+          }
+        },
+        "required": [
+          "features",
+          "limits"
+        ],
+        "additionalProperties": false
+      },
+      "FeatureKey": {
+        "type": "string",
+        "enum": [
+          "custom_domain",
+          "custom_fields",
+          "pos",
+          "kitchen_display",
+          "waiter_app",
+          "order_intake",
+          "web_ordering",
+          "restaurant_delivery",
+          "vertex_delivery",
+          "promotions",
+          "loyalty",
+          "analytics",
+          "marketplace_listing"
+        ]
       },
       "File": {
         "type": "object",
@@ -7103,7 +8280,8 @@
           "pin_session_ended",
           "station_not_allowed",
           "unknown_command",
-          "version_unsupported"
+          "version_unsupported",
+          "not_entitled"
         ]
       },
       "HubRole": {
@@ -7258,6 +8436,51 @@
           "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
         }
       },
+      "LimitKey": {
+        "type": "string",
+        "enum": [
+          "branches",
+          "devices",
+          "staff",
+          "catalog_items",
+          "custom_field_definitions"
+        ]
+      },
+      "LimitUsage": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/EntitlementSource"
+          },
+          "usage": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "source",
+          "usage"
+        ],
+        "additionalProperties": false
+      },
       "ListAttentionQuery": {
         "type": "object",
         "properties": {
@@ -7348,6 +8571,19 @@
           "pageSize",
           "order"
         ],
+        "additionalProperties": false
+      },
+      "ListPresetsQuery": {
+        "type": "object",
+        "properties": {
+          "includeArchived": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ]
+          }
+        },
         "additionalProperties": false
       },
       "ListStaffQuery": {
@@ -8151,6 +9387,233 @@
         ],
         "additionalProperties": false
       },
+      "OverrideInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "grant"
+              },
+              "featureKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              },
+              "startsAt": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "expiresAt": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "featureKey",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "deny"
+              },
+              "featureKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              },
+              "startsAt": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "expiresAt": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "featureKey",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "limit"
+              },
+              "limitKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              },
+              "startsAt": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "expiresAt": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "limitKey",
+              "value",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "OverrideKind": {
+        "type": "string",
+        "enum": [
+          "grant",
+          "deny",
+          "limit"
+        ]
+      },
+      "Package": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "code": {
+            "$ref": "#/components/schemas/CommercialCode"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameLatin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            }
+          },
+          "limits": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameLatin",
+          "features",
+          "limits",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PackageInput": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/CommercialCode"
+          },
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "features": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            }
+          },
+          "limits": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          }
+        },
+        "required": [
+          "code",
+          "nameAr",
+          "features",
+          "limits"
+        ],
+        "additionalProperties": false
+      },
+      "PackageList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Package"
+        }
+      },
       "PairingCode": {
         "type": "string",
         "pattern": "^\\d{6}$"
@@ -8779,6 +10242,13 @@
         "type": "string",
         "pattern": "^[A-Z2-7]{4}(-[A-Z2-7]{4}){1}$"
       },
+      "RecurringPeriod": {
+        "type": "string",
+        "enum": [
+          "month",
+          "year"
+        ]
+      },
       "RefreshSession": {
         "type": "object",
         "properties": {
@@ -8846,6 +10316,24 @@
           "device",
           "members",
           "session"
+        ],
+        "additionalProperties": false
+      },
+      "RejectAmendment": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "reason",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
@@ -8929,6 +10417,117 @@
         ],
         "additionalProperties": false
       },
+      "ResolvedEntitlements": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResolvedFeature"
+            }
+          },
+          "limits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResolvedLimit"
+            }
+          },
+          "validUntil": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "at",
+          "features",
+          "limits",
+          "validUntil"
+        ],
+        "additionalProperties": false
+      },
+      "ResolvedFeature": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EntitlementSource"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dependency_missing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "until": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Instant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "on",
+          "source",
+          "reason",
+          "until"
+        ],
+        "additionalProperties": false
+      },
+      "ResolvedLimit": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/EntitlementKey"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/EntitlementSource"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "source"
+        ],
+        "additionalProperties": false
+      },
       "ResolveMapLink": {
         "type": "object",
         "properties": {
@@ -8953,6 +10552,20 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "RevokeEntitlementOverride": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
           }
         },
         "required": [
@@ -9345,7 +10958,8 @@
           "backoffice.remote",
           "hub.manage",
           "sync.attention.resolve",
-          "sync.quarantine.review"
+          "sync.quarantine.review",
+          "agreement.view"
         ]
       },
       "StaffRole": {
@@ -9548,6 +11162,167 @@
         ],
         "additionalProperties": false
       },
+      "TenantAgreement": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "$ref": "#/components/schemas/Instant"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "$ref": "#/components/schemas/EntitlementKey"
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "source": {
+                  "$ref": "#/components/schemas/EntitlementSource"
+                },
+                "reason": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "dependency_missing"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "until": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Instant"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "private": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "key",
+                "on",
+                "source",
+                "reason",
+                "until",
+                "private"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LimitUsage"
+            }
+          },
+          "charges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "values": {
+                  "$ref": "#/components/schemas/TermValues"
+                },
+                "effectiveFrom": {
+                  "$ref": "#/components/schemas/Instant"
+                },
+                "endsAt": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Instant"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_force",
+                    "scheduled"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "values",
+                "effectiveFrom",
+                "endsAt",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "oneOffFees": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "values": {
+                  "$ref": "#/components/schemas/TermValues"
+                },
+                "dueOn": {
+                  "$ref": "#/components/schemas/LocalDate"
+                }
+              },
+              "required": [
+                "id",
+                "values",
+                "dueOn"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "amendments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "approvedAt": {
+                  "$ref": "#/components/schemas/Instant"
+                }
+              },
+              "required": [
+                "number",
+                "approvedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "at",
+          "features",
+          "limits",
+          "charges",
+          "oneOffFees",
+          "amendments"
+        ],
+        "additionalProperties": false
+      },
       "TenantOptions": {
         "type": "object",
         "properties": {
@@ -9662,6 +11437,958 @@
           }
         ]
       },
+      "TermDate": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "now"
+          },
+          {
+            "$ref": "#/components/schemas/LocalDate"
+          }
+        ]
+      },
+      "TermDraft": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "feature"
+              },
+              "featureKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "featureKey",
+              "effectiveFrom"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "limit"
+              },
+              "limitKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "limitKey",
+              "value",
+              "effectiveFrom"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "subscription"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "subscription"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "currency": {
+                        "$ref": "#/components/schemas/CurrencyCode"
+                      },
+                      "period": {
+                        "$ref": "#/components/schemas/RecurringPeriod"
+                      },
+                      "per": {
+                        "$ref": "#/components/schemas/ChargeBasis"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "amount",
+                      "currency",
+                      "period",
+                      "per"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per",
+              "effectiveFrom",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "listing_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "listing_fee"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "currency": {
+                        "$ref": "#/components/schemas/CurrencyCode"
+                      },
+                      "period": {
+                        "$ref": "#/components/schemas/RecurringPeriod"
+                      },
+                      "per": {
+                        "$ref": "#/components/schemas/ChargeBasis"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "amount",
+                      "currency",
+                      "period",
+                      "per"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per",
+              "effectiveFrom",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "commission"
+              },
+              "channel": {
+                "$ref": "#/components/schemas/CommissionChannel"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "fixed": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "$ref": "#/components/schemas/CurrencyCode"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "commission"
+                      },
+                      "channel": {
+                        "$ref": "#/components/schemas/CommissionChannel"
+                      },
+                      "percentBp": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "fixed": {
+                        "type": "object",
+                        "properties": {
+                          "amount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "$ref": "#/components/schemas/CurrencyCode"
+                          }
+                        },
+                        "required": [
+                          "amount",
+                          "currency"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "channel",
+                      "percentBp"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "channel",
+              "percentBp",
+              "effectiveFrom",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "delivery_fee_share"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "delivery_fee_share"
+                      },
+                      "percentBp": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "percentBp"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "percentBp",
+              "effectiveFrom",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "setup_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "dueOn": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "setup_fee"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "currency": {
+                        "$ref": "#/components/schemas/CurrencyCode"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "amount",
+                      "currency",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label",
+              "dueOn",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "hardware"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "dueOn": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "hardware"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "currency": {
+                        "$ref": "#/components/schemas/CurrencyCode"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "amount",
+                      "currency",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label",
+              "dueOn",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "service"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "dueOn": {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              "listValue": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "service"
+                      },
+                      "amount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "currency": {
+                        "$ref": "#/components/schemas/CurrencyCode"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "amount",
+                      "currency",
+                      "label"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "differenceReason": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label",
+              "dueOn",
+              "listValue"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "waiver"
+              },
+              "waives": {
+                "$ref": "#/components/schemas/WaivedSlot"
+              },
+              "effectiveFrom": {
+                "$ref": "#/components/schemas/TermDate"
+              },
+              "effectiveTo": {
+                "$ref": "#/components/schemas/LocalDate"
+              }
+            },
+            "required": [
+              "kind",
+              "waives",
+              "effectiveFrom"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "TermEndingDraft": {
+        "type": "object",
+        "properties": {
+          "termId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "endsAt": {
+            "$ref": "#/components/schemas/TermDate"
+          }
+        },
+        "required": [
+          "termId",
+          "endsAt"
+        ],
+        "additionalProperties": false
+      },
+      "TermKind": {
+        "type": "string",
+        "enum": [
+          "feature",
+          "limit",
+          "subscription",
+          "listing_fee",
+          "commission",
+          "delivery_fee_share",
+          "setup_fee",
+          "hardware",
+          "service",
+          "waiver"
+        ]
+      },
+      "TermState": {
+        "type": "string",
+        "enum": [
+          "in_force",
+          "future",
+          "ended",
+          "one_off"
+        ]
+      },
+      "TermValues": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "feature"
+              },
+              "featureKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              }
+            },
+            "required": [
+              "kind",
+              "featureKey"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "limit"
+              },
+              "limitKey": {
+                "$ref": "#/components/schemas/EntitlementKey"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              }
+            },
+            "required": [
+              "kind",
+              "limitKey",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "subscription"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "listing_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "period": {
+                "$ref": "#/components/schemas/RecurringPeriod"
+              },
+              "per": {
+                "$ref": "#/components/schemas/ChargeBasis"
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "period",
+              "per"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "commission"
+              },
+              "channel": {
+                "$ref": "#/components/schemas/CommissionChannel"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              },
+              "fixed": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "$ref": "#/components/schemas/CurrencyCode"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel",
+              "percentBp"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "delivery_fee_share"
+              },
+              "percentBp": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10000
+              }
+            },
+            "required": [
+              "kind",
+              "percentBp"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "setup_fee"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "hardware"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "service"
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "$ref": "#/components/schemas/CurrencyCode"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "kind",
+              "amount",
+              "currency",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "waiver"
+              },
+              "waives": {
+                "$ref": "#/components/schemas/WaivedSlot"
+              }
+            },
+            "required": [
+              "kind",
+              "waives"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
       "TimeOfDay": {
         "type": "string",
         "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
@@ -9669,6 +12396,77 @@
       "TotpCode": {
         "type": "string",
         "pattern": "^\\d{6}$"
+      },
+      "UpdateAgreementTemplate": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "packageId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "chargeTerms": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChargeTermDraft"
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "nameAr",
+          "packageId",
+          "chargeTerms",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateAmendment": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "$ref": "#/components/schemas/AmendmentDraftChanges"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "changes",
+          "note",
+          "updatedAt"
+        ],
+        "additionalProperties": false
       },
       "UpdateBranch": {
         "type": "object",
@@ -9777,6 +12575,57 @@
           "closed",
           "periods",
           "note",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "UpdatePackage": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "nameLatin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 100,
+                "pattern": "^[A-Za-z0-9 &'.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "features": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            }
+          },
+          "limits": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/EntitlementKey"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            }
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Instant"
+          }
+        },
+        "required": [
+          "nameAr",
+          "features",
+          "limits",
           "updatedAt"
         ],
         "additionalProperties": false
@@ -9896,6 +12745,44 @@
           "mirrored"
         ],
         "additionalProperties": false
+      },
+      "WaivedSlot": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "subscription",
+                  "listing_fee",
+                  "delivery_fee_share"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "commission"
+              },
+              "channel": {
+                "$ref": "#/components/schemas/CommissionChannel"
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "Weekday": {
         "type": "integer",

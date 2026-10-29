@@ -34,6 +34,8 @@ export const staffPermissions = [
   'hub.manage',
   'sync.attention.resolve',
   'sync.quarantine.review',
+  // S05 agreements
+  'agreement.view',
 ] as const;
 
 export const staffPermissionSchema = z.enum(staffPermissions).meta({ id: 'StaffPermission' });
@@ -72,6 +74,7 @@ export const permissionCatalog: Record<StaffPermission, PermissionDefinition> = 
   'hub.manage': { group: 'sync', branchScoped: true, limit: ownerManager },
   'sync.attention.resolve': { group: 'sync', branchScoped: true, limit: ownerManager },
   'sync.quarantine.review': { group: 'sync', branchScoped: false, limit: ownerOnly },
+  'agreement.view': { group: 'tenant', branchScoped: false, limit: ownerOnly },
 };
 
 /** What each role holds without adjustments. */
@@ -199,6 +202,12 @@ export const consolePermissions = [
   // S03 messaging
   'console.messaging.read',
   'console.messaging.manage',
+  // S05 agreements and entitlements
+  'console.agreements.read',
+  'console.agreements.draft',
+  'console.agreements.approve',
+  'console.entitlements.override',
+  'console.catalog.manage',
 ] as const;
 
 export const consolePermissionSchema = z.enum(consolePermissions).meta({ id: 'ConsolePermission' });
@@ -213,14 +222,24 @@ export const consolePermissionLimits: Record<ConsolePermission, readonly Console
   'console.accounts.recover': ['admin', 'support'],
   'console.messaging.read': ['admin', 'support'],
   'console.messaging.manage': ['admin'],
+  'console.agreements.read': ['admin', 'sales', 'finance', 'support'],
+  'console.agreements.draft': ['admin', 'sales'],
+  'console.agreements.approve': ['admin', 'finance'],
+  'console.entitlements.override': ['admin', 'finance'],
+  'console.catalog.manage': ['admin'],
 };
 
 export const consolePresets: Record<ConsoleRole, readonly ConsolePermission[]> = {
   admin: consolePermissions,
-  sales: ['console.tenants.manage'],
+  sales: ['console.tenants.manage', 'console.agreements.read', 'console.agreements.draft'],
   dispatch: [],
-  finance: ['console.tenants.status'],
-  support: ['console.accounts.recover', 'console.messaging.read'],
+  finance: [
+    'console.tenants.status',
+    'console.agreements.read',
+    'console.agreements.approve',
+    'console.entitlements.override',
+  ],
+  support: ['console.accounts.recover', 'console.messaging.read', 'console.agreements.read'],
 };
 
 export function isWithinConsoleLimit(role: ConsoleRole, permission: ConsolePermission): boolean {
