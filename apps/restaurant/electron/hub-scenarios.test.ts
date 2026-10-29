@@ -139,6 +139,11 @@ function plainGet(url: string): Promise<{ status: number; body: string }> {
   });
 }
 
+// `pnpm test:electron` runs this file again in Electron's own Node (BoringSSL, its module ABI).
+it.runIf(process.env.VERTEX_FOOD_ELECTRON_RUNTIME === '1')("runs in Electron's runtime", () => {
+  expect(process.versions.electron).toBeDefined();
+});
+
 // Failovers wait out the 3 s of silence before a promotion, on real time.
 describe('the branch hub on the real ports', { timeout: 30_000 }, () => {
   it('starts in sync, pairs a phone over HTTPS and runs its network check on both PCs', async () => {

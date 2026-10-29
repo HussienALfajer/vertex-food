@@ -12,6 +12,7 @@
     "start": "electron .",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
+    "test:electron": "node scripts/test-electron.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {

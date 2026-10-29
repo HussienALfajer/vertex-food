@@ -237,12 +237,18 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
       '@types/supertest':
         specifier: 7.2.1
         version: 7.2.1
       '@vertex-food/config':
         specifier: workspace:*
         version: link:../../packages/config
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       supertest:
         specifier: 7.3.1
         version: 7.3.1(supports-color@8.1.1)
