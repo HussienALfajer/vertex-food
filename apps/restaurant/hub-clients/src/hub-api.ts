@@ -147,37 +147,53 @@ export async function endSession(address: string, credentials: HubCredentials): 
  * The transport of `HubClient` (`@vertex-food/sync`): hello and commands, both rejecting on a
  * refused connection or a timeout, so the outbox keeps the command and looks for the hub again. A
  * 401 from the hub says the pairing ended (revoked, or 30 days unused): `onUnpaired` runs, and the
- * call still rejects. A 401 to `hello` ends it only once every PC answers so: a standby that was
- * off when the phone paired, or a PC registered again, does not know the pairing yet (rule 34).
+ * call still rejects. A 401 to `hello` alone decides nothing: a standby that was off when the phone
+ * paired, or a PC registered again, does not know the pairing yet, while the hub does. The
+ * connection asks `pairingRefused` after each round instead (rule 34).
  */
-export function hubTransport(
-  credentials: HubCredentials,
-  peers: readonly string[],
-  onUnpaired: () => void,
-): HubClientTransport {
+export type HubTransport = HubClientTransport & {
+  /**
+   * The last round of `hello`s (the answers of the last `windowMs`): some PC refused the pairing
+   * and none accepted it. A PC that did not answer counts for neither.
+   */
+  pairingRefused: (windowMs: number) => boolean;
+  /** When a `hello` last carried the PIN session to a PC, which counts it as input. */
+  touchedAt: () => number;
+};
+
+export function hubTransport(credentials: HubCredentials, onUnpaired: () => void): HubTransport {
   const unpaired = (error: unknown) => {
     if (error instanceof HubApiError && error.status === 401) onUnpaired();
     throw error;
   };
-  const refusedHello = new Set<string>();
+  const answers = new Map<string, { accepted: boolean; at: number }>();
+  let touchedAt = 0;
   return {
     hello: async (address, timeoutMs): Promise<HubHello> => {
+      const session = credentials.touch();
       try {
         const hello = await call(`${hubOrigin(address)}/hub/hello`, hubHelloSchema, {
           credentials,
-          session: credentials.touch(),
+          session,
           timeoutMs,
         });
-        refusedHello.delete(address);
+        answers.set(address, { accepted: true, at: Date.now() });
+        if (session) touchedAt = Date.now();
         return hello;
       } catch (error) {
         if (error instanceof HubApiError && error.status === 401) {
-          refusedHello.add(address);
-          if (peers.every((peer) => refusedHello.has(peer))) onUnpaired();
+          answers.set(address, { accepted: false, at: Date.now() });
+        } else {
+          answers.delete(address);
         }
         throw error;
       }
     },
+    pairingRefused: (windowMs) => {
+      const recent = [...answers.values()].filter((a) => Date.now() - a.at < windowMs);
+      return recent.some((a) => !a.accepted) && !recent.some((a) => a.accepted);
+    },
+    touchedAt: () => touchedAt,
     command: (address, command: HubCommand, timeoutMs): Promise<HubCommandAnswer> =>
       call(
         `${hubOrigin(address)}/hub/commands`,

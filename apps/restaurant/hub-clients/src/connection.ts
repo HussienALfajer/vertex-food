@@ -3,9 +3,10 @@ import {
   type HubLiveSnapshot,
   type HubRefusalReason,
   hubLiveSnapshotSchema,
+  hubPolicy,
 } from '@vertex-food/contracts';
 import { type CurrentHub, HubClient, type OutboxItem } from '@vertex-food/sync';
-import { type HubCredentials, hubOrigin, hubTransport } from './hub-api';
+import { type HubCredentials, type HubTransport, hubOrigin, hubTransport } from './hub-api';
 import { indexedDbOutbox } from './storage';
 
 // The page's connection to the branch (spec S04 rules 30–32): `HubClient` of `@vertex-food/sync`
@@ -15,6 +16,10 @@ import { indexedDbOutbox } from './storage';
 // counts it. While no PC answers as the hub the page says "reconnecting", never "failed".
 
 const TICK_MS = 500;
+/** One discovery round's answers: every `hello` of a round answers within the mirror timeout. */
+const ROUND_MS = 2000;
+/** The hub records a session's input at most this often (`SESSION_TOUCH_MS` in `packages/sync`). */
+const TOUCH_MS = 15_000;
 
 export type Refusal = { command: HubCommand; reason: HubRefusalReason };
 
@@ -32,6 +37,7 @@ export type ConnectionState = {
 
 export class HubConnection {
   private readonly client: HubClient;
+  private readonly transport: HubTransport;
   private state: ConnectionState = {
     hub: null,
     live: null,
@@ -58,7 +64,8 @@ export class HubConnection {
       onRefused: (refusal: Refusal) => void;
     },
   ) {
-    const transport = hubTransport(credentials, peers, () => events.onUnpaired());
+    const transport = hubTransport(credentials, () => events.onUnpaired());
+    this.transport = transport;
     this.client = new HubClient({
       peers,
       store: indexedDbOutbox,
@@ -157,6 +164,21 @@ export class HubConnection {
       if (!hub) this.closeLive();
       else if (!this.live || !sameHub(this.live.hub, hub)) this.openLive(hub);
       await this.client.flush();
+      // No PC accepts the pairing and one refused it: revoked, or 30 days unused (rule 34).
+      if (!this.client.hub() && this.transport.pairingRefused(ROUND_MS)) {
+        this.events.onUnpaired();
+        return;
+      }
+      // While the live stream is busy the page asks no PC again, so the member's input goes to
+      // the hub on a `hello` of its own (rule 35).
+      const current = this.client.hub();
+      if (
+        current &&
+        this.credentials.touch() &&
+        Date.now() - this.transport.touchedAt() >= TOUCH_MS
+      ) {
+        await this.transport.hello(current.address, hubPolicy.mirrorTimeoutMs).catch(() => null);
+      }
     } catch {
       // A refused connection or a timeout: the commands stay "sending" for the next tick.
     }

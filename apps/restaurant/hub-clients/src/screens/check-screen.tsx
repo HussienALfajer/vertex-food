@@ -98,8 +98,10 @@ export function CheckScreen({
   const sendTest = () => {
     const command = networkCheck(session, uuidv7(), 1);
     setNotSaved(false);
+    // Timed from the tap: sending starts as soon as the command is saved.
+    const sentMs = Date.now();
     send(command).then(
-      () => setLastTest({ id: command.id, sentMs: Date.now() }),
+      () => setLastTest({ id: command.id, sentMs }),
       () => setNotSaved(true),
     );
   };

@@ -246,6 +246,15 @@ test.describe('hub client pages', () => {
     await expect(page).toHaveURL(/\/sign-in$/);
   });
 
+  test('a revoked pairing ends while the other PC is off', async ({ page }) => {
+    await pairAndSignIn(page);
+    const standby = hub.pcs[1];
+    if (standby) standby.up = false;
+    hub.revoked = true;
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('ثبّت شهادة الفرع');
+    await expect(page.getByText('انتهى إقران هذا الهاتف أو أُلغي. أقرنه من جديد.')).toBeVisible();
+  });
+
   test("lock the session after the branch's idle time without input", async ({ page }) => {
     await page.clock.install();
     await pairAndSignIn(page);
