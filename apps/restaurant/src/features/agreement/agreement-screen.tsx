@@ -311,7 +311,7 @@ function OfflineAgreement() {
   const { t } = useTranslation('agreement');
   const entitlements = useBranchEntitlements(syncBridge);
   const copy = entitlements.data?.copy ?? null;
-  const view = copy ? offlineView(copy) : null;
+  const view = copy ? offlineView(copy, new Date()) : null;
   return (
     <>
       <Card role="status">

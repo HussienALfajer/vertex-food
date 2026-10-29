@@ -119,7 +119,7 @@ describe('formatPercentBp', () => {
   });
 });
 
-describe('scheduledRemovals (screen 2)', () => {
+describe('scheduledRemovals and offlineView (screens 1, 2)', () => {
   const now = new Date('2026-11-29T12:00:00.000Z');
   const copy = {
     version: 4,
@@ -144,9 +144,20 @@ describe('scheduledRemovals (screen 2)', () => {
     expect(scheduledRemovals(null, now)).toEqual([]);
   });
 
+  it('leaves out of the offline page a feature whose removal time has come, as the hub does', () => {
+    // `kitchen_display` stopped at 01:00; the hub refuses its commands `not_entitled` (rule 24).
+    expect(offlineView(copy, now).features.map((item) => item.key)).not.toContain(
+      'kitchen_display',
+    );
+  });
+
   it('gives the offline page every limit, unlimited when the copy sets none', () => {
-    const view = offlineView(copy);
-    expect(view.features[1]).toEqual({ key: 'waiter_app', stopsAt: until });
+    const view = offlineView(copy, now);
+    expect(view.features).toEqual([
+      { key: 'pos', stopsAt: null },
+      { key: 'waiter_app', stopsAt: until },
+      { key: 'analytics', stopsAt: '2026-11-29T23:00:00.000Z' },
+    ]);
     expect(view.limits).toContainEqual({ key: 'devices', value: 3 });
     expect(view.limits).toContainEqual({ key: 'staff', value: null });
   });

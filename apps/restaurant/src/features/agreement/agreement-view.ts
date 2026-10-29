@@ -1,6 +1,7 @@
 import {
   type FeatureKey,
   featureCatalog,
+  isBranchFeatureEntitled,
   type LimitKey,
   type LimitUsage,
   limitKeys,
@@ -122,17 +123,21 @@ export function scheduledRemovals(
 
 /**
  * The page offline (screen 1): the copy's features and limits as last synced, without usage or
- * money. Every limit of the catalog is listed: a key absent from the copy is unlimited.
+ * money. A feature is listed while the hub would still take its commands at `now` (rule 24): one
+ * whose removal time has come is off on this PC, so it is left out. Every limit of the catalog is
+ * listed: a key absent from the copy is unlimited.
  */
-export function offlineView(copy: BranchCopy): {
+export function offlineView(
+  copy: BranchCopy,
+  now: Date,
+): {
   features: { key: FeatureKey; stopsAt: string | null }[];
   limits: { key: LimitKey; value: number | null }[];
 } {
   return {
-    features: copy.features.map((feature) => ({
-      key: asFeature(feature.key),
-      stopsAt: feature.until,
-    })),
+    features: copy.features
+      .filter((feature) => isBranchFeatureEntitled(copy.features, feature.key, now))
+      .map((feature) => ({ key: asFeature(feature.key), stopsAt: feature.until })),
     limits: limitKeys.map((key) => ({ key, value: copy.limits[key] ?? null })),
   };
 }
