@@ -574,8 +574,9 @@ export class HubRuntime {
 
   /**
    * A hub refused one of this PC's commands before journaling it (rule 6): its `command_results`
-   * row says so with the reason, for needs attention, before it leaves the outbox (rule 31). The
-   * audit events a refused `audit.record_local_events` carried wait for the next one.
+   * row says so with the reason, for needs attention, and it leaves the outbox in the same
+   * transaction (rule 31), so a cut never sends it again. The audit events a refused
+   * `audit.record_local_events` carried wait for the next one.
    */
   private async recordRefusal(
     db: PowerSyncDatabase,
@@ -601,6 +602,7 @@ export class HubRuntime {
       await tx.execute('UPDATE local_events SET command_id = NULL WHERE command_id = ?', [
         command.id,
       ]);
+      await tx.execute('DELETE FROM local_outbox WHERE id = ?', [command.id]);
     });
     this.deps.onChange();
   }

@@ -256,9 +256,11 @@ export class HubLanServer {
     this.pcs = pcs;
     this.plain = plain;
     this.keepAlive = setInterval(() => {
-      void this.recheckLive().then(() => {
-        for (const res of this.live.keys()) res.write(': keepalive\n\n');
-      });
+      void this.recheckLive()
+        .catch(() => undefined)
+        .then(() => {
+          for (const res of this.live.keys()) res.write(': keepalive\n\n');
+        });
     }, LIVE_KEEPALIVE_MS);
   }
 
