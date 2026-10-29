@@ -24,7 +24,7 @@ A change can break a spec it does not touch (a shared component, a renamed text)
 - `pnpm verify <file>...`: only those test files, paths from the repository root. Vitest files run in their package after `turbo run build --filter=<package>^...` (a stale dependency `dist` gives failures that are not in the code); `apps/<app>/e2e/*.spec.ts` run in that app after its build. `--grep "<title>"` picks tests of a spec.
 - An app is affected when a file that differs from the merge base with `origin/main` (committed, uncommitted or new) is in the app, in a workspace package it depends on (its `package.json`, transitively), in `brand/`, or is one of `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `.node-version` at the root. Notes (`*.md`) and unit tests (`*.test.ts(x)`, a package's `test/`) affect no app. A branch that changes only docs, CI or tooling runs no E2E.
 - Output: the whole output of each step in `.verify/<step>.log` (git-ignored); the console and `.verify/summary.md` get only the summary: each step's result and time, the tasks Turborepo ran rather than replayed, each failure with its file and line, and the command that reruns only the failed files.
-- Exit code 0 when everything passed, 1 when a check failed, 3 when it refused to start: another `pnpm verify` is running on the machine (lock file `vertex-food-verify.lock` in the temp folder; a lock left by a killed run expires after 30 minutes), a dev server is up on 5273–5277 (restaurant, console, web, customer, driver; `--allow-dev` overrides), or a file does not exist.
+- Exit code 0 when everything passed, 1 when a check failed, 3 when it refused to start: another `pnpm verify` is running on the machine (lock file `vertex-food-verify.lock` in the temp folder; a lock left by a killed run expires after 30 minutes), a dev server is up on 5273–5278 (restaurant, console, web, customer, driver, the restaurant's hub client pages; `--allow-dev` overrides), or a file does not exist.
 
 ## Rules, and what enforces them
 
@@ -69,7 +69,7 @@ The hook is `.claude/hooks/test-guard.mjs` (PreToolUse on Bash and PowerShell), 
 | Job | Runs |
 |---|---|
 | Lint, typecheck, build | Audit, Biome, typecheck, build, migration drift |
-| Tests | Every package's tests, with a PostgreSQL 17 service |
+| Tests | Every package's tests, with a PostgreSQL 17 service (logical replication on) and the sync service's image for `apps/api/test/sync-service.test.ts` (`SYNC_SCENARIOS=1`); then the restaurant's database and hub tests again in Electron's own runtime (`pnpm test:electron`) |
 | E2E shard 1–3 | Every app's whole E2E suite, split by test (`pnpm turbo run test:e2e -- --shard=<n>/3`), in Playwright's image; screenshots per shard as `e2e-results-<n>` |
 | Typecheck, lint, test, build | The gate job: the check the `main` ruleset requires, with every job above in its `needs` |
 | Secret scan | gitleaks |

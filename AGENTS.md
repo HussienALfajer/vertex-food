@@ -42,6 +42,7 @@ The PR that adds a command adds it to this table and keeps it true. Run from the
 | Typecheck | `pnpm typecheck` |
 | Check a change, each check once: lint; typecheck, test and build (Turborepo replays unchanged packages); migration drift; the whole E2E suite of each app the branch affects. Summary on the console, logs in `.verify/` (`docs/testing.md`) · only some test files (paths from the root; `--grep <title>` for part of a spec) | `pnpm verify` · `pnpm verify <file>...` |
 | Test (every package; each run migrates a throwaway database) | `pnpm test` · one package: `pnpm --filter @vertex-food/<name> test` |
+| The restaurant's database and hub tests again in Electron's own runtime (BoringSSL, its module ABI) | `pnpm test:electron` |
 | Build | `pnpm build` |
 | E2E with RTL screenshots (restaurant, console, web, customer, driver; builds first): `pnpm verify` runs the suites of the apps the branch affects; CI runs every suite on three shards (all five here: `pnpm verify --e2e-all`) | `pnpm verify apps/<app>/e2e/<file>.spec.ts [--grep <title>]` · first time: `pnpm --filter @vertex-food/web exec playwright install chromium` |
 | Run an app in development | `pnpm --filter @vertex-food/<app> dev` (`restaurant` in Electron: `dev:electron`); ports in each app's `CLAUDE.md` |
