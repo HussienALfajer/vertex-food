@@ -16,6 +16,7 @@ import {
   type Governorate,
   type HourException,
   isWeakPin,
+  type LimitKey,
   type Me,
   type OtpDeliveryStatus,
   onboardingCompleteness,
@@ -34,6 +35,7 @@ import {
   staffPermissions,
   staffRoles,
   type Tenant,
+  type TenantAgreement,
   updateBranchSchema,
   updateBranchSecuritySchema,
   updateHourExceptionSchema,
@@ -51,7 +53,8 @@ import { type MockSync, mockSync, syncRoute } from './mock-sync.js';
  * `ONBOARDING_INCOMPLETE`, onboarding completeness; the sign-in steps of spec S02 (an OTP on every
  * new device, the first password, the tenant choice), the new device code's WhatsApp delivery of
  * spec S03 (`otpDelivery`) and the browser's personal session, the
- * owner's unless a test says otherwise. Staff routes do not check the session: the API's own tests
+ * owner's unless a test says otherwise; spec S05's «اتفاقيتي» (`agreement`) and the staff limit
+ * on member add and reactivation (`limits`). Staff routes do not check the session: the API's own tests
  * do. Synthetic data only.
  */
 export type MockApi = {
@@ -110,6 +113,10 @@ export type MockApi = {
   sessionPassword: string;
   /** Needs attention, the quarantine and the branch's sync status (spec S04, `mock-sync.ts`). */
   sync: MockSync;
+  /** `GET /api/tenant/agreement` (spec S05 rule 28), for a session holding `agreement.view`. */
+  agreement: TenantAgreement;
+  /** The agreement's limits the staff routes check (rule 21); an absent key is unlimited. */
+  limits: Partial<Record<LimitKey, number>>;
 };
 
 /**
@@ -148,6 +155,107 @@ export function me(tenantOf: Tenant, overrides: Partial<Me> = {}): Me {
     pinSet: false,
     ...overrides,
   };
+}
+
+/** «اتفاقيتي» as the API answers it: `pos` from the agreement, no charges, no amendments. */
+export function tenantAgreement(overrides: Partial<TenantAgreement> = {}): TenantAgreement {
+  return {
+    at: '2026-10-29T08:00:00.000Z',
+    features: [
+      {
+        key: 'pos',
+        on: true,
+        source: 'agreement',
+        reason: null,
+        until: null,
+        private: false,
+      },
+    ],
+    limits: [],
+    charges: [],
+    oneOffFees: [],
+    amendments: [],
+    ...overrides,
+  };
+}
+
+/**
+ * A fuller agreement (synthetic prices): features from the agreement, a trial, a private feature, a
+ * scheduled removal and one off for a missing dependency; a limit above its usage after it was
+ * lowered; charges in force and scheduled with a waiver; a one-off fee.
+ */
+export function sampleAgreement(overrides: Partial<TenantAgreement> = {}): TenantAgreement {
+  const on = { on: true, source: 'agreement', reason: null, until: null, private: false } as const;
+  const off = { ...on, on: false, source: 'default' } as const;
+  const monthStart = '2026-10-31T21:00:00.000Z';
+  return tenantAgreement({
+    features: [
+      { key: 'pos', ...on },
+      { key: 'kitchen_display', ...on },
+      { key: 'waiter_app', ...on, until: '2026-11-30T01:00:00.000Z' },
+      { key: 'analytics', ...on, source: 'override', until: '2026-11-28T01:00:00.000Z' },
+      { key: 'custom_fields', ...on, source: 'override', private: true },
+      { key: 'order_intake', ...off },
+      { key: 'marketplace_listing', ...off },
+      { key: 'web_ordering', ...off },
+      { key: 'vertex_delivery', ...on, on: false, reason: 'dependency_missing' },
+      { key: 'loyalty', ...off },
+    ],
+    limits: [
+      { key: 'branches', value: null, source: 'default', usage: 1 },
+      { key: 'devices', value: 3, source: 'agreement', usage: 2 },
+      { key: 'staff', value: 3, source: 'agreement', usage: 5 },
+    ],
+    charges: [
+      {
+        id: syntheticId(),
+        values: {
+          kind: 'subscription',
+          amount: 2500,
+          currency: 'USD',
+          period: 'month',
+          per: 'active_branch',
+        },
+        effectiveFrom: monthStart,
+        endsAt: null,
+        state: 'in_force',
+      },
+      {
+        id: syntheticId(),
+        values: { kind: 'waiver', waives: { kind: 'subscription' } },
+        effectiveFrom: monthStart,
+        endsAt: '2026-12-31T21:00:00.000Z',
+        state: 'in_force',
+      },
+      {
+        id: syntheticId(),
+        values: {
+          kind: 'commission',
+          channel: 'marketplace',
+          percentBp: 1250,
+          fixed: { amount: 50, currency: 'USD' },
+        },
+        effectiveFrom: '2026-11-30T21:00:00.000Z',
+        endsAt: null,
+        state: 'scheduled',
+      },
+      {
+        id: syntheticId(),
+        values: { kind: 'delivery_fee_share', percentBp: 1000 },
+        effectiveFrom: '2026-11-30T21:00:00.000Z',
+        endsAt: null,
+        state: 'scheduled',
+      },
+    ],
+    oneOffFees: [
+      {
+        id: syntheticId(),
+        values: { kind: 'setup_fee', amount: 10000, currency: 'USD', label: 'تجهيز وتدريب' },
+        dueOn: '2026-11-01',
+      },
+    ],
+    ...overrides,
+  });
 }
 
 /** A member as `GET /api/staff/:id` answers it: a cashier of no branch by default. */
@@ -371,6 +479,8 @@ export async function mockApi(
     devices?: Device[];
     personalDevices?: PersonalDevice[];
     sync?: Partial<MockSync>;
+    agreement?: TenantAgreement;
+    limits?: Partial<Record<LimitKey, number>>;
   },
 ): Promise<MockApi> {
   const files = new Map<string, StoredFile>();
@@ -406,6 +516,8 @@ export async function mockApi(
     reauthenticated: false,
     sessionPassword: 'synthetic-pass-1',
     sync: mockSync(seed.sync),
+    agreement: seed.agreement ?? tenantAgreement(),
+    limits: seed.limits ?? {},
   };
   // Challenges and tickets of the sign-in steps, by id: the phone they belong to.
   const challenges = new Map<string, string>();
@@ -474,6 +586,14 @@ export async function mockApi(
 
   const refuse = (route: Route, code: ErrorCode, details?: Record<string, unknown>) =>
     route.fulfill({ status: errorStatus[code], json: { code, message: code, details } });
+  /** Rule 21: one more active member than the staff limit is refused, naming the limit. */
+  const atStaffLimit = (route: Route) => {
+    const value = state.limits.staff;
+    const usage = state.staff.filter((item) => item.status === 'active').length;
+    if (value !== undefined && usage + 1 > value) {
+      return refuse(route, 'ENTITLEMENT_LIMIT_REACHED', { limit: 'staff', value, usage });
+    }
+  };
   const writable = (route: Route, at: Date) => {
     const { status } = statusNow(at);
     if (status === 'suspended') return refuse(route, 'TENANT_SUSPENDED');
@@ -690,7 +810,7 @@ export async function mockApi(
     if (path === '/api/staff' && method === 'POST') {
       const parsed = addStaffMemberSchema.safeParse(body());
       if (!parsed.success) return refuse(route, 'VALIDATION_FAILED');
-      const refused = reauth() ?? writable(route, at);
+      const refused = reauth() ?? writable(route, at) ?? atStaffLimit(route);
       if (refused) return refused;
       if (state.staff.some((item) => item.phone === parsed.data.phone)) {
         return refuse(route, 'ALREADY_MEMBER');
@@ -759,6 +879,8 @@ export async function mockApi(
         });
       }
       if (action === 'reactivate' && method === 'POST') {
+        const atLimit = atStaffLimit(route);
+        if (atLimit) return atLimit;
         return route.fulfill({
           json: save({ status: 'active', deactivatedAt: null, deactivationReason: null }),
         });
@@ -772,6 +894,11 @@ export async function mockApi(
       if (action === 'password-reset' && method === 'POST') return route.fulfill({ status: 204 });
     }
     if (path === '/api/devices' && method === 'GET') return route.fulfill({ json: state.devices });
+    // Spec S05: the owner's agreement page (rule 28).
+    if (path === '/api/tenant/agreement' && method === 'GET') {
+      if (!caller?.permissions.includes('agreement.view')) return refuse(route, 'FORBIDDEN');
+      return route.fulfill({ json: state.agreement });
+    }
     const devicePath = /^\/api\/devices\/([^/]+)(\/revoke)?$/.exec(path);
     if (devicePath && !['token', 'current'].includes(devicePath[1] ?? '')) {
       const index = state.devices.findIndex((item) => item.id === devicePath[1]);

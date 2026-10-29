@@ -50,7 +50,7 @@ Rules that keep the parallel PRs apart:
 ## PR 4 `claude/determined-sagan-ih2ysp` — restaurant screens (after PR 2 and PR 3)
 
 - [x] «اتفاقيتي» (`/settings/agreement`, owner only), the removal and lease banners, hidden navigation and the «غير مشمولة» message, the limit refusal in PC registration and staff add; i18n (`features/agreement/`: `agreement-view.ts` with unit tests, the screen online and offline from the PC's copy, `EntitlementBanners` on a PC for owners and managers; `useErrorText` names the limit of `ENTITLEMENT_LIMIT_REACHED`, and the bridge's registration refusal carries `{ limit, value }`; no S01–S04 screen sells a feature, so there is nothing to hide yet: `NOT_ENTITLED` and `not_entitled` already read «غير مشمولة» through `errors` and `sync`, and the hiding arrives with the first screen of a feature, follow-up below)
-- [ ] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (owner, manager, offline, banners, limit refusals)
+- [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (owner, manager, offline, banners, limit refusals) (`e2e/agreement.spec.ts`; «اتفاقيتي» and the banners added to `responsive.spec.ts`)
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)

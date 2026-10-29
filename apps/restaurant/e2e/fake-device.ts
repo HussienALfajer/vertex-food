@@ -37,6 +37,8 @@ export type FakeDevice = {
   members: FakeMember[];
   /** Who registers the PC: their session opens at registration. */
   registrantId: string | null;
+  /** The API's refusal of the registration, as the bridge passes it on (spec S05 rule 21). */
+  registerRefusal?: { code: string; limit?: { limit: string; value: number } };
   window: { open: boolean; daysSinceSync: number; warn: boolean; clockBehind: boolean };
   sessionMemberId: string | null;
   /** The open session came by password: the member chooses a new PIN first (rule 22). */
@@ -306,6 +308,7 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
       },
       register: async (input: { ticket: string; name: string }) => {
         if (!scope.navigator.onLine) return { ok: false, code: 'NETWORK_ERROR' };
+        if (state.registerRefusal) return { ok: false, ...state.registerRefusal };
         state.state = 'registered';
         state.device = { ...state.device, name: input.name };
         state.sessionMemberId = state.registrantId;
