@@ -9,7 +9,7 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 | [0003](0003-mobile-apps-react-native-expo.md) | Customer and driver apps in React Native with Expo; store publishing path open (Q3) | Accepted (driver-app tracking amended by 0024) |
 | [0004](0004-tenancy-and-data-isolation.md) | Tenant → branch; forced RLS; customers, Vertex fleet and agreements as platform data with explicit crossing points | Accepted |
 | [0005](0005-identity-and-access.md) | One account per person with many roles; devices, PIN and hub pairing; no email or SMS | Accepted (hub pairing amended by 0022; implementation, PIN and staff onboarding amended by 0032) |
-| [0006](0006-customers-and-data-ownership.md) | Platform customers, attribution on every order, consent fields; the written policy is open (Q5) | Accepted (identity link amended by 0026; reliability level by 0027) |
+| [0006](0006-customers-and-data-ownership.md) | Platform customers, attribution on every order, consent fields; the written policy is open (Q5) | Accepted (identity link amended by 0026; reliability level by 0027; export of customer details by 0037) |
 | [0007](0007-orders-and-order-lifecycle.md) | One order model for every channel, one state table, append-only events, snapshots, server-side totals | Accepted (amended by 0029) |
 | [0008](0008-offline-first-restaurant-and-lan-hub.md) | Offline-first restaurant app, commands validated by the server, a branch hub on the LAN, local printing | Accepted (hub amended by 0022; printing amended by 0023; connectivity and offline offers amended by 0030; sync foundation by 0035) |
 | [0009](0009-delivery-fleets-and-dispatch.md) | Restaurant and Vertex fleets in one driver app; manual dispatch; location only on duty; cash custody | Accepted (location and weak network amended by 0024) |
@@ -40,6 +40,7 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 | [0034](0034-platform-messaging-numbers-and-send-queue.md) | Platform messaging: one Syrian and one Turkish number, a PostgreSQL send queue claimed by the gateway, templates as code, limits from sent messages, opt-out of everything but requested OTPs, `packages/crypto` | Accepted |
 | [0035](0035-sync-foundation-decisions.md) | Sync foundation: signed commands, two hub-capable PCs, number blocks of 4999 per business day reserved 7 days ahead, peer mutual TLS, the CA download while pairing, versioned protocol and updates at an empty queue, 10-minute clock skew, connectivity thresholds, the replication role accepted with guards (Q20) | Accepted |
 | [0036](0036-agreements-and-entitlements-decisions.md) | Agreements and entitlements: four-eyes amendments, the feature catalog as code, removals at the next business day end, overrides with expiry, a 7-day lease and no offline rejection, commission only online and its base (Q21), daily-prorated recurring charges | Accepted |
+| [0037](0037-audit-log-and-data-export.md) | Audit log and data export: owner-only viewers with Vertex staff shown as «فريق فيرتكس», a full ZIP of CSV from one snapshot, customer details the restaurant sees on its own orders, 3 a day kept 7 days, every table declares its export | Proposed |
 
 Template:
 

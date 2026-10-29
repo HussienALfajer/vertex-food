@@ -160,3 +160,8 @@ One name per concept. Code, contracts and tables use the English term; the Arabi
 | نهائي بعد المزامنة | final after sync | A figure that may still change until every device of the branch has synced, shown with its last update time |
 | الوكيل | field agent | A Vertex seller who signs restaurants |
 | وصول الدعم | support access | Vertex staff opening a tenant's data with its permission |
+| سجل العمليات | audit log | The append-only record of changes in a tenant (`audit_entries`), read by the owner; the platform's own is «سجل المنصة» (`platform_audit_entries`) |
+| فئة العملية | audit category | The group of an audit action shown as a filter: access, devices, settings, agreement, data, money, menu and prices, support |
+| تصدير البيانات | data export | A complete copy of a tenant's data as a ZIP of CSV files from one snapshot, kept 7 days |
+| مجموعة بيانات | export dataset | One CSV file of an export, declared by the module whose tables it reads |
+| رابط التنزيل | download link | A 10-minute link to an export's file that resumes a broken download |
