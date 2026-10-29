@@ -9,11 +9,9 @@ import {
   HUB_CA_HTTP_PORT,
   HUB_HTTPS_PORT,
   type HubCommand,
-  type HubPairing,
   hubCommandSchema,
   hubPolicy,
   type LiveRole,
-  type NetworkCheckRecord,
   type OpenPairing,
   pairingQrUrl,
   type TimeOfDay,
@@ -25,13 +23,13 @@ import {
   type CommandRegistry,
   commandRegistry,
   HubClient,
-  type HubStatus,
   MAX_LOCAL_EVENTS_PER_COMMAND,
   type OutboxItem,
   type OutboxStore,
   type ResolvedCheck,
 } from '@vertex-food/sync';
 import { ed25519Signer, ed25519Verifier } from '@vertex-food/sync/node';
+import type { BranchNetworkView, BranchPc, HubView, OpenedPairing } from './bridge.js';
 import type { Registration } from './device-store.js';
 import {
   HubLanServer,
@@ -51,17 +49,6 @@ import { uuidv7 } from './uuid.js';
 // HTTPS server, and the PC's own client of the hub: every command this PC makes (a network check
 // from its screen, its offline audit events) goes through its outbox to whichever PC is the hub,
 // itself included, so a standby and a client PC follow a failover as a phone does.
-
-/** A PC of the branch as the synced tables show it. */
-export type BranchPc = {
-  deviceId: string;
-  name: string;
-  active: boolean;
-  hubRole: 'hub' | 'standby' | null;
-  publicKey: string | null;
-  /** The private addresses of its newest unexpired certificate. */
-  addresses: string[];
-};
 
 type BranchSnapshot = {
   pcs: BranchPc[];
@@ -122,34 +109,6 @@ export type HubLiveState = {
   liveRole: LiveRole;
   hubEpoch: number;
   standbyInSync: boolean | null;
-};
-
-/** The hub as the screens show it (screens 1, 2). */
-export type HubView = {
-  /** Null before the PC knows its role (its first sync), or on a PC whose database is read-only. */
-  status: HubStatus | null;
-  configuredRole: 'hub' | 'standby' | null;
-  /** The PC's current addresses are not all in its certificate (rule 39). */
-  addressChanged: boolean;
-  pairingOpen: boolean;
-  /** This PC's own commands not yet answered by a hub, and answered without a standby copy. */
-  outbox: { sending: number; unmirrored: number };
-};
-
-export type BranchNetworkView = {
-  pcs: (BranchPc & { self: boolean })[];
-  pairings: HubPairing[];
-  networkChecks: NetworkCheckRecord[];
-};
-
-export type OpenedPairing = {
-  code: string;
-  closesAt: string;
-  caFingerprint: string;
-  /** `https://<hub>:7443/pair#peers=…&fp=…&code=…` (rule 37). */
-  pairingUrl: string;
-  /** `http://<hub>:7080/ca.crt`, served while pairing is open. */
-  caUrl: string;
 };
 
 type Json = Record<string, unknown>;

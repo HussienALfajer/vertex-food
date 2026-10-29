@@ -1,7 +1,11 @@
 import {
+  type ConnectivityState,
   deviceNameSchema,
+  type HubPairing,
   idSchema,
   mobilePhoneNumberSchema,
+  type NetworkCheckRecord,
+  type OpenPairing,
   passwordPolicy,
   pinSchema,
   proofOfWorkSolutionSchema,
@@ -10,6 +14,7 @@ import {
   staffPermissionSchema,
   type TenantStatus,
 } from '@vertex-food/contracts';
+import { type HubStatus, MAX_NETWORK_CHECK_SEQUENCE } from '@vertex-food/sync';
 import { z } from 'zod';
 
 /**
@@ -144,6 +149,135 @@ export type DeviceBridge = {
   /** Called whenever the status may have changed; returns the unsubscribe. */
   onChange(listener: () => void): () => void;
 };
+
+// Spec S04's screens (1–5): the sync status, the branch network and this PC's own results. Ids,
+// codes, counts and times only: no payload, token, key or verifier crosses (ADR 0016).
+
+/** A refusal's code, or the value. */
+export type BridgeValue<T> = { ok: true; value: T } | { ok: false; code: string };
+
+/** The sync client's state (`SyncService`). */
+export type SyncState = {
+  connectivity: ConnectivityState | null;
+  lastHeartbeatAt: string | null;
+  /** Below the minimum app version (rule 45): uploads go on, downloads stop. */
+  updateRequired: boolean;
+  /**
+   * The server refused this app's sync protocol: nothing uploads until a heartbeat lists it again
+   * or the app is updated (with an empty queue only, rule 46).
+   */
+  protocolRefused: boolean;
+};
+
+/** What the sync status shows (screen 1): the state, the queue and PowerSync's last checkpoint. */
+export type SyncView = SyncState & {
+  /** Commands waiting to upload; null when the queue cannot be read (a damaged database). */
+  pendingUploads: number | null;
+  lastSyncedAt: string | null;
+  /** PowerSync's stream is open. */
+  connected: boolean;
+};
+
+/** The hub as the screens show it (screens 1, 2; `HubRuntime`). */
+export type HubView = {
+  /** Null before the PC knows its role (its first sync), and on a client PC. */
+  status: HubStatus | null;
+  configuredRole: 'hub' | 'standby' | null;
+  /** The PC's current addresses are not all in its certificate (rule 39). */
+  addressChanged: boolean;
+  pairingOpen: boolean;
+  /** This PC's own commands not yet answered by a hub, and answered without a standby copy. */
+  outbox: { sending: number; unmirrored: number };
+};
+
+/** A PC of the branch as the synced tables show it. */
+export type BranchPc = {
+  deviceId: string;
+  name: string;
+  active: boolean;
+  hubRole: 'hub' | 'standby' | null;
+  publicKey: string | null;
+  /** The private addresses of its newest unexpired certificate. */
+  addresses: string[];
+};
+
+export type BranchNetworkView = {
+  pcs: (BranchPc & { self: boolean })[];
+  pairings: HubPairing[];
+  networkChecks: NetworkCheckRecord[];
+};
+
+export type OpenedPairing = {
+  code: string;
+  closesAt: string;
+  caFingerprint: string;
+  /** `https://<hub>:7443/pair#peers=…&fp=…&code=…` (rule 37). */
+  pairingUrl: string;
+  /** `http://<hub>:7080/ca.crt`, served while pairing is open. */
+  caUrl: string;
+};
+
+export type SyncStatusView = {
+  sync: SyncView;
+  /** Null while the PC has no hub runtime (unregistered, or its database is read-only). */
+  hub: HubView | null;
+  /** A downloaded update waiting for the next start (rule 46). */
+  updateReady: { version: string } | null;
+};
+
+/** One command this PC made or executed, with the server's outcome once it arrived (rule 11). */
+export type CommandResultView = {
+  id: string;
+  name: string | null;
+  membershipId: string | null;
+  outcome: string | null;
+  reason: string | null;
+  madeAt: string | null;
+  answeredAt: string | null;
+};
+
+export const promoteInputSchema = z.object({
+  membershipId: idSchema,
+  pin: pinSchema,
+  acknowledgedMissing: z.int().min(0),
+});
+
+export const networkCheckInputSchema = z.object({
+  run: idSchema,
+  sequence: z.int().min(1).max(MAX_NETWORK_CHECK_SEQUENCE),
+});
+
+export type SyncBridge = {
+  status(): Promise<SyncStatusView | null>;
+  /** The branch's PCs, the paired devices and the recent network checks (screen 2). */
+  network(): Promise<BranchNetworkView | null>;
+  /** Rule 33: on the active hub, by a PIN session with `hub.manage`. */
+  openPairing(input: OpenPairing): Promise<BridgeValue<OpenedPairing>>;
+  closePairing(): Promise<void>;
+  revokePairing(pairingId: string): Promise<BridgeResult>;
+  /** The manual promotion's warning: the entries this standby lacks (rule 27). */
+  promotionPreview(): Promise<BridgeValue<{ missing: number; rejoining: boolean }>>;
+  promote(input: z.infer<typeof promoteInputSchema>): Promise<BridgeResult>;
+  sendNetworkCheck(
+    input: z.infer<typeof networkCheckInputSchema>,
+  ): Promise<BridgeValue<{ commandId: string }>>;
+  /** This PC's commands and their outcomes, newest first (needs attention, screen 3). */
+  results(): Promise<CommandResultView[]>;
+  onChange(listener: () => void): () => void;
+};
+
+export const syncChannels = {
+  status: 'sync:status',
+  network: 'sync:network',
+  openPairing: 'sync:open-pairing',
+  closePairing: 'sync:close-pairing',
+  revokePairing: 'sync:revoke-pairing',
+  promotionPreview: 'sync:promotion-preview',
+  promote: 'sync:promote',
+  sendNetworkCheck: 'sync:send-network-check',
+  results: 'sync:results',
+  changed: 'sync:changed',
+} as const;
 
 /** The IPC channels; the preload names the same ones (`preload.cts`, checked by a test). */
 export const deviceChannels = {

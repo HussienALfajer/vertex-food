@@ -2,7 +2,6 @@ import type { PowerSyncBackendConnector, PowerSyncDatabase } from '@powersync/no
 import {
   type CommandEnvelope,
   type CommandResult,
-  type ConnectivityState,
   connectivityPolicy,
   isBelowMinimumAppVersion,
   type LiveRole,
@@ -14,6 +13,7 @@ import {
   type UploadedCommand,
   uploadedCommandSchema,
 } from '@vertex-food/contracts';
+import type { SyncState, SyncView } from './bridge.js';
 import { API_BODY_BYTES, DeviceApiError, type SyncApi } from './device-client.js';
 import type { Registration } from './device-store.js';
 import type { OpenedDatabase } from './local-db.js';
@@ -25,21 +25,8 @@ import {
 } from './pc-certificate.js';
 import { pendingCounts } from './pending-work.js';
 
-/** What a PC reports of its live role; the hub (PR 5) gives it, the configured role until then. */
+/** What a PC reports of its live role: the hub's (`HubRuntime.live`), the configured role without. */
 export type LiveState = { liveRole: LiveRole; hubEpoch: number; standbyInSync: boolean | null };
-
-/** The sync client's state, for the screens (the bridge arrives with PR 5). */
-export type SyncState = {
-  connectivity: ConnectivityState | null;
-  lastHeartbeatAt: string | null;
-  /** Below the minimum app version (rule 45): uploads go on, downloads stop. */
-  updateRequired: boolean;
-  /**
-   * The server refused this app's sync protocol: nothing uploads until a heartbeat lists it again
-   * or the app is updated (with an empty queue only, rule 46).
-   */
-  protocolRefused: boolean;
-};
 
 export type SyncServiceDeps = {
   registration: Registration;
@@ -55,7 +42,7 @@ export type SyncServiceDeps = {
   elapsed: () => number;
   appVersion: string;
   lanAddresses: () => string[];
-  certificates: CertificateStore;
+  certificates: Pick<CertificateStore, 'read' | 'write'>;
   live?: () => Promise<LiveState>;
   onChange: () => void;
 };
@@ -91,6 +78,7 @@ export class SyncService {
   private stopped = false;
   /** Between `start` and `stop`: only then is PowerSync connected. */
   private running = false;
+  private unlisten: (() => void) | null = null;
 
   constructor(private readonly deps: SyncServiceDeps) {}
 
@@ -100,6 +88,17 @@ export class SyncService {
 
   status(): SyncState {
     return { ...this.state };
+  }
+
+  async view(): Promise<SyncView> {
+    const counts = await pendingCounts(this.deps.local.reads).catch(() => null);
+    const status = this.db?.currentStatus;
+    return {
+      ...this.state,
+      pendingUploads: counts?.uploads ?? null,
+      lastSyncedAt: status?.lastSyncedAt?.toISOString() ?? null,
+      connected: status?.connected ?? false,
+    };
   }
 
   private update(change: Partial<SyncState>): void {
@@ -138,6 +137,9 @@ export class SyncService {
   start(): void {
     this.stopped = false;
     this.running = true;
+    // A checkpoint or an upload changes what the sync status shows.
+    this.unlisten =
+      this.db?.registerListener({ statusChanged: () => this.deps.onChange() }) ?? null;
     this.connect();
     void this.ensureBlocks(true).catch(() => undefined);
     void this.tick();
@@ -147,6 +149,8 @@ export class SyncService {
   async stop(): Promise<void> {
     this.stopped = true;
     this.running = false;
+    this.unlisten?.();
+    this.unlisten = null;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     await this.disconnect();
