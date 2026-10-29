@@ -29,7 +29,7 @@ import {
   withTenant,
   withTenantSnapshot,
 } from '@vertex-food/db';
-import type { Job } from 'pg-boss';
+import type { Job, QueueOptions } from 'pg-boss';
 import { JOBS_DATABASE } from '../../core/jobs-database/jobs-database.module.js';
 import type { OutboxJobData, QueueJob } from '../../core/queue/queue-job.js';
 import { exportColumnsCsv, exportReadme } from './texts.js';
@@ -100,7 +100,7 @@ export class DataExportBuildJob implements QueueJob {
     // its missing heartbeat instead.
     expireInSeconds: (dataExportPolicy.maxBuildMinutes + 5) * 60,
     heartbeatSeconds: 30,
-  };
+  } satisfies QueueOptions;
 
   private readonly settings: DataExportBuildSettings;
 

@@ -20,9 +20,10 @@ import {
   tenants,
   withTenant,
 } from '@vertex-food/db';
-import type { Job } from 'pg-boss';
+import type { Job, PgBoss } from 'pg-boss';
 import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, inject, it, vi } from 'vitest';
+import { BOSS } from '../src/core/queue/queue.module.js';
 import type { OutboxJobData } from '../src/core/queue/queue-job.js';
 import {
   DataExportBuildJob,
@@ -425,13 +426,18 @@ describe('data-export.build (rules 10–12, 15)', () => {
     expect(audited.map((entry) => entry.details)).toEqual([{ failure: 'server_error' }]);
   });
 
-  it('retries three times with backoff, past the 30-minute cap, with a heartbeat', () => {
-    expect(job().options).toEqual({
+  it('retries three times with backoff, past the 30-minute cap, with a heartbeat and a dead letter', async () => {
+    const boss = worker.get<PgBoss>(BOSS);
+    expect(await boss.getQueue('data-export.build')).toMatchObject({
       retryLimit: 2,
       retryDelay: 30,
       retryBackoff: true,
       expireInSeconds: 35 * 60,
       heartbeatSeconds: 30,
+      deadLetter: 'data-export.build.failed',
+    });
+    expect(await boss.getQueue('data-export.build.failed')).toMatchObject({
+      name: 'data-export.build.failed',
     });
   });
 });
