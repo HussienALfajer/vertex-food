@@ -2,56 +2,60 @@
 
 The live checklist of the current spec or task, committed and pushed with each layer so a local or cloud session can continue it (`docs/workflow.md`, "Local and cloud handoff"). The next spec replaces the items and keeps "Follow-ups". Tick items as they finish; add work you discover.
 
-# S05 — Entitlements and agreements core (`docs/specs/S05-entitlements-and-agreements-core.md`, ADR 0013, 0036)
+# S06 — Audit and export (`docs/specs/S06-audit-and-export.md`, ADR 0016, 0037)
 
-PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each PR starts from `main` after the PRs it depends on have merged. One PR per session; effort `high` for every PR (agreements and entitlements, `CLAUDE.md`).
+PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each PR starts from `main` after the PRs it depends on have merged. One PR per session; effort `high` for PR 1 to 3 (access, customer data, the export of a tenant's data), `medium` for the screens.
 
 | PR | Depends on | Runs in parallel with | Files it alone edits |
 |---|---|---|---|
 | 1 data | — | — | — |
-| 2 API and worker | 1 | 3 | `apps/api`, `apps/worker`, the regenerated client types |
-| 3 restaurant hub and local row | 1 | 2 | `apps/restaurant/electron/` |
-| 4 restaurant screens | 2, 3 | — | — |
+| 2 API | 1 | 3 | `apps/api`, the regenerated client types |
+| 3 worker | 1 | 2 | `apps/worker` |
+| 4 restaurant screens | 2 | 5 | `apps/restaurant`, the screen keys of `packages/i18n/src/ar/audit.ts` |
+| 5 console screen | 2 | 4 | `apps/console`, `packages/i18n/src/ar/console.ts` |
 
 Rules that keep the parallel PRs apart:
-- Shared packages (`contracts`, `db`, `packages/sync`, the error texts) change in PR 1 only; a later PR that needs a change there stops and says so.
-- PR 1 creates and registers the i18n file `agreement.ts` (with the `not_entitled` reason in `sync.ts`), so PR 4 never edits `packages/i18n/src/ar/index.ts`.
+- Shared packages (`contracts`, `db`, the error texts, the CSV writer, the dataset definitions) change in PR 1 only; a later PR that needs a change there stops and says so.
+- PR 1 creates and registers the i18n file `audit.ts` (action sentences, field labels, categories), so no later PR edits `packages/i18n/src/ar/index.ts`.
 - `docs/ROADMAP.md` and this file: each PR edits only its own line and section.
 
-## PR 1 `claude/bold-knuth-7m3mm6` — contracts, database, sync
+## PR 1 `claude/vigilant-einstein-y5vyyc` — contracts, database, i18n
 
-- [x] contracts `commercial.ts` (platform): `defineFeature`, `defineLimit`, platform entries; `restaurant-features.ts` (food), `marketplace-features.ts` (product); `feature-catalog.ts` assembling `featureCatalog`, `featureKeySchema`, `limitKeySchema` (`sharedLayerViolations` updated); package, template, `TermDraft`, `amendmentChangesSchema`, amendment state table, override input, `resolvedEntitlementsSchema`, console and tenant agreement views; catalog validation (dependencies, private, retired); unit tests
-- [x] contracts `entitlements.ts`: `resolveEntitlements(inputs, t)` with sources, dependencies, `until` and `valid_until`; the branch copy, its lease and the limit check; the next business day end push (rules 7, 14), `termsInForce` and slot overlap (rules 3, 4) in `commercial.ts`; unit tests
-- [x] contracts `commercial-money.ts`: `commissionFor`, `deliveryFeeShareFor`, `recurringChargeFor` (rules 29–33); unit tests
-- [x] contracts: permissions (`agreement.view`, five console ones) in `access.ts`; the eleven new error codes; audit actions; `agreement.amended.v1`, `entitlements.changed.v1` in the event catalog; `not_entitled` in `commandReasonSchema`; layer and JSON Schema lists
-- [x] i18n: error texts, permission labels, `not_entitled` reason, an `agreement` namespace registered in `ar/index.ts`; OpenAPI and client types regenerated for the new enums
-- [x] db (`/db-migration`): `schema/commercial.ts` (`packages`, `agreement_templates`, `agreements`, `agreement_amendments`, `agreement_terms`, `agreement_term_endings`) and `schema/entitlements.ts` (`entitlement_overrides`, `entitlement_override_revocations`, `entitlement_states`, `branch_entitlements`, `entitlement_exceptions`); triggers (append-only, frozen `changes`, decided rows), one-open-amendment index, value checks, money columns; RLS on `branch_entitlements`, app and jobs grants (`JOBS_ACCESS`), the `powersync` publication and `SYNC_ACCESS`; conventions test; `pnpm db:migrate` locally (migrations 0014 tables, 0015 isolation, guards, grants and publication, 0016 two checks made null-safe; `test/commercial.test.ts`; the jobs role reaches `branch_entitlements` through `tenant_isolation` inside each tenant, with no `jobs_boundaries` policy of its own: it never needs a cross-tenant read there; schema layers and table owners in the architecture test)
-- [x] `packages/sync`: `CommandDefinition.feature` (S04's two commands: null), the hub's entitlement port checked at the effective time (`not_entitled`, never for an expired lease), in-memory tests; the `branch_entitlements` stream (tenant and branch) and its convention test (`BranchData.featureEntitled`; new commands only, a re-sent version was entitled where it was first answered; `src/hub/entitlements.test.ts`; the restaurant hub answers `false` until PR 3 reads its local row)
-- [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md` files of contracts, i18n, db and sync, a pattern row in `wiring.md`; architecture and glossary already had S05's modules and terms)
-- [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: lint, migrations, every E2E suite and the contracts, db, i18n and console tests green; the API, restaurant and sync files that timed out at 5 s under the full run on this 4-core cloud machine passed when rerun alone; reviewer: four findings fixed (terms written only in their approval and never dated before it, four eyes in the database, a pushed removal past its end refused, an index for the boundary job), the first fix-only round found the approval's own date chosen by its writer, fixed (dated by its transaction), the second round clean)
+- [ ] contracts `audit.ts`: `auditActionCatalog` (`log`, `category`, `detailFields`) keeping names and order, `auditCategorySchema`, the five `data_export.*` actions; tenant and platform audit query and page schemas (366-day range, cursor); unit tests
+- [ ] contracts `data-export.ts`: `dataExportSchema`, statuses and failures, state table, the daily limit in Damascus days, link view; `csv.ts` (BOM, CRLF, RFC 4180, formula prefix on text columns only, money digits per exponent, Damascus instants with offset, dates, booleans, lists) and the manifest schema; unit tests
+- [ ] contracts: permissions `audit.view`, `data.export` (owner presets, `ownerLockedPermissions`), `console.audit.read` (admin); error codes `EXPORT_IN_PROGRESS`, `EXPORT_LIMIT_REACHED`, `EXPORT_NOT_READY`; `data_export.requested.v1` in the event catalog; re-auth list (S02 rule 26); layer and JSON Schema lists
+- [ ] i18n: `audit` namespace (a sentence per action, a label per detail field, categories) registered in `ar/index.ts` with the rule 1 test; error texts and permission labels; OpenAPI and client types regenerated for the new enums
+- [ ] db (`/db-migration`): `audit_entries.branch_id` (composite key, index with `occurred_at`); `data_exports`, `data_export_chunks` (kind `blob`), `data_export_links` with RLS, guards, the one-active index and `JOBS_ACCESS` grants; `export` on every tenant `tableRegistry` entry and the convention test; `pnpm db:migrate` locally
+- [ ] db `src/exports/`: column kinds and dataset definitions per module (layers per `sharedLayerViolations`), assembled in `exports/index.ts`; tests on two seeded tenants (declarations against `tableRegistry`, no row of the other tenant)
+- [ ] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md` files, architecture's `data-export` module, glossary)
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## PR 2 `claude/clever-noether-yigvht` — API and worker (after PR 1, parallel with PR 3)
+## PR 2 — API (after PR 1, parallel with PR 3)
 
-- [x] `platform/commercial` module: catalog, packages, templates, agreements, amendments (state table, four eyes, re-auth, validation at submit and approval, removal push, terms and endings, audit platform and tenant, `agreement.amended.v1`)
-- [x] `platform/entitlements` module: resolver state (recompute on read past `valid_until`, version, branch rows, `entitlements.changed.v1`), overrides and revocations, exceptions, usage; console and tenant routes
-- [x] Enforcement: `@RequiresFeature` in the access guard, startup check (no feature on console or public routes), limit checks under the state lock (branches, staff add and reactivate, PC registration: `ENTITLEMENT_LIMIT_REACHED`), activation needs an agreement in force, `TENANT_SUSPENDED` on every tenant write except `@SuspendedAllowed()`; registry features checked at startup; the sync executor appends `entitlement_exceptions` (rule 25); a new branch gets its row
-- [x] CLI commands and sample files in `apps/api/test/fixtures/commercial/`
-- [x] Worker `entitlements/apply-boundaries` every minute (`apps/worker/test/apply-boundaries.test.ts`)
-- [x] Tests (`test/commercial.test.ts`, `test/entitlements.test.ts`, the changed S01, S02, S04 tests, worker test, architecture tests); OpenAPI and client types regenerated (the S02 and S04 tests needed no change; S01's activation now gives an agreement first, `test/commercial.ts`)
-- [x] From PR 1's review: the approval reads its instant from the database clock inside its transaction (`now()`, which `agreement_amendment_guard` requires of `decided_at`, to the millisecond), plans with it, and writes its terms and endings in the same transaction, with no savepoint around the approval (`agreement_term_guard` checks the row's `xmin`); a branch's creation locks the tenant's `entitlement_states` row before it writes the branch's copy, so a recompute running meanwhile does not leave it on the old version; each drafted `listValue` is compared with the template's value on the server (`agreements.template_id`), so a list value cannot be lowered to skip `differenceReason`; the first `entitlement_states` row is upserted (`ON CONFLICT`) before its `FOR UPDATE` lock, so two first additions serialize; `entitlements/apply-boundaries` updates the existing branch copies only (the jobs role reads no branch), so the API writes every non-archived branch's row with the first state and each new branch's at its creation
-- [x] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report (`pnpm verify`: lint, typecheck, build and the restaurant and console E2E suites green; the tests that hit the 5 s timeout under the full run on this 4-core cloud machine, different ones in each of two runs, passed when rerun alone; reviewer: no blocking finding, one race on a tenant's first state fixed (inputs read again after an insert conflict), the fix-only round clean)
+- [ ] `audit()` takes `branchId`; the writers of a branch's settings, devices, hub events and branch-scoped membership changes pass it
+- [ ] `GET /api/tenant/audit` (rules 2–5: filters, cursor, actor shown without Vertex names or ids, offline mark, resolved names) and `GET /api/console/audit` (rule 18)
+- [ ] `platform/data-export` module: request (re-auth, one active, 3 a Damascus day, row, audit and outbox in one transaction), list with `remainingToday`, get, link (hash only, 10 minutes, audited), public file route (`Range`, `206`, `416`, `NOT_FOUND`, rate limit, path redacted from logs); `@SuspendedAllowed()` and `whileClosed`
+- [ ] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
-## PR 3 `claude/determined-shannon-x51xc7` — restaurant main process (after PR 1, parallel with PR 2)
+## PR 3 — worker (after PR 1, parallel with PR 2)
 
-- [x] `branch_entitlements` in the local database's synced tables; the hub's entitlement port on it; the lease (7 days after the last stream sync); bridge read for the renderer (row, lease state, no money) (`electron/branch-entitlements.ts`, `SyncBridge.entitlements()`; the fake device's `FakeSync.entitlements` for PR 4, the full restaurant app by default)
-- [x] Tests on the real local database and a hub scenario (refused `not_entitled`, accepted after a newer row) (`branch-entitlements.test.ts`, `sync-ipc.test.ts`, `hub-scenarios.test.ts`: before a first sync, a row without the feature, a removal whose time has come, then a newer row)
-- [x] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: the restaurant E2E suite green (238), lint fixed (import order); the restaurant, API and console files that hit the 5 s timeout under the full run on this 4-core cloud machine passed when rerun alone; reviewer: no blocking finding)
+- [ ] Queue `data-export.build` fed by `data_export.requested.v1`: claim, one `REPEATABLE READ, READ ONLY` snapshot in `withTenant`, streamed ZIP into 1 MiB chunks (datasets, files, `README.txt`, `columns.csv`, `manifest.json`), 1 GiB and 30-minute caps, 3 attempts, rebuild after a crash, audit entries
+- [ ] Scheduled `data-export/expire` hourly
+- [ ] Tests (files agree with the database at `as_of`, nothing of a second tenant, manifest hashes, rerun skipped, crash rebuilt, `too_large`, `timed_out`, expire once)
+- [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 
-## PR 4 `claude/determined-sagan-ih2ysp` — restaurant screens (after PR 2 and PR 3)
+## PR 4 — restaurant screens (after PR 2, parallel with PR 5)
 
-- [x] «اتفاقيتي» (`/settings/agreement`, owner only), the removal and lease banners, hidden navigation and the «غير مشمولة» message, the limit refusal in PC registration and staff add; i18n (`features/agreement/`: `agreement-view.ts` with unit tests, the screen online and offline from the PC's copy, `EntitlementBanners` on a PC for owners and managers; `useErrorText` names the limit of `ENTITLEMENT_LIMIT_REACHED`, and the bridge's registration refusal carries `{ limit, value }`; no S01–S04 screen sells a feature, so there is nothing to hide yet: `NOT_ENTITLED` and `not_entitled` already read «غير مشمولة» through `errors` and `sync`, and the hiding arrives with the first screen of a feature, follow-up below)
-- [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (owner, manager, offline, banners, limit refusals) (`e2e/agreement.spec.ts`; «اتفاقيتي» and the banners added to `responsive.spec.ts`)
-- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report (`pnpm verify`: lint, typecheck, build and every E2E suite green (restaurant 256); the API, console and restaurant test files that hit the 5 s timeout under the full run on this 4-core cloud machine, and one API sign-in under the same load, passed when rerun alone; reviewer: one finding fixed (the offline page listed a feature past its removal time, which the hub already refuses), the fix-only round clean; the second `pnpm verify` green but two 5 s timeouts, `apps/api/test/sync-commands.test.ts` and `apps/restaurant/electron/local-store.test.ts`, both untouched here and green alone)
+- [ ] «سجل العمليات» (`/settings/audit`) and «تصدير البيانات» (`/settings/export`) for owners; the main process saves a download from the API's origin (`will-download`); i18n
+- [ ] E2E with a mocked API, RTL light and dark at 360 px, tablet, desktop (entries, filters, details, offline mark, empty, offline; idle, re-auth, running, ready, failed, limit, history; hidden from a manager)
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+
+## PR 5 — console screen (after PR 2, parallel with PR 4)
+
+- [ ] «سجل المنصة» (`/audit`, admin only, sidebar item): filters, table from `md` and cards below, detail sheet, «عرض المزيد»; i18n in `console.ts`
+- [ ] E2E (admin, hidden from `support`), RTL light and dark at every width
+- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 
