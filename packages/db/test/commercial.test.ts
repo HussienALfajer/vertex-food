@@ -15,6 +15,7 @@ import {
   entitlementOverrides,
   entitlementStates,
   packages,
+  platformUsers,
   staffMemberships,
   tenantSlugs,
   tenants,
@@ -115,7 +116,7 @@ function approveWith(id: string, write: (tx: Tx) => Promise<unknown> = async () 
   return app.transaction(async (tx) => {
     await tx
       .update(agreementAmendments)
-      .set({ status: 'approved', decidedAt: new Date(), decidedByOperator: 'finance1' })
+      .set({ status: 'approved', decidedAt: sql`now()`, decidedByOperator: 'finance1' })
       .where(eq(agreementAmendments.id, id));
     await write(tx);
   });
@@ -183,7 +184,7 @@ describe('amendments', () => {
           .set({
             status: 'approved',
             submittedAt: new Date(),
-            decidedAt: new Date(),
+            decidedAt: sql`now()`,
             decidedByOperator: 'f',
           })
           .where(eq(agreementAmendments.id, id)),
@@ -246,7 +247,7 @@ describe('amendments', () => {
       await refusal(
         app
           .update(agreementAmendments)
-          .set({ status: 'rejected', decidedAt: new Date(), decidedByOperator: 'f' })
+          .set({ status: 'rejected', decidedAt: sql`now()`, decidedByOperator: 'f' })
           .where(eq(agreementAmendments.id, id)),
       ),
     ).toMatch(CHECK);
@@ -269,6 +270,20 @@ describe('agreement terms', () => {
         ),
       ),
     ).toMatch(/no earlier than its approval/);
+    // Approved with an old decision time to let an old term through: refused too.
+    expect(
+      await refusal(
+        app.transaction(async (tx) => {
+          await tx
+            .update(agreementAmendments)
+            .set({ status: 'approved', decidedAt: day(-60), decidedByOperator: 'finance1' })
+            .where(eq(agreementAmendments.id, id));
+          await tx
+            .insert(agreementTerms)
+            .values({ ...featureTerm(t, id), effectiveFrom: day(-30) });
+        }),
+      ),
+    ).toMatch(/no earlier than its transaction/);
     const term = featureTerm(t, id);
     await approveWith(id, (tx) => tx.insert(agreementTerms).values(term));
     // A later transaction cannot add a term to an amendment approved earlier.
@@ -600,13 +615,39 @@ it('keeps the append-only commercial tables from every role', async () => {
 describe('four eyes (rule 11)', () => {
   it('refuses an approval by the author, as a user or by the operator’s name', async () => {
     const t = await seedTenant();
-    const id = await amendment(t);
+    const [author] = await app
+      .insert(platformUsers)
+      .values({ phone: newPhone(), name: 'مبيعات تجريبي', role: 'sales' })
+      .returning();
+    if (!author) throw new Error('no user');
+    const byUser = uuidv7();
+    await app.insert(agreementAmendments).values({
+      id: byUser,
+      agreementId: t.agreementId,
+      number: 1,
+      changes: EMPTY,
+      authoredBy: author.id,
+    });
+    await submit(byUser);
+    expect(
+      await refusal(
+        app
+          .update(agreementAmendments)
+          .set({ status: 'approved', decidedAt: sql`now()`, decidedBy: author.id })
+          .where(eq(agreementAmendments.id, byUser)),
+      ),
+    ).toMatch(CHECK);
+    await app
+      .update(agreementAmendments)
+      .set({ status: 'withdrawn', decidedAt: sql`now()`, decidedBy: author.id })
+      .where(eq(agreementAmendments.id, byUser));
+    const id = await amendment(t, 2);
     await submit(id);
     expect(
       await refusal(
         app
           .update(agreementAmendments)
-          .set({ status: 'approved', decidedAt: new Date(), decidedByOperator: ' Sales1 ' })
+          .set({ status: 'approved', decidedAt: sql`now()`, decidedByOperator: ' Sales1 ' })
           .where(eq(agreementAmendments.id, id)),
       ),
     ).toMatch(CHECK);
