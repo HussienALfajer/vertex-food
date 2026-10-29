@@ -1,5 +1,5 @@
 import { type AnyColumn, sql } from 'drizzle-orm';
-import { check, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, customType, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 
 // Shared column helpers (ADR 0020). Column names come from the property names through the
@@ -32,3 +32,6 @@ export const updatedAt = () =>
 
 /** Business tables: set when the record is archived; records are never deleted (ADR 0016). */
 export const archivedAt = () => timestamptz();
+
+/** Binary data (a file, a chunk of an export), read and written as a `Buffer`. */
+export const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });

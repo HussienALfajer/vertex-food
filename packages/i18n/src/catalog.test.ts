@@ -56,7 +56,8 @@ describe('Arabic catalog', () => {
       const placeholders = [...ar.audit.actions[action].matchAll(/\{\{(\w+)\}\}/g)].map(
         (m) => m[1],
       );
-      for (const name of placeholders) expect(['actor', 'entity', 'branch'], action).toContain(name);
+      for (const name of placeholders)
+        expect(['actor', 'entity', 'branch'], action).toContain(name);
     }
   });
 

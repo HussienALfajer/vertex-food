@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, foreignKey, index, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, idIsUuidV7, tenantId, timestamptz } from './columns.js';
-import { tenants } from './tenancy.js';
+import { branches, tenants } from './tenancy.js';
 
 /**
  * Append-only audit log of a restaurant (ADR 0016): money (payments, refunds, voids, discounts
@@ -21,6 +21,12 @@ export const auditEntries = pgTable(
     /** For `system` actors: the CLI operator's name or the job's name. */
     actorName: text(),
     deviceId: uuid(),
+    /**
+     * The branch the change concerns (spec S06): a branch's own settings, a device, a hub event, a
+     * change of a member limited to one branch, and from S09 every order, payment and cash action.
+     * Null for tenant-wide changes and for the entries written before S06.
+     */
+    branchId: uuid(),
     /** What happened, as `<entity>.<verb>`: `payment.voided`, `customer_list.exported`. */
     action: text().notNull(),
     entityType: text().notNull(),
@@ -46,6 +52,12 @@ export const auditEntries = pgTable(
       sql`${t.actorKind} in ('staff', 'customer', 'driver', 'platform', 'system')`,
     ),
     index('audit_entries_tenant_occurred_idx').on(t.tenantId, t.occurredAt),
+    foreignKey({
+      name: 'audit_entries_branch_fk',
+      columns: [t.tenantId, t.branchId],
+      foreignColumns: [branches.tenantId, branches.id],
+    }),
+    index('audit_entries_tenant_branch_occurred_idx').on(t.tenantId, t.branchId, t.occurredAt),
     index('audit_entries_tenant_entity_idx').on(t.tenantId, t.entityType, t.entityId, t.occurredAt),
   ],
 );

@@ -2,6 +2,7 @@ export * from './access.js';
 export * from './areas.js';
 export * from './audit.js';
 export * from './commercial.js';
+export * from './data-export.js';
 export * from './entitlements.js';
 export * from './events.js';
 export * from './files.js';

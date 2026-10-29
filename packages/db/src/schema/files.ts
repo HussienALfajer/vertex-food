@@ -2,17 +2,14 @@ import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   check,
-  customType,
   index,
   integer,
   pgTable,
   text,
   unique,
 } from 'drizzle-orm/pg-core';
-import { archivedAt, createdAt, id, idIsUuidV7, tenantId, updatedAt } from './columns.js';
+import { archivedAt, bytea, createdAt, id, idIsUuidV7, tenantId, updatedAt } from './columns.js';
 import { tenants } from './tenancy.js';
-
-const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
 /**
  * Images a tenant uploads (module `files`, spec S01): the logo and the cover, re-encoded by the API

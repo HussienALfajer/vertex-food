@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { staffRoleSchema } from './access.js';
 import { idSchema, instantSchema } from './primitives.js';
-import { addDays, businessInstant, businessWallClock, type LocalDate, localDateSchema } from './time.js';
+import {
+  addDays,
+  businessInstant,
+  businessWallClock,
+  type LocalDate,
+  localDateSchema,
+} from './time.js';
 
 /** Which log an action is written to; `both` are S02's owner recoveries (spec S02 rule 43). */
 export type AuditLog = 'tenant' | 'platform' | 'both';
@@ -248,7 +254,6 @@ export const auditActorKindSchema = z
 
 export type AuditActorKind = z.infer<typeof auditActorKindSchema>;
 
-
 // Reading the logs (spec S06 rules 2–5, 18).
 
 export const AUDIT_PAGE_SIZE = 50;
@@ -280,13 +285,19 @@ export function decodeAuditCursor(value: string): AuditCursor {
   return { occurredAt: new Date(at), id };
 }
 
-function rangeWithinLimit(query: { from?: LocalDate | undefined; to?: LocalDate | undefined }): boolean {
+function rangeWithinLimit(query: {
+  from?: LocalDate | undefined;
+  to?: LocalDate | undefined;
+}): boolean {
   if (!query.from || !query.to) return true;
   const days = (Date.parse(query.to) - Date.parse(query.from)) / 86_400_000;
   return days >= 0 && days < AUDIT_MAX_RANGE_DAYS;
 }
 
-const rangeIssue = { message: 'The period runs backwards or is longer than 366 days', path: ['to'] };
+const rangeIssue = {
+  message: 'The period runs backwards or is longer than 366 days',
+  path: ['to'],
+};
 
 /**
  * The period of a query as instants, `[from, to)`: whole Damascus calendar days from `from` to
@@ -359,7 +370,10 @@ export const DEVICE_ACTOR_NAME = 'device';
  * How a stored actor is shown in the restaurant's log (rule 3): a `system` actor is a PC when its
  * name is `device`, a job when its name is a job's, else a CLI operator, shown as Vertex.
  */
-export function shownAuditActorKind(actorKind: string, actorName: string | null): AuditShownActorKind {
+export function shownAuditActorKind(
+  actorKind: string,
+  actorName: string | null,
+): AuditShownActorKind {
   switch (actorKind) {
     case 'staff':
     case 'customer':
@@ -481,9 +495,7 @@ export const platformAuditEntrySchema = z
     }),
     entityType: z.string(),
     entityId: z.uuid().nullable(),
-    subjectTenant: z
-      .object({ id: idSchema, slug: z.string(), nameAr: z.string() })
-      .nullable(),
+    subjectTenant: z.object({ id: idSchema, slug: z.string(), nameAr: z.string() }).nullable(),
     /** The console route of a `console.request`, as `METHOD /path/:param`. */
     requestRoute: z.string().nullable(),
     reason: z.string().nullable(),
