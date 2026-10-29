@@ -5,7 +5,6 @@ import {
   type PairingKind,
   pairingNameSchema,
 } from '@vertex-food/contracts';
-import { MAX_NETWORK_CHECK_SEQUENCE } from '@vertex-food/sync';
 import {
   Badge,
   Button,
@@ -31,6 +30,13 @@ import { QrCode } from './qr-code';
 import { syncResultsQuery } from './queries';
 import { ChoiceField, Detail, Ltr } from './sync-parts';
 import { countdown, elapsedMs } from './sync-state';
+
+/**
+ * The longest stress run this screen sends, within the bridge's sequence limit (10 000,
+ * `networkCheckInputSchema`); `@vertex-food/sync` itself is not imported here, as its envelope
+ * code needs Node.
+ */
+const STRESS_MAX = 1000;
 
 function useNow(active: boolean): number {
   const [now, setNow] = useState(() => Date.now());
@@ -302,7 +308,7 @@ export function NetworkCheckCard({
   const validStress =
     Number.isInteger(total) &&
     total >= 1 &&
-    total <= MAX_NETWORK_CHECK_SEQUENCE &&
+    total <= STRESS_MAX &&
     Number.isInteger(pause) &&
     pause >= 0 &&
     pause <= 10_000;
@@ -386,7 +392,7 @@ export function NetworkCheckCard({
             disabled={stress?.running}
             onChange={(event) => setIntervalMs(event.currentTarget.value)}
             error={
-              validStress ? undefined : t('check.invalid', { max: MAX_NETWORK_CHECK_SEQUENCE })
+              validStress ? undefined : t('check.invalid', { max: STRESS_MAX })
             }
           />
         </div>

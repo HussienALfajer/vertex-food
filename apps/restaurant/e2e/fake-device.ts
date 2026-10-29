@@ -1,5 +1,11 @@
 import type { Page } from '@playwright/test';
 import type { StaffPermission, StaffRole } from '@vertex-food/contracts';
+import type {
+  BranchNetworkView,
+  CommandResultView,
+  HubView,
+  SyncStatusView,
+} from '../electron/bridge.js';
 import { syntheticId } from './mock-api.js';
 
 /**
@@ -34,7 +40,113 @@ export type FakeDevice = {
   sessionMemberId: string | null;
   /** The open session came by password: the member chooses a new PIN first (rule 22). */
   choosePin?: boolean;
+  /** The local database failed `integrity_check` (spec S04): the corrupt-database notice. */
+  localDatabase?: 'corrupt';
+  /** The sync client and hub (`window.vertexSync`, spec S04); null for none. */
+  sync: FakeSync | null;
 };
+
+/**
+ * The main process's sync side as `SyncBridge` shows it: the status, the branch network, this
+ * PC's results and the manual promotion's warning. The fake applies the bridge's rules: pairing,
+ * revoking and network checks need a PIN session with `hub.manage`, pairing only on the hub, and
+ * promotion checks the member's PIN like `local-pins.ts`.
+ */
+export type FakeSync = {
+  view: SyncStatusView;
+  network: BranchNetworkView;
+  results: CommandResultView[];
+  preview: { missing: number; rejoining: boolean };
+};
+
+const syncedAt = '2026-10-29T07:42:00.000Z';
+
+/** The other hub-capable PC of the fake branch. */
+export const standbyPcId = syntheticId();
+
+/** A hub status (`HubStatus`): the live hub with its standby in sync unless changed. */
+export function hubStatus(
+  change: Partial<NonNullable<HubView['status']>> = {},
+): NonNullable<HubView['status']> {
+  return {
+    role: 'hub',
+    epoch: 3,
+    appliedSeq: 120,
+    hubDeviceId: null,
+    rejoining: false,
+    notice: null,
+    standby: 'in_sync',
+    missing: 0,
+    ...change,
+  };
+}
+
+/** This PC as the branch's synced hub, with a standby beside it. */
+export function fakeSync(
+  selfId: string,
+  change: {
+    sync?: Partial<SyncStatusView['sync']>;
+    hub?: Partial<HubView> | null;
+    updateReady?: SyncStatusView['updateReady'];
+    network?: Partial<BranchNetworkView>;
+    results?: CommandResultView[];
+    preview?: FakeSync['preview'];
+  } = {},
+): FakeSync {
+  return {
+    view: {
+      sync: {
+        connectivity: 'online',
+        lastHeartbeatAt: syncedAt,
+        updateRequired: false,
+        protocolRefused: false,
+        pendingUploads: 0,
+        lastSyncedAt: syncedAt,
+        connected: true,
+        ...change.sync,
+      },
+      hub:
+        change.hub === null
+          ? null
+          : {
+              status: hubStatus(),
+              configuredRole: 'hub',
+              addressChanged: false,
+              pairingOpen: false,
+              outbox: { sending: 0, unmirrored: 0 },
+              ...change.hub,
+            },
+      updateReady: change.updateReady ?? null,
+    },
+    network: {
+      pcs: [
+        {
+          deviceId: selfId,
+          name: 'الكاشير 1',
+          active: true,
+          hubRole: 'hub',
+          publicKey: null,
+          addresses: ['192.168.1.20'],
+          self: true,
+        },
+        {
+          deviceId: standbyPcId,
+          name: 'الكاشير 2',
+          active: true,
+          hubRole: 'standby',
+          publicKey: null,
+          addresses: ['192.168.1.21'],
+          self: false,
+        },
+      ],
+      pairings: [],
+      networkChecks: [],
+      ...change.network,
+    },
+    results: change.results ?? [],
+    preview: change.preview ?? { missing: 0, rejoining: false },
+  };
+}
 
 export function fakeMember(
   name: string,
@@ -51,7 +163,15 @@ export const team = {
     fakeMember(
       'سامر المالك',
       ['owner'],
-      ['tenant.view', 'branch.hours.edit', 'staff.manage', 'devices.manage'],
+      [
+        'tenant.view',
+        'branch.hours.edit',
+        'staff.manage',
+        'devices.manage',
+        'hub.manage',
+        'sync.attention.resolve',
+        'sync.quarantine.review',
+      ],
       '602847',
       { usedThisDevice: true },
     ),
@@ -59,7 +179,14 @@ export const team = {
     fakeMember(
       'ليلى المديرة',
       ['manager'],
-      ['tenant.view', 'branch.hours.edit', 'staff.manage', 'devices.manage'],
+      [
+        'tenant.view',
+        'branch.hours.edit',
+        'staff.manage',
+        'devices.manage',
+        'hub.manage',
+        'sync.attention.resolve',
+      ],
       '517390',
       { usedThisDevice: true },
     ),
@@ -69,12 +196,14 @@ export const team = {
 };
 
 export function fakeDevice(tenantId: string, overrides: Partial<FakeDevice> = {}): FakeDevice {
+  const device = overrides.device ?? { id: syntheticId(), name: 'الكاشير 1' };
   return {
     state: 'registered',
     tenantName: 'مطعم تجريبي',
     tenant: { id: tenantId, nameAr: 'مطعم تجريبي', status: 'active', logoFileId: null },
     branch: { id: syntheticId(), nameAr: 'فرع اعزاز', idleLockMinutes: 5 },
-    device: { id: syntheticId(), name: 'الكاشير 1' },
+    device,
+    sync: fakeSync(device.id),
     members: [],
     registrantId: null,
     window: { open: true, daysSinceSync: 0, warn: false, clockBehind: false },
@@ -148,6 +277,7 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
           })),
           window: state.window,
           online: scope.navigator.onLine,
+          ...(state.localDatabase ? { localDatabase: state.localDatabase } : {}),
           session: state.sessionMemberId
             ? {
                 membershipId: state.sessionMemberId,
@@ -253,7 +383,128 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
         },
       },
     });
+
+    const sync = state.sync;
+    if (!sync) return;
+    const syncListeners = new Set<() => void>();
+    const syncChanged = () => {
+      for (const listener of syncListeners) listener();
+    };
+    const forbidden = { ok: false, code: 'FORBIDDEN' } as const;
+    // The member of the PIN session, when they hold `hub.manage` (rules 33, 36).
+    const manager = () => {
+      const member = state.sessionMemberId ? find(state.sessionMemberId) : undefined;
+      return member?.permissions.includes('hub.manage') ? member : undefined;
+    };
+    const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+    const later = (from: number, ms: number) => new Date(from + ms).toISOString();
+    const randomId = () =>
+      (globalThis as unknown as { crypto: { randomUUID: () => string } }).crypto.randomUUID();
+    const syncBridge = {
+      status: async () => copy(sync.view),
+      network: async () => (sync.view.hub ? copy(sync.network) : null),
+      openPairing: async () => {
+        if (!manager()) return forbidden;
+        const hub = sync.view.hub;
+        if (hub?.status?.role !== 'hub') return { ok: false, code: 'NOT_HUB' };
+        hub.pairingOpen = true;
+        syncChanged();
+        const code = '482613';
+        const fingerprint = 'a3f1'.repeat(16);
+        return {
+          ok: true,
+          value: {
+            code,
+            closesAt: later(Date.now(), 120_000),
+            caFingerprint: fingerprint,
+            pairingUrl: `https://192.168.1.20:7443/pair#peers=192.168.1.20,192.168.1.21&fp=${fingerprint}&code=${code}`,
+            caUrl: 'http://192.168.1.20:7080/ca.crt',
+          },
+        };
+      },
+      closePairing: async () => {
+        if (sync.view.hub) sync.view.hub.pairingOpen = false;
+        syncChanged();
+      },
+      revokePairing: async (pairingId: string) => {
+        if (!manager()) return forbidden;
+        sync.network.pairings = sync.network.pairings.filter((item) => item.id !== pairingId);
+        syncChanged();
+        return { ok: true };
+      },
+      promotionPreview: async () => ({ ok: true, value: sync.preview }),
+      promote: async (input: { membershipId: string; pin: string }) => {
+        const member = find(input.membershipId);
+        if (!member?.permissions.includes('hub.manage')) return forbidden;
+        const result = check(member, input.pin);
+        const status = sync.view.hub?.status;
+        if (result.ok && status) {
+          status.role = 'hub';
+          status.rejoining = false;
+          status.epoch += 1;
+          status.standby = 'not_in_sync';
+          for (const pc of sync.network.pcs) pc.hubRole = pc.self ? 'hub' : 'standby';
+        }
+        syncChanged();
+        return result;
+      },
+      sendNetworkCheck: async (input: { run: string; sequence: number }) => {
+        const member = manager();
+        if (!member) return forbidden;
+        const id = randomId();
+        const sent = Date.now();
+        const connected = sync.view.sync.connected;
+        sync.network.networkChecks.unshift({
+          commandId: id,
+          run: input.run,
+          sequence: input.sequence,
+          originDeviceId: state.device.id,
+          sentAt: later(sent, 0),
+          receivedAt: later(sent, 12),
+          mirroredAt: sync.view.hub?.status?.standby === 'none' ? null : later(sent, 21),
+          committedAt: later(sent, 25),
+        });
+        sync.network.networkChecks = sync.network.networkChecks.slice(0, 20);
+        sync.results.unshift({
+          id,
+          name: 'sync.network_check',
+          membershipId: member.membershipId,
+          outcome: connected ? 'accepted' : null,
+          reason: null,
+          madeAt: later(sent, 0),
+          answeredAt: connected ? later(sent, 410) : null,
+        });
+        if (!connected) {
+          sync.view.sync.pendingUploads = (sync.view.sync.pendingUploads ?? 0) + 1;
+        }
+        syncChanged();
+        return { ok: true, value: { commandId: id } };
+      },
+      results: async () => copy(sync.results),
+      onChange: (listener: () => void) => {
+        syncListeners.add(listener);
+        return () => syncListeners.delete(listener);
+      },
+    };
+    Object.assign(globalThis, {
+      vertexSync: syncBridge,
+      __fakeSync: {
+        update: (change: Partial<FakeSync>) => {
+          Object.assign(sync, change);
+          syncChanged();
+        },
+      },
+    });
   }, seed);
+}
+
+/** Changes the fake sync in the open page, as the main process would (a cut, a new role). */
+export async function updateFakeSync(page: Page, change: Partial<FakeSync>): Promise<void> {
+  await page.evaluate((next) => {
+    (globalThis as unknown as { __fakeSync: { update: (c: unknown) => void } }).__fakeSync.update(
+      next,
+    );
+  }, change);
 }
 
 /** Changes the fake PC in the open page, as the main process would (a revocation, a sync). */

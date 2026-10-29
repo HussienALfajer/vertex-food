@@ -76,8 +76,8 @@ Rules that keep the parallel PRs apart:
 
 ## PR 6 `feat/s04-restaurant-sync-screens` — restaurant screens (after PR 5, parallel with PR 7)
 
-- [ ] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; the corrupt-database notice («قاعدة البيانات المحلية تالفة: اتصل بدعم Vertex») when the device status has `localDatabase: 'corrupt'` (PR 4); i18n
-- [ ] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
+- [x] Sync chip and its sheet in the header; branch network (`/settings/branch-network`); needs attention (`/attention`); quarantine (`/settings/quarantine`, re-auth); update notices; the corrupt-database notice («قاعدة البيانات المحلية تالفة: اتصل بدعم Vertex») when the device status has `localDatabase: 'corrupt'` (PR 4); i18n
+- [x] E2E with the fake device and mocked API, RTL light and dark at 360 px, tablet, desktop (every chip state, network online, offline, pairing open, attention as member and manager, quarantine, notices)
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## PR 7 `feat/s04-hub-clients` — hub client pages (after PR 5, parallel with PR 6)
