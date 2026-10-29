@@ -1,0 +1,4 @@
+/* The Vertex design system (packages/ui, ADR 0018), phone first: typefaces, tokens and base styles. */
+@import "tailwindcss";
+@import "@vertex-food/ui/fonts.css";
+@import "@vertex-food/ui/styles.css";

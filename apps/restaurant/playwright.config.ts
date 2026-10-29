@@ -23,12 +23,28 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'light', use: { ...devices['Desktop Chrome'], colorScheme: 'light' } },
-    { name: 'dark', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
+    ...(['light', 'dark'] as const).map((colorScheme) => ({
+      name: colorScheme,
+      testIgnore: 'hub-clients/**',
+      use: { ...devices['Desktop Chrome'], colorScheme },
+    })),
+    // The hub client pages (spec S04 screens 6–9), their own build served on 4278.
+    ...(['light', 'dark'] as const).map((colorScheme) => ({
+      name: `hub-clients-${colorScheme}`,
+      testDir: 'e2e/hub-clients',
+      use: { ...devices['Desktop Chrome'], colorScheme, baseURL: 'http://localhost:4278' },
+    })),
   ],
-  webServer: {
-    command: 'pnpm exec vite preview',
-    url: 'http://localhost:4273',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: 'pnpm exec vite preview',
+      url: 'http://localhost:4273',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'pnpm exec vite preview -c vite.hub-clients.config.ts',
+      url: 'http://localhost:4278',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

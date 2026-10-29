@@ -14,7 +14,7 @@ PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each P
 | 4 restaurant local database | 3 | 2 | high | `apps/restaurant/electron/`, `apps/restaurant/package.json` |
 | 5 restaurant hub server | 2, 4 | — | xhigh | — |
 | 6 restaurant sync screens | 5 | 7 | medium | `apps/restaurant/src/`, `apps/restaurant/e2e/`, i18n `sync.ts` |
-| 7 hub client pages | 5 | 6 | high | `apps/restaurant/hub-clients/` (its pages and E2E), i18n `hub-clients.ts` |
+| 7 hub client pages | 5 | 6 | high | `apps/restaurant/hub-clients/` (its pages), `apps/restaurant/e2e/hub-clients/` (its E2E), i18n `hub-clients.ts` |
 
 Rules that keep the parallel PRs apart:
 - Shared packages (`contracts`, `db`, `packages/sync`'s foundation, the error texts) change in PR 1 only; a later PR that needs a change there stops and says so instead of editing them in parallel.
@@ -70,7 +70,7 @@ Rules that keep the parallel PRs apart:
 - [x] `packages/sync` ports on the local database; the HTTPS LAN server on 7443 (`/hub/*`, `/peer/*` with mutual TLS refusing another CA or a revoked PC), the CA download on 7080 while pairing is open; hub role machine and client-PC mode; serving the hub client build (`hub-store.ts`, `hub-lan.ts`, `hub-runtime.ts`; real-port scenarios in `hub-scenarios.test.ts`: pairing over HTTPS, mutual TLS refusals, power-cut failover and rejoin, a client PC, promotion by PIN, offline audit events sent as `audit.record_local_events`)
 - [x] Bridge for the renderer: sync status (`SyncService.status()`), branch network, pairing, revoke, promote by PIN, network checks, local results (`window.vertexSync`: `SyncBridge` and `syncChannels` in `bridge.ts`, handlers in `sync-ipc.ts`; PR 6's screens and fake device use it)
 - [x] From PR 4: `SyncService` takes the hub's `live` state (role, epoch, standby in sync) and calls `roleChanged()` after a role change; the hub's ports use the local-only tables of `electron/local-db.ts` and the certificate of `pc-certificate.ts`; the hub signs with `DeviceService.clock()` (offset, highest seen time)
-- [ ] Hub client skeleton for PR 7: `hub-clients/` Vite build and `apps/restaurant` scripts, its Playwright project, one placeholder page served by the hub; the dependencies of PR 6 and PR 7 (the QR generator)
+- [x] Hub client skeleton for PR 7: `hub-clients/` Vite build and `apps/restaurant` scripts, its Playwright project, one placeholder page served by the hub; the dependencies of PR 6 and PR 7 (the QR generator) (`vite.hub-clients.config.ts` builds `dist/hub-clients/`, which the hub serves; `pnpm --filter @vertex-food/restaurant dev:hub-clients` on 5278, preview 4278; Playwright projects `hub-clients-light`/`-dark` over `e2e/hub-clients/`; `uqr` for the QR codes; `@vertex-food/sync` for the pages' outbox)
 - [ ] Sync scenarios against a real PostgreSQL and PowerSync, in Node and Electron main; CI setup (`wal_level=logical`, PowerSync service)
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps 1–8 in the report
 
