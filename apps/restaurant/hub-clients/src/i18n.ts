@@ -9,14 +9,24 @@ declare module 'i18next' {
   }
 }
 
-/** The hub client pages' i18next, Arabic only, loaded synchronously from `packages/i18n`. */
+/**
+ * The hub client pages' i18next, Arabic only, loaded synchronously from `packages/i18n`: their own
+ * texts, the error codes of the LAN API and the hub's refusal reasons and roles (`sync`).
+ */
 export const i18n = i18next.createInstance();
 
 void i18n.use(initReactI18next).init({
   lng: defaultLanguage,
   fallbackLng: false,
-  resources: { [defaultLanguage]: { common: ar.common, hubClients: ar.hubClients } },
-  ns: ['common', 'hubClients'],
+  resources: {
+    [defaultLanguage]: {
+      common: ar.common,
+      hubClients: ar.hubClients,
+      errors: ar.errors,
+      sync: ar.sync,
+    },
+  },
+  ns: ['common', 'hubClients', 'errors', 'sync'],
   defaultNS: 'common',
   initAsync: false,
   interpolation: { escapeValue: false },
