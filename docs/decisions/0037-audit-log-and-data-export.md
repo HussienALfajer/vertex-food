@@ -1,6 +1,6 @@
 # 0037 — Audit log and data export: owner-only viewers, a full ZIP of CSV, customer details on the restaurant's own orders
 
-Status: Proposed (with the S06 spec) · Date: 2026-10-29
+Status: Accepted (owner, 2026-10-29, with the S06 spec) · Date: 2026-10-29
 
 ## Context
 ADR 0016 makes the audit log append-only and gives every restaurant the right to export all its data, without saying who reads the log, what an export holds or how it is delivered. ADR 0006 left to the customer data policy (Q5) whether a restaurant may export marketplace customers. The S06 interview settled these (owner, 2026-10-29).

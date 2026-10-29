@@ -40,7 +40,7 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 | [0034](0034-platform-messaging-numbers-and-send-queue.md) | Platform messaging: one Syrian and one Turkish number, a PostgreSQL send queue claimed by the gateway, templates as code, limits from sent messages, opt-out of everything but requested OTPs, `packages/crypto` | Accepted |
 | [0035](0035-sync-foundation-decisions.md) | Sync foundation: signed commands, two hub-capable PCs, number blocks of 4999 per business day reserved 7 days ahead, peer mutual TLS, the CA download while pairing, versioned protocol and updates at an empty queue, 10-minute clock skew, connectivity thresholds, the replication role accepted with guards (Q20) | Accepted |
 | [0036](0036-agreements-and-entitlements-decisions.md) | Agreements and entitlements: four-eyes amendments, the feature catalog as code, removals at the next business day end, overrides with expiry, a 7-day lease and no offline rejection, commission only online and its base (Q21), daily-prorated recurring charges | Accepted |
-| [0037](0037-audit-log-and-data-export.md) | Audit log and data export: owner-only viewers with Vertex staff shown as «فريق فيرتكس», a full ZIP of CSV from one snapshot, customer details the restaurant sees on its own orders, 3 a day kept 7 days, every table declares its export | Proposed |
+| [0037](0037-audit-log-and-data-export.md) | Audit log and data export: owner-only viewers with Vertex staff shown as «فريق فيرتكس», a full ZIP of CSV from one snapshot, customer details the restaurant sees on its own orders, 3 a day kept 7 days, every table declares its export | Accepted |
 
 Template:
 

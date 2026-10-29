@@ -1,6 +1,6 @@
 # S06 — Audit and export
 
-Status: Draft · Date: 2026-10-29 · Features: `docs/product/v1-scope.md` F09 · ADRs: 0004, 0005, 0006, 0008, 0016, 0020, 0025, 0032, 0033, 0035, 0036, 0037
+Status: Approved · Date: 2026-10-29 · Features: `docs/product/v1-scope.md` F09 · ADRs: 0004, 0005, 0006, 0008, 0016, 0020, 0025, 0032, 0033, 0035, 0036, 0037
 
 ## Summary
 Every audited change since S01 is written to `audit_entries` and `platform_audit_entries`, but nobody can read them, and a restaurant cannot take its data with it. S06 gives the owner the restaurant's audit log in the restaurant app (filtered by period, category, branch and member), gives Vertex admins the platform audit log in the console, and lets the owner export all of the restaurant's data as a ZIP of CSV files that opens in Excel, built in the background and kept for 7 days. It also makes every later spec decide, table by table, what its data adds to the export and how its audit actions read, so F09 grows with the system instead of being rebuilt.
