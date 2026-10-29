@@ -74,9 +74,13 @@ describe('the encrypted local database (spec S04 "On the PC")', () => {
     raw.pragma(`hexkey='${key}'`);
     raw.pragma('wal_checkpoint(TRUNCATE)');
     raw.close();
+    // Every page after the first is damaged: which pages a read touches depends on the random
+    // rows' layout, so damaging one page left some reads whole (a flaky test).
     const size = statSync(path).size;
     const handle = openSync(path, 'r+');
-    writeSync(handle, Buffer.alloc(512, 0x5a), 0, 512, Math.floor(size / 4096 / 2) * 4096 + 100);
+    for (let page = 4096; page < size; page += 4096) {
+      writeSync(handle, Buffer.alloc(512, 0x5a), 0, 512, page + 100);
+    }
     closeSync(handle);
     const opened = await openLocalDatabase(directory, key);
     expect(opened.state).toBe('corrupt');

@@ -290,6 +290,8 @@ test.describe('the branch network', () => {
     // page, so the option is chosen with the keyboard.
     await page.getByRole('combobox', { name: 'المركز' }).click();
     await page.getByRole('option', { name: 'الكاشير 2' }).press('Enter');
+    // The first listbox is gone before the second opens: both list the same PCs.
+    await expect(page.getByRole('listbox')).toHaveCount(0);
     await expect(page.getByText('اختر حاسوبين مختلفين للمركز والاحتياطي.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'احفظ الأدوار' })).toBeDisabled();
     await page.getByRole('combobox', { name: 'الاحتياطي' }).click();
