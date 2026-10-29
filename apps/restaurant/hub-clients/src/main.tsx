@@ -1,16 +1,9 @@
 import { textDirection } from '@vertex-food/i18n';
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CSPProvider,
-  DirectionProvider,
-  PoweredBy,
-} from '@vertex-food/ui';
+import { CSPProvider, DirectionProvider } from '@vertex-food/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { I18nextProvider, useTranslation } from 'react-i18next';
+import { I18nextProvider } from 'react-i18next';
+import { App } from './app';
 import { i18n } from './i18n';
 import './styles.css';
 
@@ -21,29 +14,6 @@ import './styles.css';
 
 document.title = i18n.t('hubClients:title');
 
-function HubClientPage() {
-  const { t } = useTranslation('hubClients');
-  const { t: common } = useTranslation();
-  return (
-    <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-surface px-4 py-3">
-        <h1 className="font-semibold">{t('title')}</h1>
-      </header>
-      <main className="flex flex-1 items-start justify-center px-4 py-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>{t('placeholder.heading')}</CardTitle>
-            <CardDescription>{t('placeholder.body')}</CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
-      <footer className="flex justify-center px-4 py-4">
-        <PoweredBy label={common('poweredBy')} />
-      </footer>
-    </div>
-  );
-}
-
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
 
@@ -52,7 +22,7 @@ createRoot(root).render(
     <I18nextProvider i18n={i18n}>
       <DirectionProvider direction={textDirection}>
         <CSPProvider disableStyleElements>
-          <HubClientPage />
+          <App />
         </CSPProvider>
       </DirectionProvider>
     </I18nextProvider>
