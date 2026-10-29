@@ -391,7 +391,8 @@ export class CommercialService {
   async consoleAgreement(tenantId: string): Promise<ConsoleAgreement> {
     return withTenant(this.db, tenantId, async (tx) => {
       await readTenant(tx, tenantId);
-      const now = new Date();
+      // The database's clock, which dates the terms (rule 6).
+      const now = await databaseNow(tx);
       const overrides = await this.entitlements.overrideViews(tx, tenantId);
       const agreement = await agreementOf(tx, tenantId);
       if (!agreement) return { tenantId, agreement: null, terms: [], amendments: [], overrides };
@@ -425,7 +426,7 @@ export class CommercialService {
     requirePermission(actor, 'agreement.view');
     const { version, resolved } = await this.entitlements.resolvedNow(actor.tenantId);
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      const now = new Date(resolved.at);
+      const now = await databaseNow(tx);
       const { limits } = await this.entitlements.withUsage(tx, version, resolved);
       const agreement = await agreementOf(tx, actor.tenantId);
       const written = agreement

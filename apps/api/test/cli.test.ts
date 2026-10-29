@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import { auditEntries, createDatabase, platformAuditEntries, withTenant } from '@vertex-food/db';
 import { eq } from 'drizzle-orm';
@@ -12,6 +15,7 @@ import {
 } from '../src/modules/platform/identity/index.js';
 import { TenancyService } from '../src/modules/platform/tenancy/index.js';
 import { createTestApp } from './app.js';
+import { TestApi } from './staff.js';
 
 // The CLI calls the services of the console routes as the `system` actor: the same rows and audit
 // entries as the routes, with the operator's name.
@@ -310,5 +314,101 @@ describe('the CLI', () => {
       'x y',
     );
     expect(unknown).toMatchObject({ code: 1, err: 'NOT_FOUND: No such account' });
+  });
+
+  it('runs the agreement commands from the sample files, with four eyes (spec S05)', async () => {
+    const { tenantId } = await new TestApi(app, db).newTenant();
+    const fixture = (name: string) =>
+      new URL(`fixtures/commercial/${name}`, import.meta.url).pathname;
+    const op = (name: string) => ['--operator', name];
+    expect((await run('catalog:show', ...op('sales1'))).out).toContain('"kitchen_display"');
+    const pkg = await run(
+      'package:create',
+      ...op('admin1'),
+      '--file',
+      fixture('sample-package.json'),
+    );
+    expect(pkg).toMatchObject({ code: 0, err: '' });
+    const template = await run(
+      'template:create',
+      ...op('admin1'),
+      '--file',
+      fixture('sample-template.json'),
+      '--package',
+      JSON.parse(pkg.out).code,
+    );
+    expect(template.code).toBe(0);
+    const draft = await run(
+      'amendment:draft',
+      ...op('sales1'),
+      '--tenant',
+      tenantId,
+      '--template',
+      JSON.parse(template.out).code,
+      '--file',
+      fixture('sample-amendment.json'),
+    );
+    expect(draft.code).toBe(0);
+    const { id } = JSON.parse(draft.out);
+    expect((await run('amendment:submit', ...op('sales1'), '--id', id)).code).toBe(0);
+    expect(await run('amendment:approve', ...op('Sales1'), '--id', id)).toMatchObject({
+      code: 1,
+      err: expect.stringContaining('SELF_APPROVAL'),
+    });
+    const approved = await run('amendment:approve', ...op('finance1'), '--id', id);
+    expect(JSON.parse(approved.out)).toMatchObject({
+      status: 'approved',
+      decidedByOperator: 'finance1',
+    });
+    const agreement = JSON.parse(
+      (await run('agreement:show', ...op('support1'), '--tenant', tenantId)).out,
+    );
+    expect(agreement.agreement.inForce).toBe(true);
+    expect(agreement.terms.map((term: { values: { kind: string } }) => term.values.kind)).toEqual([
+      'feature',
+      'feature',
+      'feature',
+      'limit',
+      'limit',
+      'limit',
+      'subscription',
+      'commission',
+      'setup_fee',
+    ]);
+
+    // The sample override with an expiry 30 days ahead (the operator edits the date).
+    const sample = JSON.parse(await readFile(fixture('sample-override.json'), 'utf8'));
+    const file = join(await mkdtemp(join(tmpdir(), 'override-')), 'override.json');
+    const expiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    await writeFile(file, JSON.stringify({ ...sample, expiresAt }));
+    const created = await run(
+      'override:create',
+      ...op('finance1'),
+      '--tenant',
+      tenantId,
+      '--file',
+      file,
+    );
+    expect(created.code).toBe(0);
+    const shown = JSON.parse(
+      (await run('entitlements:show', ...op('support1'), '--tenant', tenantId)).out,
+    );
+    expect(shown.features.find((f: { key: string }) => f.key === 'analytics')).toMatchObject({
+      on: true,
+      source: 'override',
+    });
+    const revoked = await run(
+      'override:revoke',
+      ...op('finance1'),
+      '--id',
+      JSON.parse(created.out).id,
+      '--reason',
+      'Trial ended',
+    );
+    expect(revoked.code).toBe(0);
+    expect(await run('amendment:approve', ...op('admin1'), '--id', id)).toMatchObject({
+      code: 1,
+      err: expect.stringContaining('INVALID_STATUS_TRANSITION'),
+    });
   });
 });
