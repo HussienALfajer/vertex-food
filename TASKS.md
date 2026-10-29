@@ -28,7 +28,7 @@ Rules that keep the parallel PRs apart:
 - [x] db (`/db-migration`): `audit_entries.branch_id` (composite key, index with `occurred_at`); `data_exports`, `data_export_chunks` (kind `blob`), `data_export_links` with RLS, guards, the one-active index and `JOBS_ACCESS` grants; `export` on every tenant `tableRegistry` entry and the convention test; `pnpm db:migrate` locally (migrations 0020 and 0021, `test/data-export.test.ts`; the public file route finds a link by its hash through the app role's one lookup policy `data_export_link_lookup` on `app.export_token_hash`, `APP_LOOKUPS` in the convention test; `jobs_expire` shows the jobs role the ready exports across tenants; chunks keep a UUIDv7 `id` with `(tenant_id, export_id, seq)` unique, as every table; the jobs role now reads the audit log and the exported tables inside a tenant)
 - [x] db `src/exports/`: column kinds and dataset definitions per module (layers per `sharedLayerViolations`), assembled in `exports/index.ts`; tests on two seeded tenants (declarations against `tableRegistry`, no row of the other tenant) (`test/exports.test.ts`; `withTenantSnapshot` for the job's `REPEATABLE READ, READ ONLY` read; migration 0022 lets the jobs role read an approved amendment's number and date; the Arabic `README.txt` and `columns.csv` texts in the i18n namespace `dataExport`, checked against every dataset column; `audit_log.csv` names a member by account id and Vertex or a job by kind only, rule 3)
 - [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md` files of contracts, i18n and db, a pattern row and two checklist lines in `wiring.md`; architecture and glossary already had S06's module and terms)
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: lint, migrations, build and every E2E suite green (restaurant 256, console 98); the API and restaurant test files that hit the 5 s timeout under the full run on this 4-core cloud machine, different ones in each of two runs, passed when rerun alone; reviewer: one finding fixed (`devices.csv` took a heartbeat as the last sync: `pending_uploads` added), and from its Excel note the CSV writer quotes `;` and neutralizes each list item; the fix-only round clean)
 
 ## PR 2 — API (after PR 1, parallel with PR 3)
 
@@ -58,6 +58,10 @@ Rules that keep the parallel PRs apart:
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
+
+- From S06 PR 1's review: a client PC (no hub role) sends no heartbeat, so `devices.csv` shows no last contact or pending uploads for it, and work still in its `local_outbox` (not yet on the hub) is counted nowhere; the hub counts it once received
+- From S06 PR 1: the audit period's dates are Damascus calendar days (`auditPeriod`); the spec's "business dates of the tenant" has no tenant-wide day end (each branch has its own), so a branch whose day ends at 04:00 sees 00:00–04:00 under the next date. Owner's call if it should follow a branch's day end
+- From S06 PR 1: `entitlements.csv` writes the stored resolved state with its `computed_at`; a state past `valid_until` (the worker recomputes it every minute) can lag `as_of` by up to a minute
 
 - From S05 PR 4, for S09, S11, S12: the first screen that sells a feature (POS `pos`, kitchen display `kitchen_display`, waiter app `waiter_app`) hides its navigation when the feature is off (the PC's copy through `useBranchEntitlements`, the API's `GET /api/tenant/entitlements` in a browser) and shows `agreement:refused.feature` on its deep link (spec S05 screen 3)
 
