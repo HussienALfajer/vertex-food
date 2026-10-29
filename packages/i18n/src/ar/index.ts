@@ -3,6 +3,7 @@ import { audit } from './audit.js';
 import { common } from './common.js';
 import { staffConsole } from './console.js';
 import { customer } from './customer.js';
+import { dataExport } from './data-export.js';
 import { driver } from './driver.js';
 import { errors } from './errors.js';
 import { hubClients } from './hub-clients.js';
@@ -20,6 +21,7 @@ export const ar = {
   sync,
   agreement,
   audit,
+  dataExport,
   hubClients,
   console: staffConsole,
   web,

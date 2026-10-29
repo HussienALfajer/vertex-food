@@ -864,6 +864,9 @@ importers:
       '@vertex-food/config':
         specifier: workspace:*
         version: link:../config
+      '@vertex-food/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11

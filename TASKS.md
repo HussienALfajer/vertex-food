@@ -11,12 +11,12 @@ PR order and parallel sessions (`docs/workflow.md`, "Parallel sessions"): each P
 | 1 data | — | — | — |
 | 2 API | 1 | 3 | `apps/api`, the regenerated client types |
 | 3 worker | 1 | 2 | `apps/worker` |
-| 4 restaurant screens | 2 | 5 | `apps/restaurant`, the screen keys of `packages/i18n/src/ar/audit.ts` |
+| 4 restaurant screens | 2 | 5 | `apps/restaurant`, the screen keys of `packages/i18n/src/ar/audit.ts` and `data-export.ts` |
 | 5 console screen | 2 | 4 | `apps/console`, `packages/i18n/src/ar/console.ts` |
 
 Rules that keep the parallel PRs apart:
 - Shared packages (`contracts`, `db`, the error texts, the CSV writer, the dataset definitions) change in PR 1 only; a later PR that needs a change there stops and says so.
-- PR 1 creates and registers the i18n file `audit.ts` (action sentences, field labels, categories), so no later PR edits `packages/i18n/src/ar/index.ts`.
+- PR 1 creates and registers the i18n files `audit.ts` (action sentences, field labels, categories) and `data-export.ts` (the ZIP's README and column descriptions; PR 4 adds the export screen's text there), so no later PR edits `packages/i18n/src/ar/index.ts`.
 - `docs/ROADMAP.md` and this file: each PR edits only its own line and section.
 
 ## PR 1 `claude/vigilant-einstein-y5vyyc` — contracts, database, i18n
@@ -26,7 +26,7 @@ Rules that keep the parallel PRs apart:
 - [x] contracts: permissions `audit.view`, `data.export` (owner presets, `ownerLockedPermissions`), `console.audit.read` (admin); error codes `EXPORT_IN_PROGRESS`, `EXPORT_LIMIT_REACHED`, `EXPORT_NOT_READY`; `data_export.requested.v1` in the event catalog; layer and JSON Schema lists (re-auth is the request route's `reauth` option, PR 2)
 - [x] i18n: `audit` namespace (a sentence per action, a label per detail field, categories) registered in `ar/index.ts` with the rule 1 test; error texts and permission labels; OpenAPI and client types regenerated for the new enums
 - [x] db (`/db-migration`): `audit_entries.branch_id` (composite key, index with `occurred_at`); `data_exports`, `data_export_chunks` (kind `blob`), `data_export_links` with RLS, guards, the one-active index and `JOBS_ACCESS` grants; `export` on every tenant `tableRegistry` entry and the convention test; `pnpm db:migrate` locally (migrations 0020 and 0021, `test/data-export.test.ts`; the public file route finds a link by its hash through the app role's one lookup policy `data_export_link_lookup` on `app.export_token_hash`, `APP_LOOKUPS` in the convention test; `jobs_expire` shows the jobs role the ready exports across tenants; chunks keep a UUIDv7 `id` with `(tenant_id, export_id, seq)` unique, as every table; the jobs role now reads the audit log and the exported tables inside a tenant)
-- [ ] db `src/exports/`: column kinds and dataset definitions per module (layers per `sharedLayerViolations`), assembled in `exports/index.ts`; tests on two seeded tenants (declarations against `tableRegistry`, no row of the other tenant)
+- [x] db `src/exports/`: column kinds and dataset definitions per module (layers per `sharedLayerViolations`), assembled in `exports/index.ts`; tests on two seeded tenants (declarations against `tableRegistry`, no row of the other tenant) (`test/exports.test.ts`; `withTenantSnapshot` for the job's `REPEATABLE READ, READ ONLY` read; migration 0022 lets the jobs role read an approved amendment's number and date; the Arabic `README.txt` and `columns.csv` texts in the i18n namespace `dataExport`, checked against every dataset column; `audit_log.csv` names a member by account id and Vertex or a job by kind only, rule 3)
 - [ ] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md` files, architecture's `data-export` module, glossary)
 - [ ] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report
 

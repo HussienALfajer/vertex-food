@@ -29,6 +29,7 @@
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
     "@vertex-food/config": "workspace:*",
+    "@vertex-food/i18n": "workspace:*",
     "drizzle-kit": "0.31.11",
     "typescript": "6.0.3",
     "vitest": "5.0.5",

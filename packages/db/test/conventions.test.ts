@@ -86,6 +86,7 @@ const JOBS_ACCESS: Record<
   accounts: { select: ['id', 'name_ar', 'phone'], update: [] },
   tenant_slugs: { select: ['is_primary', 'slug', 'subject_tenant_id'], update: [] },
   cities: { select: ['id', 'name_ar'], update: [] },
+  agreement_amendments: { select: ['decided_at', 'id', 'number', 'status'], update: [] },
   data_exports: {
     select: true,
     update: [

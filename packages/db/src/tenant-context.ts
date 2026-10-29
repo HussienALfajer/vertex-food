@@ -34,3 +34,24 @@ export async function enterTenant(tx: Transaction, tenantId: string): Promise<vo
   if (!UUID.test(tenantId)) throw new Error('enterTenant needs the tenant id as a UUID');
   await tx.execute(sql`select set_config(${TENANT_SETTING}, ${tenantId}, true)`);
 }
+
+/**
+ * Runs `work` in one `REPEATABLE READ, READ ONLY` transaction of `tenantId`: every read sees the
+ * database as of the transaction's first statement, so files built from several tables agree
+ * with each other (the data export, spec S06 rule 10). `tenantId` comes from a record the caller
+ * already holds under RLS (the export row), never from client input.
+ */
+export async function withTenantSnapshot<T>(
+  db: Database,
+  tenantId: string,
+  work: (tx: Transaction) => Promise<T>,
+): Promise<T> {
+  if (!UUID.test(tenantId)) throw new Error('withTenantSnapshot needs the tenant id as a UUID');
+  return db.transaction(
+    async (tx) => {
+      await enterTenant(tx, tenantId);
+      return work(tx);
+    },
+    { isolationLevel: 'repeatable read', accessMode: 'read only' },
+  );
+}
