@@ -23,11 +23,12 @@ import {
   branches,
   type branchHourExceptions,
   branchHours,
+  type Database,
   type Transaction,
   tenantSlugs,
   tenants,
 } from '@vertex-food/db';
-import { and, asc, count, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNull } from 'drizzle-orm';
 
 // Rows of the tenancy tables as the contracts answer them, and the reads every route shares.
 
@@ -133,6 +134,26 @@ export async function primarySlug(tx: Transaction, tenantId: string): Promise<st
     .where(and(eq(tenantSlugs.subjectTenantId, tenantId), eq(tenantSlugs.isPrimary, true)));
   if (!row) throw new Error('A tenant without a primary slug');
   return row.slug;
+}
+
+/**
+ * Each tenant's primary slug and Arabic name by id, closed tenants included: the platform audit
+ * names the tenant an entry concerns (spec S06 rule 18).
+ */
+export async function tenantLabels(
+  db: Database | Transaction,
+  ids: readonly string[],
+): Promise<Map<string, { slug: string; nameAr: string }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: tenants.id, nameAr: tenants.nameAr, slug: tenantSlugs.slug })
+    .from(tenants)
+    .innerJoin(
+      tenantSlugs,
+      and(eq(tenantSlugs.subjectTenantId, tenants.id), eq(tenantSlugs.isPrimary, true)),
+    )
+    .where(inArray(tenants.id, [...ids]));
+  return new Map(rows.map((row) => [row.id, { slug: row.slug, nameAr: row.nameAr }]));
 }
 
 /** The tenant's non-archived branches, oldest first, inside its `withTenant`. */

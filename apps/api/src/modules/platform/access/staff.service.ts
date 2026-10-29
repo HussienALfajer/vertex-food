@@ -222,6 +222,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         action: existing ? 'staff.reactivated' : 'staff.added',
         entityType: 'staff_membership',
         entityId: id,
+        branchId: onlyBranch(input.branchScope),
         details: { roles: input.roles, branchScope: input.branchScope },
       });
       await emit(tx, actor.tenantId, 'staff.member_added.v1', {
@@ -275,6 +276,11 @@ export class StaffService implements TenantOwners, TenantMembers {
         action: 'staff.access_changed',
         entityType: 'staff_membership',
         entityId: member.id,
+        // One branch only when the member was and stays limited to that branch.
+        branchId:
+          onlyBranch(this.accessOf(member).branchScope) === onlyBranch(input.branchScope)
+            ? onlyBranch(input.branchScope)
+            : null,
         details: {
           before: this.accessOf(member),
           after: {
@@ -323,6 +329,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         action: 'staff.deactivated',
         entityType: 'staff_membership',
         entityId: member.id,
+        branchId: onlyBranch(this.accessOf(member).branchScope),
         reason,
       });
       await emit(tx, actor.tenantId, 'staff.deactivated.v1', {
@@ -360,6 +367,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         action: 'staff.reactivated',
         entityType: 'staff_membership',
         entityId: member.id,
+        branchId: onlyBranch(this.accessOf(member).branchScope),
       });
       await emit(tx, actor.tenantId, 'staff.member_added.v1', {
         tenantId: actor.tenantId,
@@ -398,6 +406,7 @@ export class StaffService implements TenantOwners, TenantMembers {
         action: 'staff.password_reset_authorized',
         entityType: 'staff_membership',
         entityId: member.id,
+        branchId: onlyBranch(this.accessOf(member).branchScope),
       });
     });
   }
@@ -583,11 +592,12 @@ export class StaffService implements TenantOwners, TenantMembers {
   }
 
   private accessOf(member: Membership) {
+    const branchScope: BranchScope = member.allBranches
+      ? { allBranches: true }
+      : { allBranches: false, branchIds: member.branchIds };
     return {
       roles: member.roles,
-      branchScope: member.allBranches
-        ? { allBranches: true }
-        : { allBranches: false, branchIds: member.branchIds },
+      branchScope,
       grantedPermissions: member.granted,
       revokedPermissions: member.revoked,
     };
@@ -642,4 +652,11 @@ export class StaffService implements TenantOwners, TenantMembers {
       };
     });
   }
+}
+
+/** The branch of a member limited to exactly one, for the audit's branch filter (spec S06). */
+function onlyBranch(scope: BranchScope): string | null {
+  if (scope.allBranches) return null;
+  const branchIds = new Set(scope.branchIds);
+  return branchIds.size === 1 ? (scope.branchIds[0] ?? null) : null;
 }

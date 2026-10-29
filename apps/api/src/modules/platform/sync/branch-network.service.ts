@@ -95,6 +95,7 @@ export class BranchNetworkService {
           action: 'branch.hub_roles_changed',
           entityType: 'branch',
           entityId: branchId,
+          branchId,
           details: { before, after },
         });
       }

@@ -11,6 +11,7 @@ import { ContractSerializer } from './core/serialization/contract-serializer.js'
 import { requestValidationPipe } from './core/validation/request-validation.js';
 import { AccessModule } from './modules/platform/access/index.js';
 import { AreasModule } from './modules/platform/areas/index.js';
+import { AuditModule } from './modules/platform/audit/index.js';
 import { CommercialModule } from './modules/platform/commercial/index.js';
 import { EntitlementsModule } from './modules/platform/entitlements/index.js';
 import { FilesModule } from './modules/platform/files/index.js';
@@ -42,6 +43,7 @@ export class AppModule {
         SyncModule,
         CommercialModule,
         EntitlementsModule,
+        AuditModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: AccessGuard },

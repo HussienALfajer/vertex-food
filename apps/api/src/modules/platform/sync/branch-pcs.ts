@@ -82,6 +82,7 @@ export async function branchAuthority(
     action: 'branch_ca.created',
     entityType: 'branch_certificate_authority',
     entityId: id,
+    branchId: device.branchId,
     details: { branchId: device.branchId, fingerprint: created.fingerprint },
   });
   return {

@@ -169,6 +169,7 @@ export class SyncDevicesService {
         action: 'device_certificate.issued',
         entityType: 'device_certificate',
         entityId: row?.id ?? null,
+        branchId: device.branchId,
         details: { fingerprint: issued.fingerprint, authorityId: authority.id },
       });
       return {

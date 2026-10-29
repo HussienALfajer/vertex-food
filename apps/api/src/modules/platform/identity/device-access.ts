@@ -26,6 +26,7 @@ export async function closeTenantAccess(tx: Transaction, tenantId: string, now: 
       action: 'device.revoked',
       entityType: 'device',
       entityId: device.id,
+      branchId: device.branchId,
       details: { reason: 'tenant_closed' },
     });
     await emit(tx, tenantId, 'device.revoked.v1', {

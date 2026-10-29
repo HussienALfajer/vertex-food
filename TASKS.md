@@ -30,10 +30,10 @@ Rules that keep the parallel PRs apart:
 - [x] Wiring, docs (ROADMAP with the parallel plan, folder `CLAUDE.md` files of contracts, i18n and db, a pattern row and two checklist lines in `wiring.md`; architecture and glossary already had S06's module and terms)
 - [x] Checks, reviewer, PR with auto-merge and Auto-fix, rules summary in the report (`pnpm verify`: lint, migrations, build and every E2E suite green (restaurant 256, console 98); the API and restaurant test files that hit the 5 s timeout under the full run on this 4-core cloud machine, different ones in each of two runs, passed when rerun alone; reviewer: one finding fixed (`devices.csv` took a heartbeat as the last sync: `pending_uploads` added), and from its Excel note the CSV writer quotes `;` and neutralizes each list item; the fix-only round clean)
 
-## PR 2 — API (after PR 1, parallel with PR 3)
+## PR 2 `feat/s06-audit-export-api` — API (after PR 1, parallel with PR 3)
 
-- [ ] `audit()` takes `branchId`; the writers of a branch's settings, devices, hub events and branch-scoped membership changes pass it
-- [ ] `GET /api/tenant/audit` (rules 2–5: filters, cursor, actor shown without Vertex names or ids, offline mark, resolved names) and `GET /api/console/audit` (rule 18)
+- [x] `audit()` takes `branchId`; the writers of a branch's settings, devices, hub events and branch-scoped membership changes pass it (a member limited to exactly one branch; PC sessions and re-auth on a PC; `audit.record_local_events` the command's branch)
+- [x] `GET /api/tenant/audit` (rules 2–5: filters, cursor, actor shown without Vertex names or ids, offline mark, resolved names) and `GET /api/console/audit` (rule 18) (module `platform/audit`; `test/audit.test.ts`)
 - [ ] `platform/data-export` module: request (re-auth, one active, 3 a Damascus day, row, audit and outbox in one transaction), list with `remainingToday`, get, link (hash only, 10 minutes, audited), public file route (`Range`, `206`, `416`, `NOT_FOUND`, rate limit, path redacted from logs); `@SuspendedAllowed()` and `whileClosed`
 - [ ] Tests (`test/audit.test.ts`, `test/data-export.test.ts`, architecture tests); OpenAPI and both clients' types regenerated
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report

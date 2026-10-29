@@ -130,6 +130,7 @@ export class QuarantineService {
         action: 'quarantine_batch.received',
         entityType: 'quarantine_batch',
         entityId: batch.id,
+        branchId: device.branchId,
         details: {
           reason: 'device_revoked',
           uploaded: taken.length,
@@ -254,6 +255,7 @@ export class QuarantineService {
         action: 'quarantine_batch.accepted',
         entityType: 'quarantine_batch',
         entityId: id,
+        branchId: batch.branchId,
         details: {
           commands: results.length,
           skipped: results.filter((result) => result.replay).length,
@@ -271,11 +273,12 @@ export class QuarantineService {
   ): Promise<{ batch: QuarantineBatch; results: CommandResult[] }> {
     requirePermission(actor, 'sync.quarantine.review');
     return withTenant(this.db, actor.tenantId, async (tx) => {
-      await this.decide(tx, actor, id, 'reject', reason);
+      const batch = await this.decide(tx, actor, id, 'reject', reason);
       await audit(tx, actor.tenantId, actor, {
         action: 'quarantine_batch.rejected',
         entityType: 'quarantine_batch',
         entityId: id,
+        branchId: batch.branchId,
         reason,
       });
       return { batch: await readBatch(tx, id), results: [] };

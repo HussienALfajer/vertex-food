@@ -21,6 +21,11 @@ export type AuditRecord = {
   entityId?: string | null;
   reason?: string | null;
   details?: Record<string, unknown> | null;
+  /**
+   * Tenant entries: the branch the change concerns (spec S06 rule 20): a branch's own settings, a
+   * device, a hub event, a membership change limited to one branch. Null for tenant-wide changes.
+   */
+  branchId?: string | null;
   /** Platform entries: the tenant the change concerns (spec S02 rule 43). */
   subjectTenantId?: string | null;
   /** Platform entries: the console route of a `console.request`, as `METHOD /path/:param`. */
@@ -59,6 +64,7 @@ export async function audit(
     entityId: record.entityId ?? null,
     reason: record.reason ?? null,
     details: record.details ?? null,
+    branchId: record.branchId ?? null,
     deviceId: actor.kind === 'staff' || actor.kind === 'device' ? actor.deviceId : null,
     occurredAt: new Date(),
   });
