@@ -82,15 +82,16 @@ Rules that keep the parallel PRs apart:
 
 ## PR 7 `feat/s04-hub-clients` — hub client pages (after PR 5, parallel with PR 6)
 
-- [ ] `apps/restaurant/hub-clients/`: install the certificate, pair (QR fragment or code), sign in (member picker, PIN pad, 64 px keys), network check (`/check`, stress run, outbox count) with the IndexedDB outbox and failover, live connection, branding header with «Powered by Vertex Food»; i18n
-- [ ] E2E against a mock hub, RTL light and dark at 360 px, tablet, desktop, including "sending" and "reconnecting"
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] `apps/restaurant/hub-clients/`: install the certificate, pair (QR fragment or code), sign in (member picker, PIN pad, 64 px keys), network check (`/check`, stress run, outbox count) with the IndexedDB outbox and failover, live connection, branding header with «Powered by Vertex Food»; i18n
+- [x] E2E against a mock hub, RTL light and dark at 360 px, tablet, desktop, including "sending" and "reconnecting"
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 
 - From S04 PR 5, before S09: publish `number_blocks` to the sync service (or exchange blocks at heartbeats), so a hub re-checks a forwarded or re-sent number against the other PC's block (rule 26); until then such a command is resolved again by the hub
-- From S04 PR 5, for PR 7 or S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
-- From S04 PR 5, for PR 7: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the outbox it kept under PC 1's origin (Q17's pages)
+- From S04 PR 5, for S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows; PR 7's pages count only the unanswered ones as «قيد الإرسال»); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
+- From S04 PR 5, with Q17: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the pairing and the outbox it kept under PC 1's origin; PR 7's pages follow a failover without a reload (CORS), but a reload there shows the certificate guide again
+- From S04 PR 7, with S08: the hub client pages' header shows «شاشات الفرع» and the Vertex mark; the restaurant's name and logo need the hub to serve the tenant's branding (no LAN route carries it yet)
 - From S04 PR 5: S02's offline events (wrong PINs, local lockouts, approvals, re-enables) are not yet written to `local_events`; only the hub's events are, and they now reach the audit through `audit.record_local_events`
 - From S04 PR 5, with the installer (Q1): the hub listens on 7443, 7444 and 7080 on every interface, so Windows asks to allow the app on private networks at its first start as hub; the installer should add the firewall rules
 
