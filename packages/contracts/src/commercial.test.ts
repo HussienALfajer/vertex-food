@@ -345,6 +345,32 @@ describe('planAmendment', () => {
     expect(first.add[0]?.effectiveFrom).toEqual(pushed);
   });
 
+  it('refuses a lowered limit whose pushed start passes its own end', () => {
+    expect(
+      refusal(() =>
+        plan({
+          add: [
+            {
+              kind: 'limit',
+              limitKey: 'devices',
+              value: 2,
+              effectiveFrom: 'now',
+              effectiveTo: '2026-11-11',
+            },
+          ],
+          end: [],
+        }),
+      ),
+    ).toEqual({
+      code: 'VALIDATION_FAILED',
+      details: {
+        index: 0,
+        field: 'effectiveTo',
+        takesEffectAt: at('2026-11-11', '04:00').toISOString(),
+      },
+    });
+  });
+
   it('does not push a feature that another term continues', () => {
     const result = plan({
       add: [{ kind: 'feature', featureKey: 'kitchen_display', effectiveFrom: 'now' }],
@@ -655,6 +681,20 @@ describe('overrides', () => {
         octx,
       ),
     ).toEqual({ startsAt: pushed, expiresAt: at('2026-12-10') });
+  });
+
+  it('refuse a deny whose pushed start passes its expiry', () => {
+    expect(
+      refusal(() =>
+        planOverride(
+          { kind: 'deny', featureKey: 'pos', reason: 'One day', expiresAt: '2026-11-11' },
+          octx,
+        ),
+      ),
+    ).toEqual({
+      code: 'VALIDATION_FAILED',
+      details: { field: 'expiresAt', takesEffectAt: pushed.toISOString() },
+    });
   });
 
   it('push a lowering limit’s start and a raising limit’s expiry', () => {

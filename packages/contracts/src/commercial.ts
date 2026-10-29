@@ -944,6 +944,21 @@ export function planAmendment(
   });
 
   pushRemovals(agreement, added, endings, businessDayEnds);
+  added.forEach((term, index) => {
+    // A removal pushed to the business day end past the term's own end leaves nothing in force:
+    // refused, so the author sets a later end (the database would refuse it too).
+    if (
+      term.effectiveFrom &&
+      term.effectiveTo &&
+      term.effectiveTo.getTime() <= term.effectiveFrom.getTime()
+    ) {
+      throw new DomainError('VALIDATION_FAILED', 'The term ends before its removal takes effect', {
+        index,
+        field: 'effectiveTo',
+        takesEffectAt: term.effectiveFrom.toISOString(),
+      });
+    }
+  });
 
   const result: AgreementRecord = {
     terms: [...agreement.terms, ...added],
@@ -1021,7 +1036,6 @@ function pushRemovals(
         at: term.effectiveFrom.getTime(),
         move: (to) => {
           term.effectiveFrom = to;
-          if (term.effectiveTo && term.effectiveTo.getTime() < to.getTime()) term.effectiveTo = to;
         },
       });
     }
@@ -1348,7 +1362,12 @@ export function planOverride(
       expiresAt = removalTakesEffectAt(expiresAt, businessDayEnds);
     }
   }
-  if (expiresAt && expiresAt.getTime() < startsAt.getTime()) expiresAt = startsAt;
+  if (expiresAt && expiresAt.getTime() <= startsAt.getTime()) {
+    throw new DomainError('VALIDATION_FAILED', 'The override expires before it takes effect', {
+      field: 'expiresAt',
+      takesEffectAt: startsAt.toISOString(),
+    });
+  }
 
   const slot = overrideSlot({
     featureKey: input.kind === 'limit' ? null : input.featureKey,

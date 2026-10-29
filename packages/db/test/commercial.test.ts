@@ -101,19 +101,35 @@ async function amendment(t: Seeded, number = 1) {
   return id;
 }
 
-async function approve(id: string) {
-  const now = new Date();
+type Tx = Parameters<Parameters<typeof app.transaction>[0]>[0];
+
+async function submit(id: string) {
   await app
     .update(agreementAmendments)
-    .set({ status: 'submitted', submittedAt: now })
-    .where(eq(agreementAmendments.id, id));
-  await app
-    .update(agreementAmendments)
-    .set({ status: 'approved', decidedAt: now, decidedByOperator: 'finance1' })
+    .set({ status: 'submitted', submittedAt: new Date() })
     .where(eq(agreementAmendments.id, id));
 }
 
-const start = new Date('2026-11-01T21:00:00Z');
+/** Approves a submitted amendment and writes its terms in the same transaction (rule 10). */
+function approveWith(id: string, write: (tx: Tx) => Promise<unknown> = async () => {}) {
+  return app.transaction(async (tx) => {
+    await tx
+      .update(agreementAmendments)
+      .set({ status: 'approved', decidedAt: new Date(), decidedByOperator: 'finance1' })
+      .where(eq(agreementAmendments.id, id));
+    await write(tx);
+  });
+}
+
+async function approve(id: string, write?: (tx: Tx) => Promise<unknown>) {
+  await submit(id);
+  await approveWith(id, write);
+}
+
+const DAY = 86_400_000;
+/** Terms start a week from now, so their approval (now) comes first. */
+const start = new Date(Date.now() + 7 * DAY);
+const day = (n: number) => new Date(start.getTime() + n * DAY);
 
 function featureTerm(t: Seeded, amendmentId: string, key = 'pos') {
   return {
@@ -238,15 +254,27 @@ describe('amendments', () => {
 });
 
 describe('agreement terms', () => {
-  it('are written only for an approved amendment and never change', async () => {
+  it('are written only in their amendment’s approval, no earlier than it, and never change', async () => {
     const t = await seedTenant();
     const id = await amendment(t);
     expect(await refusal(app.insert(agreementTerms).values(featureTerm(t, id)))).toMatch(
       /only an approved amendment/,
     );
-    await approve(id);
+    await submit(id);
+    // Backdated before its approval: refused, and the approval rolls back with it.
+    expect(
+      await refusal(
+        approveWith(id, (tx) =>
+          tx.insert(agreementTerms).values({ ...featureTerm(t, id), effectiveFrom: day(-30) }),
+        ),
+      ),
+    ).toMatch(/no earlier than its approval/);
     const term = featureTerm(t, id);
-    await app.insert(agreementTerms).values(term);
+    await approveWith(id, (tx) => tx.insert(agreementTerms).values(term));
+    // A later transaction cannot add a term to an amendment approved earlier.
+    expect(
+      await refusal(app.insert(agreementTerms).values(featureTerm(t, id, 'waiter_app'))),
+    ).toMatch(/in its approval/);
     expect(
       await refusal(
         app
@@ -258,16 +286,20 @@ describe('agreement terms', () => {
     // A term names an amendment of its own agreement.
     const other = await seedTenant();
     const otherAmendment = await amendment(other);
-    await approve(otherAmendment);
+    await submit(otherAmendment);
     expect(
-      await refusal(app.insert(agreementTerms).values({ ...featureTerm(t, otherAmendment) })),
+      await refusal(
+        approveWith(otherAmendment, (tx) =>
+          tx.insert(agreementTerms).values(featureTerm(t, otherAmendment)),
+        ),
+      ),
     ).toMatch(FOREIGN);
   });
 
   it('hold the values of their kind, with the money columns mirroring them', async () => {
     const t = await seedTenant();
     const id = await amendment(t);
-    await approve(id);
+    await submit(id);
     const subscription = {
       kind: 'subscription',
       amount: 5000,
@@ -275,43 +307,14 @@ describe('agreement terms', () => {
       period: 'month',
       per: 'tenant',
     };
-    const insert = (fields: Partial<typeof agreementTerms.$inferInsert>) =>
-      app.insert(agreementTerms).values({
+    const row = (fields: Partial<typeof agreementTerms.$inferInsert>) =>
+      ({
         id: uuidv7(),
         agreementId: t.agreementId,
         amendmentId: id,
         effectiveFrom: start,
         ...fields,
-      } as typeof agreementTerms.$inferInsert);
-    await insert({
-      kind: 'subscription',
-      values: subscription,
-      amountMinor: 5000,
-      currency: 'USD',
-    });
-    await insert({
-      kind: 'commission',
-      values: {
-        kind: 'commission',
-        channel: 'web',
-        percentBp: 0,
-        fixed: { amount: 50, currency: 'TRY' },
-      },
-      amountMinor: 50,
-      currency: 'TRY',
-    });
-    await insert({
-      kind: 'setup_fee',
-      values: { kind: 'setup_fee', amount: 9000, currency: 'USD', label: 'Setup' },
-      amountMinor: 9000,
-      currency: 'USD',
-      effectiveFrom: null,
-      dueOn: '2026-10-01',
-    });
-    await insert({
-      kind: 'waiver',
-      values: { kind: 'waiver', waives: { kind: 'commission', channel: 'web' } },
-    });
+      }) as typeof agreementTerms.$inferInsert;
     for (const bad of [
       { kind: 'subscription', values: subscription, amountMinor: 4000, currency: 'USD' },
       {
@@ -346,18 +349,52 @@ describe('agreement terms', () => {
       { kind: 'feature', values: { kind: 'feature', featureKey: 'pos' }, effectiveTo: start },
     ]) {
       expect(
-        await refusal(insert(bad as Partial<typeof agreementTerms.$inferInsert>)),
+        await refusal(
+          approveWith(id, (tx) =>
+            tx
+              .insert(agreementTerms)
+              .values(row(bad as Partial<typeof agreementTerms.$inferInsert>)),
+          ),
+        ),
         JSON.stringify(bad),
       ).toMatch(CHECK);
     }
+    await approveWith(id, (tx) =>
+      tx.insert(agreementTerms).values([
+        row({ kind: 'subscription', values: subscription, amountMinor: 5000, currency: 'USD' }),
+        row({
+          kind: 'commission',
+          values: {
+            kind: 'commission',
+            channel: 'web',
+            percentBp: 0,
+            fixed: { amount: 50, currency: 'TRY' },
+          },
+          amountMinor: 50,
+          currency: 'TRY',
+        }),
+        // A one-off fee may be due in the past (a setup fee agreed at signing).
+        row({
+          kind: 'setup_fee',
+          values: { kind: 'setup_fee', amount: 9000, currency: 'USD', label: 'Setup' },
+          amountMinor: 9000,
+          currency: 'USD',
+          effectiveFrom: null,
+          dueOn: '2026-10-01',
+        }),
+        row({
+          kind: 'waiver',
+          values: { kind: 'waiver', waives: { kind: 'commission', channel: 'web' } },
+        }),
+      ]),
+    );
   });
 });
 
 describe('term endings', () => {
-  it('close a dated term of the agreement once, no earlier than its start', async () => {
+  it('close a dated term of the agreement once, in their approval, no earlier than its start', async () => {
     const t = await seedTenant();
     const first = await amendment(t);
-    await approve(first);
     const term = featureTerm(t, first);
     const fee = {
       id: uuidv7(),
@@ -369,24 +406,30 @@ describe('term endings', () => {
       currency: 'USD',
       dueOn: '2026-11-01',
     };
-    await app.insert(agreementTerms).values([term, fee]);
+    await approve(first, (tx) => tx.insert(agreementTerms).values([term, fee]));
     const second = await amendment(t, 2);
-    const end = (termId: string, endsAt: Date, amendmentId = second) =>
-      app.insert(agreementTermEndings).values({ termId, amendmentId, endsAt });
-    expect(await refusal(end(term.id, new Date('2026-12-01T00:00:00Z')))).toMatch(
-      /only an approved amendment/,
-    );
-    await approve(second);
-    expect(await refusal(end(fee.id, new Date('2026-12-01T00:00:00Z')))).toMatch(/dated term/);
-    expect(await refusal(end(term.id, new Date('2026-10-01T00:00:00Z')))).toMatch(/dated term/);
-    const other = await seedTenant();
-    const foreign = await amendment(other);
-    await approve(foreign);
-    expect(await refusal(end(term.id, new Date('2026-12-01T00:00:00Z'), foreign))).toMatch(
+    const end = (tx: Tx | typeof app, termId: string, endsAt: Date, amendmentId = second) =>
+      tx.insert(agreementTermEndings).values({ termId, amendmentId, endsAt });
+    expect(await refusal(end(app, term.id, day(30)))).toMatch(/only an approved amendment/);
+    await submit(second);
+    expect(await refusal(approveWith(second, (tx) => end(tx, fee.id, day(30))))).toMatch(
       /dated term/,
     );
-    await end(term.id, new Date('2026-12-01T00:00:00Z'));
-    expect(await refusal(end(term.id, new Date('2026-12-02T00:00:00Z')))).toMatch(UNIQUE);
+    expect(await refusal(approveWith(second, (tx) => end(tx, term.id, day(-1))))).toMatch(
+      /dated term/,
+    );
+    const other = await seedTenant();
+    const foreign = await amendment(other);
+    await submit(foreign);
+    expect(await refusal(approveWith(foreign, (tx) => end(tx, term.id, day(30), foreign)))).toMatch(
+      /dated term/,
+    );
+    await approveWith(second, (tx) => end(tx, term.id, day(30)));
+    const third = await amendment(t, 3);
+    await submit(third);
+    expect(await refusal(approveWith(third, (tx) => end(tx, term.id, day(31), third)))).toMatch(
+      UNIQUE,
+    );
   });
 });
 
@@ -546,11 +589,26 @@ describe('entitlement states and exceptions', () => {
 it('keeps the append-only commercial tables from every role', async () => {
   const t = await seedTenant();
   const id = await amendment(t);
-  await approve(id);
   const term = featureTerm(t, id);
-  await app.insert(agreementTerms).values(term);
+  await approve(id, (tx) => tx.insert(agreementTerms).values(term));
   // The owner owns the tables; the trigger still refuses.
   expect(
     await refusal(owner.execute(sql`delete from agreement_terms where id = ${term.id}`)),
   ).toMatch(APPEND_ONLY);
+});
+
+describe('four eyes (rule 11)', () => {
+  it('refuses an approval by the author, as a user or by the operator’s name', async () => {
+    const t = await seedTenant();
+    const id = await amendment(t);
+    await submit(id);
+    expect(
+      await refusal(
+        app
+          .update(agreementAmendments)
+          .set({ status: 'approved', decidedAt: new Date(), decidedByOperator: ' Sales1 ' })
+          .where(eq(agreementAmendments.id, id)),
+      ),
+    ).toMatch(CHECK);
+  });
 });

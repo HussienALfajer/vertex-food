@@ -51,7 +51,7 @@ const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: s
   // The device.revoked.v1 consumer clears the revoked PC's hub role (spec S04).
   devices: { select: true, update: ['hub_role', 'updated_at'] },
   // entitlements/apply-boundaries (spec S05 rule 19): the due states and each tenant's terms and
-  // overrides (platform data); inside the tenant, its branches and their copies.
+  // overrides (platform data); inside the tenant, the copies its branches already hold.
   agreements: { select: true, update: [] },
   agreement_terms: { select: true, update: [] },
   agreement_term_endings: { select: true, update: [] },
@@ -63,10 +63,8 @@ const JOBS_ACCESS: Record<string, { select: boolean; insert?: boolean; update: s
   },
   branch_entitlements: {
     select: true,
-    insert: true,
     update: ['features', 'lease_days', 'limits', 'updated_at', 'valid_until', 'version'],
   },
-  branches: { select: true, update: [] },
 };
 // The tables the sync service replicates to devices (ADR 0022): it reads them whole, bypassing RLS,
 // so each one is listed here by the migration that publishes it (S04, S05). Through SQL it reads nothing

@@ -195,6 +195,11 @@ export const agreementAmendments = pgTable(
       'agreement_amendments_decided',
       sql`(${t.status} in ('approved', 'rejected', 'withdrawn')) = (${t.decidedAt} is not null) and (${t.decidedAt} is null or (${t.decidedBy} is null) <> (${t.decidedByOperator} is null)) and (${t.decidedAt} is not null or (${t.decidedBy} is null and ${t.decidedByOperator} is null))`,
     ),
+    // Four eyes (rule 11): the approver is not the author, as a user or by the operator's name.
+    check(
+      'agreement_amendments_four_eyes',
+      sql`(${t.status} <> 'approved' or ((${t.authoredBy} is null or ${t.decidedBy} is distinct from ${t.authoredBy}) and (${t.authoredByOperator} is null or ${t.decidedByOperator} is null or lower(btrim(${t.decidedByOperator})) <> lower(btrim(${t.authoredByOperator}))))) is true`,
+    ),
     check(
       'agreement_amendments_decision_reason',
       sql`((${t.status} <> 'rejected' or char_length(${t.decisionReason}) between 3 and 500) and (${t.status} = 'rejected' or ${t.decisionReason} is null)) is true`,

@@ -38,6 +38,7 @@ Rules that keep the parallel PRs apart:
 - [ ] CLI commands and sample files in `apps/api/test/fixtures/commercial/`
 - [ ] Worker `entitlements/apply-boundaries` every minute
 - [ ] Tests (`test/commercial.test.ts`, `test/entitlements.test.ts`, the changed S01, S02, S04 tests, worker test, architecture tests); OpenAPI and client types regenerated
+- [ ] From PR 1's review: the approval sets `decided_at` to the planning instant and writes its terms and endings in the same transaction, with no savepoint around the approval (`agreement_term_guard` checks the row's `xmin`); each drafted `listValue` is compared with the template's value on the server (`agreements.template_id`), so a list value cannot be lowered to skip `differenceReason`; the first `entitlement_states` row is upserted (`ON CONFLICT`) before its `FOR UPDATE` lock, so two first additions serialize; `entitlements/apply-boundaries` updates the existing branch copies only (the jobs role reads no branch), so the API writes every non-archived branch's row with the first state and each new branch's at its creation
 - [ ] Docs, checks, reviewer, PR with auto-merge and Auto-fix, endpoints summary in the report
 
 ## PR 3 `feat/s05-restaurant-entitlements` — restaurant main process (after PR 1, parallel with PR 2)
