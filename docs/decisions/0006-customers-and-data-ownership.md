@@ -1,6 +1,6 @@
 # 0006 — Customers and data ownership: a platform customer, attribution on every order
 
-Status: Accepted (the written policy is open: Q5; the identity link amended by [0026](0026-promotions-loyalty-and-customer-identity.md); the reliability level by [0027](0027-trust-policies.md)) · Date: 2026-10-18
+Status: Accepted (the written policy is open: Q5; the identity link amended by [0026](0026-promotions-loyalty-and-customer-identity.md); the reliability level by [0027](0027-trust-policies.md); export of customer details by [0037](0037-audit-log-and-data-export.md)) · Date: 2026-10-18
 
 ## Context
 Restaurants fear that a platform takes their customers. The owner will publish a clear customer-data policy and decided to settle its details later (owner, 2026-10-18). Whatever the policy says, it can only be applied if the system records, from the first order, where each customer and each order came from.

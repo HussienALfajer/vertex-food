@@ -37,7 +37,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done. Feature IDs
   - PR 2 (API and worker): `platform/commercial` (catalog, packages, templates, amendments with four eyes, "My agreement") and `platform/entitlements` (state and branch copies, overrides, exceptions) with `@RequiresFeature`, the limits, activation and suspension checks, the CLI commands and `entitlements/apply-boundaries`.
   - PR 3 (restaurant main process): the synced `branch_entitlements` row in the local database, the hub's `not_entitled` check on it at the command's effective time (whatever the lease), and `window.vertexSync.entitlements()` with the 7-day lease from the last checkpoint, for PR 4's banners and hidden navigation.
   - PR 1 (data) done: the feature catalog as code (platform, food and marketplace entries assembled in the product layer), packages, templates, terms, amendments and overrides with their rules (four eyes, removals pushed to the next business day end, no past dates, no overlap, dependencies), the resolver with the branch copy and its 7-day lease, the limit check, the money functions (commission, delivery fee share, recurring charges); the six permissions, ten error codes, audit actions, events and the `agreement` texts; the commercial and entitlement tables with their guards, grants and `branch_entitlements` published and streamed; `CommandDefinition.feature` and the hub's `not_entitled` refusal
-- [ ] S06 Audit and export: F09
+- [~] S06 Audit and export: F09 (spec: `docs/specs/S06-audit-and-export.md`, ADR 0037)
 - [ ] Production deploy of Phase 1 (internal test tenants only)
 
 ## Phase 2 — Restaurant operations
