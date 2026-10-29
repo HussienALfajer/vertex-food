@@ -1,6 +1,6 @@
 # S05 — Entitlements and agreements core
 
-Status: Draft · Date: 2026-10-29 · Features: `docs/product/v1-scope.md` F04, F05 · ADRs: 0004, 0005, 0008, 0011, 0013, 0014, 0016, 0020, 0022, 0025, 0028, 0031, 0032, 0033, 0035, 0036
+Status: Approved · Date: 2026-10-29 · Features: `docs/product/v1-scope.md` F04, F05 · ADRs: 0004, 0005, 0008, 0011, 0013, 0014, 0016, 0020, 0022, 0025, 0028, 0031, 0032, 0033, 0035, 0036
 
 ## Summary
 Vertex sells each restaurant a different mix: a subscription, a commission per online order, a listing fee, free months, a feature built for one restaurant. Fixed plans don't fit, and terms without structure turn into billing disputes. S05 builds the feature catalog, packages and agreement templates as presets, one effective-dated agreement per tenant changed only by approved amendments, manual overrides, and one resolver that every route and sync command checks on the server. It also builds the pure functions that later specs use to price commissions and recurring charges with the terms in force at the time. The console screens come in S22. Until then, Vertex staff use the console API and the CLI, and the owner gets a read-only "My agreement" page.

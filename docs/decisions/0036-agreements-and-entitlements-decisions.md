@@ -1,6 +1,6 @@
 # 0036 — Agreements and entitlements: four-eyes amendments, removals at day end, no offline rejection, the rest of the commission base
 
-Status: Proposed (owner's answers 2026-10-29, accepted with the S05 spec) · Date: 2026-10-29
+Status: Accepted (owner, 2026-10-29, with the S05 spec) · Date: 2026-10-29
 
 ## Context
 ADR 0013 set the commercial model: a catalog, packages as presets, effective-dated terms, overrides, one resolver. It left open who may change an agreement, when a removal takes effect, what an offline device does with a stale copy, the shape of commission and recurring charges, and (through ADR 0031) the rest of the commission base (Q21). The S05 interview settled them (owner, 2026-10-29).

@@ -39,7 +39,7 @@ Short records of decisions that shape the system. Each has a status: **Accepted*
 | [0033](0033-standing-approvals-and-acceptance-after-merge.md) | Standing approvals: commits, pushes, PRs, auto-merge and Auto-fix, and backward-compatible local migrations without asking; the owner's acceptance test after the merge | Accepted |
 | [0034](0034-platform-messaging-numbers-and-send-queue.md) | Platform messaging: one Syrian and one Turkish number, a PostgreSQL send queue claimed by the gateway, templates as code, limits from sent messages, opt-out of everything but requested OTPs, `packages/crypto` | Accepted |
 | [0035](0035-sync-foundation-decisions.md) | Sync foundation: signed commands, two hub-capable PCs, number blocks of 4999 per business day reserved 7 days ahead, peer mutual TLS, the CA download while pairing, versioned protocol and updates at an empty queue, 10-minute clock skew, connectivity thresholds, the replication role accepted with guards (Q20) | Accepted |
-| [0036](0036-agreements-and-entitlements-decisions.md) | Agreements and entitlements: four-eyes amendments, the feature catalog as code, removals at the next business day end, overrides with expiry, a 7-day lease and no offline rejection, commission only online and its base (Q21), daily-prorated recurring charges | Proposed |
+| [0036](0036-agreements-and-entitlements-decisions.md) | Agreements and entitlements: four-eyes amendments, the feature catalog as code, removals at the next business day end, overrides with expiry, a 7-day lease and no offline rejection, commission only online and its base (Q21), daily-prorated recurring charges | Accepted |
 
 Template:
 
