@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import type { StaffPermission, StaffRole } from '@vertex-food/contracts';
 import type {
+  BranchEntitlementsView,
   BranchNetworkView,
   CommandResultView,
   HubView,
@@ -57,6 +58,8 @@ export type FakeSync = {
   network: BranchNetworkView;
   results: CommandResultView[];
   preview: { missing: number; rejoining: boolean };
+  /** The branch's last synced entitlements (spec S05): the full restaurant app by default. */
+  entitlements: BranchEntitlementsView | null;
 };
 
 const syncedAt = '2026-10-29T07:42:00.000Z';
@@ -91,6 +94,7 @@ export function fakeSync(
     network?: Partial<BranchNetworkView>;
     results?: CommandResultView[];
     preview?: FakeSync['preview'];
+    entitlements?: BranchEntitlementsView | null;
   } = {},
 ): FakeSync {
   return {
@@ -145,6 +149,19 @@ export function fakeSync(
     },
     results: change.results ?? [],
     preview: change.preview ?? { missing: 0, rejoining: false },
+    entitlements:
+      change.entitlements === undefined
+        ? {
+            copy: {
+              version: 1,
+              features: [{ key: 'pos', until: null }],
+              limits: {},
+              updatedAt: syncedAt,
+            },
+            lastSyncedAt: syncedAt,
+            leaseExpired: false,
+          }
+        : change.entitlements,
   };
 }
 
@@ -481,6 +498,7 @@ export async function installFakeDevice(page: Page, seed: FakeDevice): Promise<v
         return { ok: true, value: { commandId: id } };
       },
       results: async () => copy(sync.results),
+      entitlements: async () => copy(sync.entitlements),
       onChange: (listener: () => void) => {
         syncListeners.add(listener);
         return () => syncListeners.delete(listener);

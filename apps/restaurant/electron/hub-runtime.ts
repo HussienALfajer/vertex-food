@@ -4,6 +4,7 @@ import {
   type ConnectivityState,
   caDownloadUrl,
   commandEnvelopeSchema,
+  type BranchEntitledFeature,
   type DeviceMember,
   DomainError,
   HUB_CA_HTTP_PORT,
@@ -12,6 +13,7 @@ import {
   type HubRefusalReason,
   hubCommandSchema,
   hubPolicy,
+  isBranchFeatureEntitled,
   type LiveRole,
   type OpenPairing,
   pairingQrUrl,
@@ -30,6 +32,7 @@ import {
   type ResolvedCheck,
 } from '@vertex-food/sync';
 import { ed25519Signer, ed25519Verifier } from '@vertex-food/sync/node';
+import { readBranchEntitlements } from './branch-entitlements.js';
 import type { BranchNetworkView, BranchPc, HubView, OpenedPairing } from './bridge.js';
 import type { Registration } from './device-store.js';
 import {
@@ -58,6 +61,8 @@ type BranchSnapshot = {
   idleLockMinutes: number;
   /** This PC's own blocks, `series:date` → range (rule 26). */
   blocks: Map<string, { first: number; last: number }>;
+  /** The branch's last synced entitled features (spec S05 rule 24); none before a first sync. */
+  features: BranchEntitledFeature[];
 };
 
 const emptySnapshot: BranchSnapshot = {
@@ -65,6 +70,7 @@ const emptySnapshot: BranchSnapshot = {
   businessDayEndsAt: '04:00',
   idleLockMinutes: 5,
   blocks: new Map(),
+  features: [],
 };
 
 /** How often the synced configuration is read again. */
@@ -169,6 +175,7 @@ async function readSnapshot(
       addresses.set(row.device_id, addressList(row.lan_addresses));
     }
   }
+  const entitlements = await readBranchEntitlements(reads);
   const endsAt = timeOfDaySchema.safeParse(branch?.business_day_ends_at?.slice(0, 5));
   return {
     pcs: devices.map((row) => ({
@@ -182,6 +189,7 @@ async function readSnapshot(
     businessDayEndsAt: endsAt.success ? endsAt.data : emptySnapshot.businessDayEndsAt,
     idleLockMinutes: branch?.idle_lock_minutes ?? emptySnapshot.idleLockMinutes,
     blocks: new Map(blocks.map((b) => [b.id, { first: b.first_number, last: b.last_number }])),
+    features: entitlements?.features ?? [],
   };
 }
 
@@ -557,9 +565,10 @@ export class HubRuntime {
           return pc?.publicKey ? ed25519Verifier(pc.publicKey) : null;
         },
         caFingerprint: () => this.deps.certificate()?.caFingerprint ?? '',
-        // Spec S05 rule 24: the local `branch_entitlements` row arrives with S05's PR 3. Until then
-        // no command of this release has a feature, and one that had would be refused.
-        featureEntitled: () => false,
+        // Spec S05 rule 24: the row as last read (every 5 s), whatever its lease. A feature added
+        // while offline is unknown here, so its commands are refused until the PC syncs.
+        featureEntitled: (feature, at) =>
+          isBranchFeatureEntitled(this.snapshot.features, feature, at),
       },
       peers: lanPeers({
         tls: () => this.tls(),

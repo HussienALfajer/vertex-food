@@ -1,4 +1,5 @@
 import {
+  type BranchEntitledFeature,
   type ConnectivityState,
   deviceNameSchema,
   type HubPairing,
@@ -236,6 +237,27 @@ export type CommandResultView = {
   answeredAt: string | null;
 };
 
+/**
+ * The branch's entitlements as this PC last synced them (spec S05 rules 24, 26): feature keys and
+ * limits, never a price or commission. The renderer hides what is off (cosmetic) and shows the
+ * banners; the hub decides from the same row.
+ */
+export type BranchEntitlementsView = {
+  /** Null until the stream has brought the branch's row. */
+  copy: {
+    version: number;
+    /** The entitled features, with `until` when a removal is scheduled. */
+    features: BranchEntitledFeature[];
+    /** The set limits; an absent key is unlimited. */
+    limits: Record<string, number>;
+    updatedAt: string | null;
+  } | null;
+  /** PowerSync's last complete checkpoint, which the lease runs from. */
+  lastSyncedAt: string | null;
+  /** More than 7 days since that sync: the banner shows and nothing stops (rule 26). */
+  leaseExpired: boolean;
+};
+
 export const promoteInputSchema = z.object({
   membershipId: idSchema,
   pin: pinSchema,
@@ -263,6 +285,8 @@ export type SyncBridge = {
   ): Promise<BridgeValue<{ commandId: string }>>;
   /** This PC's commands and their outcomes, newest first (needs attention, screen 3). */
   results(): Promise<CommandResultView[]>;
+  /** The branch's last synced entitlements and the lease; null before the PC has local data. */
+  entitlements(): Promise<BranchEntitlementsView | null>;
   onChange(listener: () => void): () => void;
 };
 
@@ -276,6 +300,7 @@ export const syncChannels = {
   promote: 'sync:promote',
   sendNetworkCheck: 'sync:send-network-check',
   results: 'sync:results',
+  entitlements: 'sync:entitlements',
   changed: 'sync:changed',
 } as const;
 

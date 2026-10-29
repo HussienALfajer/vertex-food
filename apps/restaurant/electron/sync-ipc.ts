@@ -1,5 +1,7 @@
 import { DomainError, idSchema, openPairingSchema } from '@vertex-food/contracts';
+import { branchEntitlementsView, readBranchEntitlements } from './branch-entitlements.js';
 import {
+  type BranchEntitlementsView,
   type BridgeResult,
   type BridgeValue,
   type CommandResultView,
@@ -13,7 +15,8 @@ import type { LocalReads } from './local-db.js';
 import type { SyncService } from './sync-service.js';
 
 // The main process's side of `SyncBridge` (spec S04 screens 1–5): the sync status, the branch
-// network and this PC's results, read from the running sync client and hub. Every input from the
+// network and this PC's results, read from the running sync client and hub; the branch's
+// entitlements and their lease (spec S05 rules 24, 26). Every input from the
 // untrusted renderer is parsed here first; refusals cross as their code only.
 
 type Handler = (input: unknown) => Promise<unknown>;
@@ -48,6 +51,7 @@ export class SyncControl {
     private readonly deps: {
       updateReady: () => { version: string } | null;
       lanAddresses: () => string[];
+      now?: () => Date;
     },
   ) {}
 
@@ -88,6 +92,16 @@ export class SyncControl {
     }));
   }
 
+  /** The branch's last synced row, with no money term, and its lease (rule 26). */
+  async entitlements(): Promise<BranchEntitlementsView | null> {
+    const parts = this.parts;
+    if (!parts) return null;
+    // A damaged database that cannot answer reads as no copy: the hub refuses alike.
+    const copy = await readBranchEntitlements(parts.reads).catch(() => null);
+    const { lastSyncedAt } = await parts.sync.view();
+    return branchEntitlementsView(copy, lastSyncedAt, this.deps.now?.() ?? new Date());
+  }
+
   hub(): HubRuntime {
     const hub = this.parts?.hub;
     if (!hub) throw new DomainError('DEVICE_UNKNOWN', 'No local data yet');
@@ -124,5 +138,6 @@ export function syncHandlers(control: SyncControl): Record<string, Handler> {
       }));
     },
     [syncChannels.results]: () => control.results(),
+    [syncChannels.entitlements]: () => control.entitlements(),
   };
 }
