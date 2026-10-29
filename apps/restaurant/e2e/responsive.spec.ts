@@ -8,6 +8,7 @@ import {
   me,
   mockApi,
   staffMember,
+  syntheticId,
   tenant,
 } from './mock-api.js';
 import {
@@ -223,6 +224,30 @@ for (const viewport of viewports) {
         membershipId: owner.membershipId,
         branchIds: [only.id],
       });
+      api.sync.quarantine.push({
+        batch: {
+          id: syntheticId(),
+          branchId: only.id,
+          deviceId: syntheticId(),
+          deviceName: 'الكاشير القديم',
+          reason: 'device_revoked',
+          membershipId: null,
+          commandCount: 1,
+          createdAt: '2026-10-28T20:00:00.000Z',
+          decision: null,
+        },
+        commands: [
+          {
+            commandId: syntheticId(),
+            name: 'sync.network_check',
+            summary: { key: 'commands.sync.network_check', params: { sequence: 1 } },
+            deviceTime: '2026-10-28T19:30:00.000Z',
+            hubEpoch: 2,
+            hubSeq: 1,
+            alreadyExecuted: false,
+          },
+        ],
+      });
       const seed = fakeDevice(restaurant.id, {
         branch: { id: only.id, nameAr: only.nameAr, idleLockMinutes: 30 },
         members: [owner, team.manager(), team.cashier()],
@@ -264,6 +289,9 @@ for (const viewport of viewports) {
       await navigate(page, wide, 'الحجر');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('الحجر');
       await laidOut(page, testInfo, 'quarantine');
+      await page.getByRole('link', { name: 'اعرض الأوامر' }).click();
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('دفعة من «الكاشير القديم»');
+      await laidOut(page, testInfo, 'quarantine-batch');
     });
 
     test('lays out the welcome and sign-in of a browser', async ({ page }, testInfo) => {

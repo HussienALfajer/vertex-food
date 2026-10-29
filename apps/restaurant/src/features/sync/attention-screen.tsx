@@ -19,12 +19,30 @@ import { type CommandResultView, type SyncBridge, syncBridge } from '../../lib/s
 import { deviceStatusQuery, useMe } from '../session/queries';
 import { branchesQuery } from '../tenancy/queries';
 import { attentionQuery, resolveAttention, syncResultsQuery, useSyncChanges } from './queries';
-import { ChoiceField, Detail, ReasonDialog, useCommandSummary, useMemberNames } from './sync-parts';
+import {
+  ChoiceField,
+  Detail,
+  ReasonDialog,
+  useCommandSummary,
+  useMemberNames,
+  useOutcomeText,
+} from './sync-parts';
 import { localAttention } from './sync-state';
 
 type Status = 'open' | 'closed' | 'all';
 
 const PAGE = 50;
+
+/** The member of this PC's PIN session (`useMe()` is null in a session opened offline). */
+function useSessionMember(): string | null {
+  const me = useMe();
+  const device = useQuery({
+    ...deviceStatusQuery(deviceBridge as DeviceBridge),
+    enabled: deviceBridge !== null,
+  });
+  if (device.data?.state === 'registered') return device.data.session?.membershipId ?? null;
+  return me?.membershipId ?? null;
+}
 
 /** The branch whose items are listed: this PC's, or in a browser the one chosen of the scope. */
 function useBranchChoice(): {
@@ -54,7 +72,8 @@ function useBranchChoice(): {
  * `/attention` (spec S04 screen 3, rule 47): the commands the server adjusted or rejected, or
  * flagged, with their time, kind, summary, maker and reason; filters by kind and open or closed.
  * Members with `sync.attention.resolve` see the branch's items and close one online with a reason;
- * anyone else sees their own (the API decides). Offline, a PC lists its own results instead.
+ * anyone else sees their own (the API decides). Offline, a PC lists its own results instead,
+ * the member's own unless they hold the permission.
  */
 export function AttentionScreen() {
   const { t } = useTranslation('sync');
@@ -64,7 +83,7 @@ export function AttentionScreen() {
   const [status, setStatus] = useState<Status>('open');
   const [kind, setKind] = useState<AttentionKind | 'all'>('all');
   const [pageSize, setPageSize] = useState(PAGE);
-  const me = useMe();
+  const sessionMember = useSessionMember();
   const manager = can(access, 'sync.attention.resolve', branchId ?? undefined);
   const attention = useQuery({
     ...attentionQuery({
@@ -113,7 +132,10 @@ export function AttentionScreen() {
         />
       </div>
       {!online && !attention.data && syncBridge ? (
-        <LocalAttention bridge={syncBridge} own={manager ? null : (me?.membershipId ?? null)} />
+        <LocalAttention
+          bridge={syncBridge}
+          scope={manager ? { all: true } : { membershipId: sessionMember }}
+        />
       ) : (
         <QueryStates queries={[attention]}>
           {() => {
@@ -211,14 +233,21 @@ function AttentionRow({ item, canClose }: { item: AttentionItem; canClose: boole
   );
 }
 
-/** Offline on a PC: its own commands the server adjusted or rejected (`command_results`). */
-function LocalAttention({ bridge, own }: { bridge: SyncBridge; own: string | null }) {
+/** Offline on a PC: this PC's commands needing attention (`command_results`, `localAttention`). */
+function LocalAttention({
+  bridge,
+  scope,
+}: {
+  bridge: SyncBridge;
+  scope: Parameters<typeof localAttention>[1];
+}) {
   const { t, i18n } = useTranslation('sync');
   useSyncChanges(bridge);
   const results = useQuery(syncResultsQuery(bridge));
   const summary = useCommandSummary();
   const memberName = useMemberNames();
-  const items = localAttention(results.data ?? [], own);
+  const outcomeText = useOutcomeText();
+  const items = localAttention(results.data ?? [], scope);
   return (
     <>
       <Callout
@@ -242,9 +271,7 @@ function LocalAttention({ bridge, own }: { bridge: SyncBridge; own: string | nul
                   )}
                   <Detail label={t('attention.madeBy')}>{memberName(item.membershipId)}</Detail>
                   {item.outcome && (
-                    <Detail label={t('attention.outcome')}>
-                      {t(`outcomes.${item.outcome as 'adjusted' | 'rejected'}`)}
-                    </Detail>
+                    <Detail label={t('attention.outcome')}>{outcomeText(item.outcome)}</Detail>
                   )}
                   {item.reason && i18n.exists(`reasons.${item.reason}`, { ns: 'sync' }) && (
                     <Detail label={t('attention.reason')}>

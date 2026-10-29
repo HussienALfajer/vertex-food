@@ -138,15 +138,26 @@ describe('localAttention', () => {
     result('accepted', 'a'),
     result('adjusted', 'a'),
     result('rejected', 'b'),
+    result('refused', 'a'),
+    result('quarantined', null),
     result(null, 'a'),
   ];
 
-  it('keeps the adjusted and rejected commands, of one member or all', () => {
-    expect(localAttention(results, null).map((item) => item.id)).toEqual([
+  it('keeps the adjusted, rejected, refused and quarantined commands of all, for a manager', () => {
+    expect(localAttention(results, { all: true }).map((item) => item.id)).toEqual([
       'adjusted-a',
       'rejected-b',
+      'refused-a',
+      'quarantined-null',
     ]);
-    expect(localAttention(results, 'a').map((item) => item.id)).toEqual(['adjusted-a']);
+  });
+
+  it("keeps a member's own only, and nothing without a member", () => {
+    expect(localAttention(results, { membershipId: 'a' }).map((item) => item.id)).toEqual([
+      'adjusted-a',
+      'refused-a',
+    ]);
+    expect(localAttention(results, { membershipId: null })).toEqual([]);
   });
 });
 

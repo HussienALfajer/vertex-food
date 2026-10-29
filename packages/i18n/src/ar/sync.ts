@@ -61,6 +61,11 @@ export const sync = {
     sync: { network_check: 'اختبار الشبكة رقم {{sequence}}' },
     audit: { record_local_events: 'رفع {{count}} من الأحداث المسجلة دون اتصال' },
   },
+  /** Outcomes this PC records itself: a hub's refusal, a revoked PC's quarantine (rule 31). */
+  localOutcomes: {
+    refused: 'رفضه المركز',
+    quarantined: 'في الحجر',
+  },
   /** A command whose summary this version cannot name. */
   unknownCommand: 'الأمر {{name}}',
   needsOnline: 'يحتاج اتصالًا بالإنترنت',

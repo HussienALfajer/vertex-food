@@ -175,7 +175,7 @@ test.describe('the sync chip', () => {
       },
     });
     await expect(chip(page)).toHaveAttribute('aria-label', 'يجب التحديث');
-    await expect(page.getByText('الاحتياطي غير متزامن').first()).toBeAttached();
+    await expect(page.locator('header [data-slot="standby-warning"]')).toBeVisible();
     await expect(page.getByRole('alert').filter({ hasText: 'يجب تحديث التطبيق' })).toBeVisible();
     await screenshot(page, testInfo, 'sync-chip-update-required');
   });
@@ -479,6 +479,56 @@ test.describe('needs attention', () => {
     await expect(page.getByText('لا يملك العضو صلاحية هذا الأمر.')).toBeVisible();
     await page.context().setOffline(false);
   });
+});
+
+test('offline, a member without the permission sees only their own results, refusals included', async ({
+  page,
+}, testInfo) => {
+  let cashierId = '';
+  await start(page, {
+    as: 'cashier',
+    sync: (deviceId) =>
+      fakeSync(deviceId, {
+        results: [
+          {
+            id: syntheticId(),
+            name: 'sync.network_check',
+            membershipId: cashierId,
+            outcome: 'refused',
+            reason: 'pin_session_ended',
+            madeAt: '2026-10-29T08:00:00.000Z',
+            answeredAt: '2026-10-29T08:00:01.000Z',
+          },
+          {
+            id: syntheticId(),
+            name: 'sync.network_check',
+            membershipId: syntheticId(),
+            outcome: 'rejected',
+            reason: 'permission_missing',
+            madeAt: '2026-10-29T08:05:00.000Z',
+            answeredAt: '2026-10-29T08:06:00.000Z',
+          },
+        ],
+      }),
+    mock: (_branchId, { cashier }) => {
+      cashierId = cashier.membershipId;
+      return {};
+    },
+  });
+  await page.goto('/attention');
+  await expect(page.getByText('لا شيء يحتاج انتباهًا')).toBeVisible();
+  // The session is now an offline one: no `/api/me` for it.
+  await page.context().setOffline(true);
+  await updateFakeDevice(page, {});
+  await page.getByRole('combobox', { name: 'الحالة' }).click();
+  await page.getByRole('option', { name: 'الكل' }).click();
+  const list = page.getByRole('list', { name: 'نتائج أوامر هذا الحاسوب' });
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await expect(list.getByText('رفضه المركز')).toBeVisible();
+  await expect(list.getByText('انتهت جلسة الرمز السري. سجّل الدخول من جديد.')).toBeVisible();
+  await expect(page.getByText('لا يملك العضو صلاحية هذا الأمر.')).toHaveCount(0);
+  await screenshot(page, testInfo, 'attention-offline-member');
+  await page.context().setOffline(false);
 });
 
 function batch(deviceName: string, membershipId: string | null): QuarantineBatchDetail {

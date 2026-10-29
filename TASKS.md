@@ -88,6 +88,9 @@ Rules that keep the parallel PRs apart:
 
 ## Follow-ups (not this spec)
 
+- From S04 PR 6: offline, needs attention lists only this PC's own `command_results`; the synced `attention_items` and `attention_resolutions` (the list as last synced, other PCs' and phones' items) need a `SyncBridge` read filtered by member in the main process (rule 47)
+- From S04 PR 6: on a client PC (no hub role) `SyncBridge.results()` reads only `command_results`, which client PCs may not write; a network check's outcome may stay «بانتظار الرفع» there until `results()` joins the synced `command_log` (rule 11). Not confirmed at run time
+- From S04 PR 6, owner's call: choosing the hub and standby is offered only on a PC; the API also accepts it from a browser session
 - From S04 PR 5, before S09: publish `number_blocks` to the sync service (or exchange blocks at heartbeats), so a hub re-checks a forwarded or re-sent number against the other PC's block (rule 26); until then such a command is resolved again by the hub
 - From S04 PR 5, for PR 7 or S11: in a branch with one PC every answer is `mirrored: false`, so `HubClient` keeps every answered command as unmirrored (a phone's outbox grows); `packages/sync` needs a rule for a hub without a standby. The PC's own outbox already drops the versions it answered itself
 - From S04 PR 5, for PR 7: IndexedDB is per origin, so a page loaded from PC 1 and reloaded from PC 2 after a failover starts without the outbox it kept under PC 1's origin (Q17's pages)

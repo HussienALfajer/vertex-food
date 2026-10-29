@@ -1010,7 +1010,6 @@ export async function mockApi(
       }
     }
 
-
     if (path === '/api/cities' && method === 'GET') return route.fulfill({ json: cities });
 
     if (path === '/api/maps/resolve-link' && method === 'POST') {

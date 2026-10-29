@@ -105,7 +105,7 @@ export function SyncChip({
   const text = chipText(state);
   return (
     <>
-      {badge && <RoleBadges badge={badge} className="hidden md:flex" />}
+      {badge && <RoleBadges badge={badge} header />}
       <Button
         type="button"
         variant="outline"
@@ -132,12 +132,25 @@ export function SyncChip({
   );
 }
 
-function RoleBadges({ badge, className }: { badge: RoleBadge; className?: string }) {
+/**
+ * The role badge, and «الاحتياطي غير متزامن» in warning colors. In the header the role shows from
+ * 768 px and the warning at every width, its icon alone on a phone (its text stays for readers).
+ */
+function RoleBadges({ badge, header = false }: { badge: RoleBadge; header?: boolean }) {
   const { t } = useTranslation('sync');
   return (
-    <span className={`flex-wrap items-center gap-1 ${className ?? 'flex'}`}>
-      <Badge tone="brand">{t(`liveRoles.${badge.role}`)}</Badge>
-      {badge.standbyNotInSync && <Badge tone="warning">{t('chip.standbyNotInSync')}</Badge>}
+    <span className="flex flex-wrap items-center gap-1">
+      <Badge tone="brand" className={header ? 'hidden md:inline-flex' : undefined}>
+        {t(`liveRoles.${badge.role}`)}
+      </Badge>
+      {badge.standbyNotInSync && (
+        <Badge tone="warning" data-slot="standby-warning">
+          <TriangleAlertIcon aria-hidden />
+          <span className={header ? 'max-sm:sr-only' : undefined}>
+            {t('chip.standbyNotInSync')}
+          </span>
+        </Badge>
+      )}
     </span>
   );
 }

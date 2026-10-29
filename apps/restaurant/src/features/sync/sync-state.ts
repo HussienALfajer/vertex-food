@@ -54,15 +54,24 @@ export function roleBadge(view: SyncStatusView): RoleBadge | null {
   };
 }
 
-/** This PC's commands that the server adjusted or rejected: needs attention while offline. */
+/** The outcomes of this PC's commands that need attention: the server's and the hub's (rule 31). */
+const attentionOutcomes = new Set(['adjusted', 'rejected', 'refused', 'quarantined']);
+
+/**
+ * This PC's commands that need attention while offline: those the server adjusted or rejected,
+ * a hub refused, or that went to the quarantine. `all` only for a member with
+ * `sync.attention.resolve`; anyone else sees their own, and no member sees nothing.
+ */
 export function localAttention(
   results: readonly CommandResultView[],
-  membershipId: string | null,
+  scope: { all: true } | { membershipId: string | null },
 ): CommandResultView[] {
   return results.filter(
     (result) =>
-      (result.outcome === 'adjusted' || result.outcome === 'rejected') &&
-      (membershipId === null || result.membershipId === membershipId),
+      result.outcome !== null &&
+      attentionOutcomes.has(result.outcome) &&
+      ('all' in scope ||
+        (scope.membershipId !== null && result.membershipId === scope.membershipId)),
   );
 }
 

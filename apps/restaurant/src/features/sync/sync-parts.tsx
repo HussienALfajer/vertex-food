@@ -60,6 +60,18 @@ export function useMemberNames(): (membershipId: string | null) => string {
   };
 }
 
+/** A command's outcome: the server's three, or one this PC recorded itself (`localOutcomes`). */
+export function useOutcomeText(): (outcome: string) => string {
+  const { t, i18n } = useTranslation('sync');
+  const text = t as unknown as (key: string) => string;
+  return (outcome) => {
+    for (const group of ['outcomes', 'localOutcomes']) {
+      if (i18n.exists(`${group}.${outcome}`, { ns: 'sync' })) return text(`${group}.${outcome}`);
+    }
+    return outcome;
+  };
+}
+
 export function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col">

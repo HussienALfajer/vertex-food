@@ -28,7 +28,7 @@ import { useBridgeErrorText } from '../session/member-picker';
 import { TextField } from '../sign-in/sign-in-flow';
 import { QrCode } from './qr-code';
 import { syncResultsQuery } from './queries';
-import { ChoiceField, Detail, Ltr } from './sync-parts';
+import { ChoiceField, Detail, Ltr, useOutcomeText } from './sync-parts';
 import { countdown, elapsedMs } from './sync-state';
 
 /**
@@ -101,7 +101,7 @@ export function PairingCard({ bridge, open }: { bridge: SyncBridge; open: boolea
               <p className="text-sm text-muted-foreground">{t('pairing.caHint')}</p>
               <QrCode value={current.caUrl} label={t('pairing.caQr')} />
               <span className="text-sm text-muted-foreground">{t('pairing.fingerprint')}</span>
-              <code className="font-mono text-sm wrap-anywhere" dir="ltr">
+              <code className="text-sm wrap-anywhere" dir="ltr">
                 {groups(current.caFingerprint)}
               </code>
             </div>
@@ -110,11 +110,7 @@ export function PairingCard({ bridge, open }: { bridge: SyncBridge; open: boolea
               <QrCode value={current.pairingUrl} label={t('pairing.pairQr')} />
               <span className="text-sm text-muted-foreground">{t('pairing.pairHint')}</span>
               <span className="text-sm text-muted-foreground">{t('pairing.code')}</span>
-              <span
-                className="font-mono text-3xl font-bold tracking-widest"
-                dir="ltr"
-                data-slot="pairing-code"
-              >
+              <span className="text-3xl font-bold tabular-nums" dir="ltr" data-slot="pairing-code">
                 {current.code}
               </span>
             </div>
@@ -297,6 +293,7 @@ export function NetworkCheckCard({
   const bridgeErrorText = useBridgeErrorText();
   const queryClient = useQueryClient();
   const results = useQuery(syncResultsQuery(bridge));
+  const outcomeText = useOutcomeText();
   const [count, setCount] = useState('50');
   const [interval, setIntervalMs] = useState('100');
   const [error, setError] = useState<string | null>(null);
@@ -391,9 +388,7 @@ export function NetworkCheckCard({
             value={interval}
             disabled={stress?.running}
             onChange={(event) => setIntervalMs(event.currentTarget.value)}
-            error={
-              validStress ? undefined : t('check.invalid', { max: STRESS_MAX })
-            }
+            error={validStress ? undefined : t('check.invalid', { max: STRESS_MAX })}
           />
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -448,7 +443,7 @@ export function NetworkCheckCard({
                     <Detail label={t('check.committed')}>{after(check.committedAt)}</Detail>
                     <Detail label={t('check.outcome')}>
                       {outcome?.outcome && outcome.answeredAt
-                        ? `${t(`outcomes.${outcome.outcome as 'accepted'}`)} · ${after(outcome.answeredAt)}`
+                        ? `${outcomeText(outcome.outcome)} · ${after(outcome.answeredAt)}`
                         : t('check.waiting')}
                     </Detail>
                   </dl>
