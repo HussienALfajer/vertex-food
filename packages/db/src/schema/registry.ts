@@ -16,7 +16,8 @@
  *   WhatsApp send queue). The app role deletes only from the queues listed in `APP_DELETES` of the
  *   convention test (spec S03: sent messages after 30 days, a replaced link's store).
  * - `state`: `created_at` and `updated_at`; one current row per subject, upserted in place (a PC's
- *   sync state, a branch's connectivity); never deleted.
+ *   sync state, a branch's connectivity, a tenant's agreement and entitlements), or a record whose
+ *   status moves in place and is never archived (an agreement amendment); never deleted.
  * - `replaceable`: `created_at` only; rows with no identity of their own, replaced as a set by
  *   deleting and inserting in one audited transaction (a branch's weekly hours). The app role may
  *   delete from every one.
@@ -26,6 +27,11 @@
 export const tableRegistry = {
   account_tenant_links: { module: 'access', scope: 'platform', kind: 'business' },
   accounts: { module: 'identity', scope: 'platform', kind: 'business' },
+  agreement_amendments: { module: 'commercial', scope: 'platform', kind: 'state' },
+  agreement_templates: { module: 'commercial', scope: 'platform', kind: 'business' },
+  agreement_term_endings: { module: 'commercial', scope: 'platform', kind: 'append-only' },
+  agreement_terms: { module: 'commercial', scope: 'platform', kind: 'append-only' },
+  agreements: { module: 'commercial', scope: 'platform', kind: 'state' },
   attention_items: { module: 'sync', scope: 'tenant', kind: 'append-only' },
   attention_resolutions: { module: 'sync', scope: 'tenant', kind: 'append-only' },
   audit_entries: { module: 'audit', scope: 'tenant', kind: 'append-only' },
@@ -34,6 +40,7 @@ export const tableRegistry = {
   branch_charges: { module: 'tenancy', scope: 'tenant', kind: 'business' },
   branch_connectivity: { module: 'sync', scope: 'tenant', kind: 'state' },
   branch_connectivity_changes: { module: 'sync', scope: 'tenant', kind: 'append-only' },
+  branch_entitlements: { module: 'entitlements', scope: 'tenant', kind: 'state' },
   branch_hour_exceptions: { module: 'tenancy', scope: 'tenant', kind: 'business' },
   branch_hours: { module: 'tenancy', scope: 'tenant', kind: 'replaceable' },
   branches: { module: 'tenancy', scope: 'tenant', kind: 'business' },
@@ -44,12 +51,17 @@ export const tableRegistry = {
   device_certificates: { module: 'sync', scope: 'tenant', kind: 'append-only' },
   device_sync_states: { module: 'sync', scope: 'tenant', kind: 'state' },
   devices: { module: 'identity', scope: 'tenant', kind: 'business' },
+  entitlement_exceptions: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
+  entitlement_override_revocations: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
+  entitlement_overrides: { module: 'entitlements', scope: 'platform', kind: 'append-only' },
+  entitlement_states: { module: 'entitlements', scope: 'platform', kind: 'state' },
   files: { module: 'files', scope: 'tenant', kind: 'business' },
   governorates: { module: 'areas', scope: 'platform', kind: 'business' },
   membership_access_snapshots: { module: 'access', scope: 'tenant', kind: 'append-only' },
   number_blocks: { module: 'sync', scope: 'tenant', kind: 'append-only' },
   otp_challenges: { module: 'identity', scope: 'platform', kind: 'queue' },
   outbox_events: { module: 'events', scope: 'tenant', kind: 'queue' },
+  packages: { module: 'commercial', scope: 'platform', kind: 'business' },
   personal_devices: { module: 'identity', scope: 'platform', kind: 'business' },
   platform_audit_entries: { module: 'audit', scope: 'platform', kind: 'append-only' },
   platform_sessions: { module: 'identity', scope: 'platform', kind: 'business' },

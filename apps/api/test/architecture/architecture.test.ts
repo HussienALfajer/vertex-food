@@ -55,6 +55,16 @@ const OWNED_TABLES = {
   whatsappMessages: 'platform/messaging',
   whatsappKnownRecipients: 'platform/messaging',
   whatsappOptOuts: 'platform/messaging',
+  packages: 'platform/commercial',
+  agreementTemplates: 'platform/commercial',
+  agreements: 'platform/commercial',
+  agreementAmendments: 'platform/commercial',
+  agreementTerms: 'platform/commercial',
+  agreementTermEndings: 'platform/commercial',
+  entitlementOverrides: 'platform/entitlements',
+  entitlementOverrideRevocations: 'platform/entitlements',
+  entitlementStates: 'platform/entitlements',
+  entitlementExceptions: 'platform/entitlements',
 };
 
 /** The `.ts` files under `root`; a shared package's tests are left out (they import any file). */
@@ -116,6 +126,8 @@ const SCHEMA_LAYERS: Record<string, string | null> = {
     'areas.ts',
     'audit.ts',
     'columns.ts',
+    'commercial.ts',
+    'entitlements.ts',
     'events.ts',
     'files.ts',
     'identity.ts',

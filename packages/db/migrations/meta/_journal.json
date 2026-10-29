@@ -99,6 +99,27 @@
       "when": 1793202419341,
       "tag": "0013_sync-stream-branches",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793290413627,
+      "tag": "0014_lovely_punisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793290447293,
+      "tag": "0015_commercial-isolation-grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793290623778,
+      "tag": "0016_commercial-null-safe-checks",
+      "breakpoints": true
     }
   ]
 }

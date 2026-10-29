@@ -37,7 +37,8 @@ import { branches } from './tenancy.js';
 
 const SHA256 = '^[0-9a-f]{64}$';
 const COMMAND_NAME = '^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$';
-// `commandReasons` and `commandFlagSchema` in @vertex-food/contracts.
+// `commandReasons` and `commandFlagSchema` in @vertex-food/contracts, without S05's `not_entitled`:
+// only the hub refuses for an entitlement, the server never does (spec S05 rule 25).
 const REASONS = [
   'payload_invalid',
   'permission_missing',
