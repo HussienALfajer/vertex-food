@@ -13,7 +13,6 @@ import { SignInScreen } from './screens/sign-in-screen';
 import { clearPairing, readPairing, type StoredPairing, savePairing } from './storage';
 
 const IDLE_CHECK_MS = 10_000;
-const TOUCH_WINDOW_MS = 5_000;
 
 const noConnection = (): ConnectionState | null => null;
 const noSubscribe = () => () => undefined;
@@ -48,11 +47,8 @@ export function App() {
     () => ({
       token: () => pairingRef.current?.token ?? null,
       session: () => sessionRef.current?.token ?? null,
-      // The page asks every PC every 3 s; input in the last few seconds reaches the hub that way.
-      touch: () =>
-        Date.now() - lastInput.current < TOUCH_WINDOW_MS
-          ? (sessionRef.current?.token ?? null)
-          : null,
+      // Any input since the session last reached a PC goes with the next `hello`.
+      touch: (since) => (lastInput.current > since ? (sessionRef.current?.token ?? null) : null),
     }),
     [],
   );

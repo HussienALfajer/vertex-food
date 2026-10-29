@@ -174,7 +174,7 @@ export class HubConnection {
       const current = this.client.hub();
       if (
         current &&
-        this.credentials.touch() &&
+        this.credentials.touch(this.transport.touchedAt()) &&
         Date.now() - this.transport.touchedAt() >= TOUCH_MS
       ) {
         await this.transport.hello(current.address, hubPolicy.mirrorTimeoutMs).catch(() => null);

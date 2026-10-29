@@ -66,6 +66,8 @@ type Pc = {
   knowsPairing: boolean;
   /** `hello` requests it answered, and those carrying the PIN session (input on the page). */
   hellos: number;
+  /** The next `hello`s it leaves unanswered (a late answer on a busy Wi-Fi). */
+  dropHellos: number;
   touches: number;
 };
 
@@ -101,6 +103,7 @@ export function mockHub(): MockHub {
         up: true,
         knowsPairing: true,
         hellos: 0,
+        dropHellos: 0,
         touches: 0,
       },
       {
@@ -111,6 +114,7 @@ export function mockHub(): MockHub {
         up: true,
         knowsPairing: true,
         hellos: 0,
+        dropHellos: 0,
         touches: 0,
       },
     ],
@@ -258,6 +262,10 @@ export async function installMockHub(page: Page, hub: MockHub): Promise<void> {
       const member = hub.sessions.get(headers['x-hub-session'] ?? '') ?? null;
       switch (`${request.method()} ${path}`) {
         case 'GET /hub/hello':
+          if (pc.dropHellos > 0) {
+            pc.dropHellos -= 1;
+            return route.abort('timedout');
+          }
           pc.hellos += 1;
           if (member) pc.touches += 1;
           return json(route, 200, {

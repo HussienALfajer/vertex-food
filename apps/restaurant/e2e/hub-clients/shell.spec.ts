@@ -246,6 +246,20 @@ test.describe('hub client pages', () => {
     await expect(page).toHaveURL(/\/sign-in$/);
   });
 
+  test('a late answer of the hub never lets the standby end the pairing', async ({ page }) => {
+    const [first, standby] = hub.pcs;
+    if (standby) standby.knowsPairing = false;
+    await pairAndSignIn(page);
+    await expect(page.getByTestId('hub')).toContainText(peers[0]);
+    // The hub misses a few `hello`s while the standby keeps answering 401.
+    if (first) first.dropHellos = 4;
+    await expect.poll(() => first?.dropHellos).toBe(0);
+    await expect(page.getByTestId('hub')).toContainText(peers[0]);
+    await expect(page).toHaveURL(/\/check$/);
+    await page.reload();
+    await expect(page).toHaveURL(/\/sign-in$/);
+  });
+
   test('a revoked pairing ends while the other PC is off', async ({ page }) => {
     await pairAndSignIn(page);
     const standby = hub.pcs[1];

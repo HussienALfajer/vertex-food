@@ -84,7 +84,7 @@ Rules that keep the parallel PRs apart:
 
 - [x] `apps/restaurant/hub-clients/`: install the certificate, pair (QR fragment or code), sign in (member picker, PIN pad, 64 px keys), network check (`/check`, stress run, outbox count) with the IndexedDB outbox and failover, live connection, branding header with «Powered by Vertex Food»; i18n
 - [x] E2E against a mock hub, RTL light and dark at 360 px, tablet, desktop, including "sending" and "reconnecting"
-- [ ] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
+- [x] Checks, reviewer, PR with auto-merge and Auto-fix, acceptance steps in the report
 
 ## Follow-ups (not this spec)
 

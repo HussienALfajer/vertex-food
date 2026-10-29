@@ -43,10 +43,11 @@ export type HubCredentials = {
   token: () => string | null;
   session: () => string | null;
   /**
-   * The session to send on `hello`, only when the member tapped or typed since the last one: the
-   * hub counts it as input, so its idle lock follows the page's (rule 35).
+   * The session to send on `hello`, only when the member tapped or typed since `since` (the last
+   * `hello` that carried it): the hub counts it as input, so its idle lock follows the page's
+   * (rule 35).
    */
-  touch: () => string | null;
+  touch: (since: number) => string | null;
 };
 
 function headers(
@@ -153,8 +154,8 @@ export async function endSession(address: string, credentials: HubCredentials): 
  */
 export type HubTransport = HubClientTransport & {
   /**
-   * The last round of `hello`s (the answers of the last `windowMs`): some PC refused the pairing
-   * and none accepted it. A PC that did not answer counts for neither.
+   * The pairing was refused in the last `windowMs`: by the PC that last answered as the hub, or,
+   * before any did, by some PC while none accepted it. A PC that did not answer counts for neither.
    */
   pairingRefused: (windowMs: number) => boolean;
   /** When a `hello` last carried the PIN session to a PC, which counts it as input. */
@@ -167,10 +168,14 @@ export function hubTransport(credentials: HubCredentials, onUnpaired: () => void
     throw error;
   };
   const answers = new Map<string, { accepted: boolean; at: number }>();
+  // The PC that last answered as the hub in this page load: once there is one, only its refusal
+  // ends the pairing, so a standby that never got it cannot, even when one of the hub's answers
+  // is late (rules 30, 34).
+  let hubAddress: string | null = null;
   let touchedAt = 0;
   return {
     hello: async (address, timeoutMs): Promise<HubHello> => {
-      const session = credentials.touch();
+      const session = credentials.touch(touchedAt);
       try {
         const hello = await call(`${hubOrigin(address)}/hub/hello`, hubHelloSchema, {
           credentials,
@@ -178,6 +183,7 @@ export function hubTransport(credentials: HubCredentials, onUnpaired: () => void
           timeoutMs,
         });
         answers.set(address, { accepted: true, at: Date.now() });
+        if (hello.role === 'hub') hubAddress = address;
         if (session) touchedAt = Date.now();
         return hello;
       } catch (error) {
@@ -190,6 +196,10 @@ export function hubTransport(credentials: HubCredentials, onUnpaired: () => void
       }
     },
     pairingRefused: (windowMs) => {
+      if (hubAddress) {
+        const answer = answers.get(hubAddress);
+        return answer !== undefined && !answer.accepted && Date.now() - answer.at < windowMs;
+      }
       const recent = [...answers.values()].filter((a) => Date.now() - a.at < windowMs);
       return recent.some((a) => !a.accepted) && !recent.some((a) => a.accepted);
     },
