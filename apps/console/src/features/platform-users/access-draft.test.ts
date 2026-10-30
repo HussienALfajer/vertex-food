@@ -26,29 +26,39 @@ describe('accessDraft', () => {
 
 describe('accessChange', () => {
   it('sends only adjustments the API accepts, for every role and every choice', () => {
+    // Every subset of the catalog for every role (2^n of them): mismatches are collected and
+    // asserted once, so the run stays fast as the catalog grows.
+    const refused: string[] = [];
+    const differing: string[] = [];
     for (const role of consoleRoles) {
       // Every subset of the catalog, as a person could tick it.
       for (let mask = 0; mask < 2 ** consolePermissions.length; mask += 1) {
         const ticked = consolePermissions.filter((_, index) => mask & (1 << index));
         const held = new Set<ConsolePermission>(ticked);
         const change = accessChange({ role, held });
-        expect(() =>
+        try {
           assertConsoleAdjustmentsAllowed(
             role,
             change.grantedPermissions,
             change.revokedPermissions,
-          ),
-        ).not.toThrow();
+          );
+        } catch {
+          refused.push(`${role} ${ticked.join(',')}`);
+        }
         // What the server computes is what the dialog showed, within the limits.
-        expect(
-          effectiveConsolePermissions(role, change.grantedPermissions, change.revokedPermissions),
-        ).toEqual(
-          ticked.filter(
-            (permission) => permissionState({ role, held }, permission) !== 'outsideLimits',
-          ),
+        const computed = effectiveConsolePermissions(
+          role,
+          change.grantedPermissions,
+          change.revokedPermissions,
         );
+        const shown = ticked.filter(
+          (permission) => permissionState({ role, held }, permission) !== 'outsideLimits',
+        );
+        if (computed.join(',') !== shown.join(',')) differing.push(`${role} ${ticked.join(',')}`);
       }
     }
+    expect(refused).toEqual([]);
+    expect(differing).toEqual([]);
   });
 });
 
