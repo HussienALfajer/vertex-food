@@ -56,6 +56,8 @@ export class ClearRevokedHubRoleJob implements QueueJob {
           action: 'branch.hub_roles_changed',
           entityType: 'branch',
           entityId: event.branchId,
+          // The branch filter of the restaurant's audit log (spec S06 rule 20).
+          branchId: event.branchId,
           details: {
             deviceId: event.deviceId,
             before: device.hubRole,
