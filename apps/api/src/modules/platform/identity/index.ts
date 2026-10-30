@@ -1,3 +1,4 @@
+export { accountNames } from './accounts.js';
 export { ConsoleAccountsService } from './console-accounts.service.js';
 export { DeviceProofs } from './device-proofs.js';
 export { IdentityModule } from './identity.module.js';

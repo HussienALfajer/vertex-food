@@ -132,6 +132,7 @@ export const recordLocalEventsExecutor = defineExecutor(recordLocalEvents, async
         actorId: accountId,
         actorName: accountId ? null : 'device',
         deviceId,
+        branchId: command.branchId,
         action: event.action,
         entityType: entity.type,
         entityId: entity.id,

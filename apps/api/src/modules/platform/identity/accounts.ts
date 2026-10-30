@@ -26,6 +26,22 @@ export async function accountById(
   return row;
 }
 
+/**
+ * The names people set on their accounts, by id (null before they set one): the platform audit
+ * names an account acting on itself (spec S06 rule 18).
+ */
+export async function accountNames(
+  db: Database | Transaction,
+  ids: readonly string[],
+): Promise<Map<string, string | null>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: accounts.id, nameAr: accounts.nameAr })
+    .from(accounts)
+    .where(inArray(accounts.id, [...ids]));
+  return new Map(rows.map((row) => [row.id, row.nameAr]));
+}
+
 /** Whether an authorized password reset is open for the account (rule 14). */
 export function resetOpen(account: AccountRow, now: Date): boolean {
   return (account.passwordResetAuthorizedUntil?.getTime() ?? 0) > now.getTime();

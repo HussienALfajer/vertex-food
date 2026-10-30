@@ -348,6 +348,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch.updated',
         entityType: 'branch',
+        branchId: row.id,
         entityId: row.id,
         // Phones are listed by field name only: phones stay out of every trail but the row.
         details: { changed, before: pick(before, shown), after: pick(changedBranch, shown) },
@@ -382,6 +383,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch.security_updated',
         entityType: 'branch',
+        branchId: row.id,
         entityId: row.id,
         details: {
           before: { idleLockMinutes: row.idleLockMinutes },
@@ -450,6 +452,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_hours.replaced',
         entityType: 'branch',
+        branchId: row.id,
         entityId: row.id,
         details: {
           before: { businessDayEndsAt: previousEnd, periods: before },
@@ -507,6 +510,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_hour_exception.created',
         entityType: 'branch_hour_exception',
+        branchId: row.id,
         entityId: exception.id,
         details: { after: { date: input.date, closed: input.closed, periods: input.periods } },
       });
@@ -545,6 +549,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_hour_exception.updated',
         entityType: 'branch_hour_exception',
+        branchId: row.id,
         entityId: exception.id,
         details: {
           before: { closed: exception.closed, periods: exception.periods },
@@ -572,6 +577,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_hour_exception.archived',
         entityType: 'branch_hour_exception',
+        branchId: row.id,
         entityId: exception.id,
       });
       await this.exceptionsChanged(tx, actor.tenantId, row.id);
@@ -631,6 +637,7 @@ export class TenancyService {
       await audit(tx, actor.tenantId, actor, {
         action: 'branch_charges.replaced',
         entityType: 'branch',
+        branchId: row.id,
         entityId: row.id,
         details: { before: existing.map(toCharge), after: result },
       });
@@ -926,6 +933,7 @@ export class TenancyService {
       await audit(tx, tenantId, operator, {
         action: 'branch.archived',
         entityType: 'branch',
+        branchId: row.id,
         entityId: row.id,
         reason: note ?? null,
       });
@@ -1066,6 +1074,7 @@ export class TenancyService {
     await audit(tx, tenantId, operator, {
       action: 'branch.created',
       entityType: 'branch',
+      branchId: row.id,
       entityId: row.id,
       reason: note,
       details: { code: row.code },

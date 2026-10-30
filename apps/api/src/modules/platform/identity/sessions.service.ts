@@ -211,6 +211,7 @@ export class SessionsService implements SessionVerifier {
         action: 'staff_session.reauthenticated',
         entityType: 'staff_session',
         entityId: actor.sessionId,
+        branchId: actor.branchId,
       });
     });
   }
@@ -391,6 +392,7 @@ export class SessionsService implements SessionVerifier {
       action: 'staff_session.started',
       entityType: 'staff_session',
       entityId: session.sessionId,
+      branchId: device.branchId,
       details: { kind: 'device', membershipId: member.id },
     });
     return session;

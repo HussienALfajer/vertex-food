@@ -96,6 +96,7 @@ export class AttentionService {
         action: 'attention_item.resolved',
         entityType: 'attention_item',
         entityId: item.id,
+        branchId: item.branchId,
         reason,
       });
       return this.read(tx, item.id);

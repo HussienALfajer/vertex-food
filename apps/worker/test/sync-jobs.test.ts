@@ -192,7 +192,11 @@ describe('the device.revoked.v1 consumer', () => {
           .from(outboxEvents)
           .where(eq(outboxEvents.type, 'device.revoked.v1'));
         const audited = await tx
-          .select({ details: auditEntries.details, actorName: auditEntries.actorName })
+          .select({
+            details: auditEntries.details,
+            actorName: auditEntries.actorName,
+            branchId: auditEntries.branchId,
+          })
           .from(auditEntries)
           .where(eq(auditEntries.action, 'branch.hub_roles_changed'));
         return { hubRole: device?.hubRole, pending, audited };
@@ -210,6 +214,7 @@ describe('the device.revoked.v1 consumer', () => {
     expect((await read()).audited).toEqual([
       {
         actorName: 'sync/clear-revoked-hub-role',
+        branchId: b.branchId,
         details: { deviceId: b.deviceId, before: 'hub', after: null, reason: 'device_revoked' },
       },
     ]);

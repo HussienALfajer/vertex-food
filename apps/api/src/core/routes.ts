@@ -17,6 +17,7 @@ import {
   type Entitlement,
   SUSPENDED_ALLOWED,
 } from './access/access.decorators.js';
+import { FILE_TYPE } from './http/file-head.js';
 
 /** One HTTP route of the application with what it declares. Copied from Vertex Shifa. */
 export type Route = {
@@ -35,6 +36,8 @@ export type Route = {
   responseSchema: unknown;
   /** Takes `@Res()` or `@Next()`, which answer outside the response serializer. */
   rawResponse: boolean;
+  /** A file route's `@FileType()`; the image routes declare none. */
+  contentType?: string;
   /** What the route takes, from `@Body({ schema })`, `@Query({ schema })`, `@Param(name, { schema })`. */
   request: {
     body: unknown;
@@ -143,6 +146,7 @@ export function listRoutes(app: INestApplication): Route[] {
               suspendedAllowed: Reflect.getMetadata(SUSPENDED_ALLOWED, handler) === true,
               responseSchema: options?.schema,
               rawResponse,
+              contentType: Reflect.getMetadata(FILE_TYPE, handler),
               request: requestOf(params),
             });
           }

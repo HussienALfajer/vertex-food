@@ -154,6 +154,7 @@ export class DevicesService {
           action: 'device.registered',
           entityType: 'device',
           entityId: row.id,
+          branchId: row.branchId,
           details: { branchId: row.branchId, registeredByMembershipId: member.id },
         },
       );
@@ -177,6 +178,7 @@ export class DevicesService {
           action: 'staff_session.started',
           entityType: 'staff_session',
           entityId: session.sessionId,
+          branchId: row.branchId,
           details: { kind: 'device', membershipId: member.id },
         },
       );
@@ -264,6 +266,7 @@ export class DevicesService {
         action: 'device.wiped',
         entityType: 'device',
         entityId: row.id,
+        branchId: device.branchId,
       });
     });
   }
@@ -301,6 +304,7 @@ export class DevicesService {
         action: 'device.renamed',
         entityType: 'device',
         entityId: id,
+        branchId: row.branchId,
         details: { before: row.name, after: name },
       });
       return toDevice(renamed);
@@ -337,6 +341,7 @@ export class DevicesService {
         action: 'device.revoked',
         entityType: 'device',
         entityId: id,
+        branchId: row.branchId,
         reason: input.note ?? null,
         details: { reason: input.reason },
       });

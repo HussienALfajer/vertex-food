@@ -81,6 +81,7 @@ export async function quarantineBatch(
       action: 'quarantine_batch.received',
       entityType: 'quarantine_batch',
       entityId: batch.id,
+      branchId: input.branchId,
       details: {
         reason: input.reason,
         deviceId: input.deviceId,

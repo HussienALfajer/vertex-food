@@ -16,5 +16,6 @@ export {
   readTenant,
   statusState,
   type TenantRow,
+  tenantLabels,
   timeOf,
 } from './tenancy.views.js';
